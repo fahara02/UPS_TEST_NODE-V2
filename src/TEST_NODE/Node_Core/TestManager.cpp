@@ -138,13 +138,11 @@ void TestManager::onUPSPowerLossTask(void* pvParameters) { vTaskDelete(NULL); }
 
 void TestManager::initializeTestInstances() {
   // Initialize SwitchTest
-  for (uint8_t i = 0; i < MAX_TESTS; ++i) {
 
-    testsSwitch[0].test = SwitchTest::getInstance();
-    testsSwitch[0].status = TestStatus::TEST_PENDING;
-    testsSwitch[0].data = testsSwitch[0].test->data();
-    testsSwitch[0].test->init();
-  }
+  testsSwitch[0].test = SwitchTest::getInstance();
+  testsSwitch[0].status = TestStatus::TEST_PENDING;
+  testsSwitch[0].data = testsSwitch[0].test->data();
+  testsSwitch[0].test->init();
 
   numTests = MAX_TESTS;  // Set the number of tests
 }

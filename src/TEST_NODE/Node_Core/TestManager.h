@@ -41,14 +41,6 @@ class UPSTest;
 
 class SwitchTest;
 
-// template <TestType type>
-// struct DerivedType;
-
-// template <>
-// struct DerivedType<TestType::SwitchTest> {
-//   using Type = SwitchTest;
-// };
-
 template <typename T, typename U, TestType testype>
 struct UPSTestRun {
   UPSTest<T, U, testype>* test;  // Pointer to the specific UPS test
