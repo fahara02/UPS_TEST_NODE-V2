@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "author": "Faruk Hannan",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": -32.2,
+      "left": 144,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 100.8,
+      "left": 124.25,
+      "rotate": 90,
+      "attrs": { "value": "1000" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": 6.2,
+      "left": 240,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 91.2,
+      "left": 210.65,
+      "rotate": 90,
+      "attrs": { "value": "1000" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "btn1:2.l", "esp:23", "green", [ "h-38.4", "v-38.2" ] ],
+    [ "r1:1", "btn1:2.l", "green", [ "h0" ] ],
+    [ "btn1:1.l", "esp:3V3", "red", [ "h-153.6", "v48" ] ],
+    [ "btn2:1.l", "btn1:1.l", "red", [ "h0", "v-76.8", "h-86.4" ] ],
+    [ "esp:22", "btn2:2.l", "green", [ "h0" ] ],
+    [ "r2:1", "btn2:2.l", "green", [ "h0" ] ],
+    [ "r1:2", "r2:2", "green", [ "h0" ] ],
+    [ "esp:GND.1", "r1:2", "black", [ "h-33.41", "v67.2", "h182.4" ] ]
+  ],
+  "dependencies": {}
+}
