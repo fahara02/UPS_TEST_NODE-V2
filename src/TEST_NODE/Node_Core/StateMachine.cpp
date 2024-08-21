@@ -3,71 +3,43 @@
 #include <cstring>
 #include <iostream>
 namespace Node_Core {
-  
+StateMachine* StateMachine::instance = nullptr;
 
 StateMachine::StateMachine()
-    : current_state(State::DEVICE_SHUTDOWN), retry_count(0), max_retest(0) {}
+    : current_state(State::DEVICE_ON), retry_count(0), max_retest(0) {}
 
 StateMachine::~StateMachine() {}
 
+StateMachine* StateMachine::getInstance() {
+  if (instance == nullptr) {
+    instance = new StateMachine();
+  }
+  return instance;
+}
+
+void StateMachine::deleteInstance() {
+  delete instance;
+  instance = nullptr;
+}
+
 void StateMachine::handleEvent(Event event) {
 
-  std::cout << "Handling event: " << eventToString(event)
-            << " from state: " << stateToString(current_state) << std::endl;
-
   // Handle special case for WIFI_DISCONNECTED
-  if (event == Event::RETRY_CONNECT) {
-    if (current_state != State::DEVICE_CONNECTED) {
+  if (event == Event::SELF_CHECK_OK) {
+
+    if (current_state == State::DEVICE_ON) {
       if (retry_count < max_retries) {
         retry_count++;
-        setState(State::RECONNECT_NETWORK);
+        setState(State::DEVICE_READY);
       } else {
-        setState(State::NETWORK_TIMEOUT);
+        setState(State::DEVICE_READY);
       }
       return;  // Exit early to prevent further processing
     }
   }
 
-  // Handle re-test events based on the new transition table
-  if (event == Event::TEST_FAILED) {
-    switch (current_state) {
-      case State::SWITCHING_TEST_CHECK:
-        if (retry_count < max_retest) {
-          retry_count++;
-          setState(State::SWITCHING_TEST_START);  // Restart the switching test
-        } else {
-          setState(State::SWITCHING_TEST_FAILED);  // Max retries exceeded
-        }
-        return;
-
-      case State::EFFICIENCY_TEST_CHECK:
-        if (retry_count < max_retest) {
-          retry_count++;
-          setState(State::EFFICIENCY_TEST_START);  // Restart the efficiency
-                                                   // test
-        } else {
-          setState(State::EFFICIENCY_TEST_FAILED);  // Max retries exceeded
-        }
-        return;
-
-      case State::BACKUP_TIME_TEST_CHECK:
-        if (retry_count < max_retest) {
-          retry_count++;
-          setState(State::BACKUP_TIME_TEST_START);  // Restart the backup time
-                                                    // test
-        } else {
-          setState(State::BACKUP_TIME_TEST_FAILED);  // Max retries exceeded
-        }
-        return;
-
-      default:
-        // No specific handling for other states
-        break;
-    }
-  }
-
   // Manually search for the transition
-  for (const auto &transition : transition_table) {
+  for (const auto& transition : transition_table) {
     if (transition.current_state == current_state
         && (transition.event == event || transition.event == Event::NONE)) {
       if (!transition.guard || transition.guard()) {

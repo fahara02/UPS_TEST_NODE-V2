@@ -36,6 +36,7 @@ TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
 // Define the SwitchTest instance
 
 UPSTesterSetup* TesterSetup = nullptr;
+StateMachine* stateMachine = nullptr;
 TestManager* Manager = nullptr;
 // Task handles
 
@@ -98,7 +99,9 @@ void setup() {
   // Initialize Serial for debugging
   Serial.begin(115200);
   Serial.print("Serial started........");
+
   TesterSetup = UPSTesterSetup::getInstance();
+  stateMachine = StateMachine::getInstance();
   Manager = TestManager::getInstance();
 
   if (Manager) {
