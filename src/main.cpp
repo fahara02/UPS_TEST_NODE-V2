@@ -19,6 +19,8 @@ volatile bool ups_triggered = false;
 volatile bool check_ups_shutdown = false;
 const unsigned long debounceDelay = 100;
 
+SemaphoreHandle_t mainLoss = NULL;
+
 TaskHandle_t modbusRTUTaskHandle = NULL;
 TaskHandle_t switchTestTaskHandle = NULL;
 TaskHandle_t backupTimeTestTaskHandle = NULL;
@@ -32,8 +34,9 @@ TaskHandle_t ISR_UPS_POWER_GAIN = NULL;
 TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
 
 // Define the SwitchTest instance
-SwitchTest* switchTest = nullptr;
+
 UPSTesterSetup* TesterSetup = nullptr;
+TestManager* Manager = nullptr;
 // Task handles
 
 SemaphoreHandle_t xSemaphore;
@@ -46,11 +49,12 @@ ModbusRTU mb;
 void IRAM_ATTR keyISR1(void* pvParameters) {
   unsigned long currentTime = millis();
   if (currentTime - lastMainsTriggerTime > debounceDelay) {
-    if (!mains_triggered) {
-      mains_triggered = true;
-    }
+    // if (!mains_triggered) {
+    //   mains_triggered = true;
+    // }
     lastMainsTriggerTime = currentTime;
-    xTaskResumeFromISR(ISR_MAINS_POWER_LOSS);
+    // xTaskResumeFromISR(ISR_MAINS_POWER_LOSS);
+    xSemaphoreGiveFromISR(mainLoss, NULL);
   }
 }
 void IRAM_ATTR keyISR2(void* pvParameters) {
@@ -77,10 +81,10 @@ void IRAM_ATTR keyISR3(void* pvParameters) {
 void modbusRTUTask(void* pvParameters) {
 
   while (true) {
-    // Serial.print("Resuming modbus task... ");
+    Serial.print("Resuming modbus task... ");
     mb.task();
-    // Serial.print("Modbus Stack High Water Mark: ");
-    // Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack
+    Serial.print("Modbus Stack High Water Mark: ");
+    Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack
     // usage
 
     vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
@@ -89,18 +93,17 @@ void modbusRTUTask(void* pvParameters) {
 }
 
 void setup() {
+  mainLoss = xSemaphoreCreateBinary();
   // Initialize Serial for debugging
   Serial.begin(115200);
   Serial.print("Serial started........");
   TesterSetup = UPSTesterSetup::getInstance();
-  TestManager Tester;
-  Tester.init();
+  Manager = TestManager::getInstance();
 
-  // switchTest = SwitchTest::getInstance();
-  // if (switchTest) {
-  //   switchTest->init();
-  //   Serial.print("Switchtest initialised........");
-  // }
+  if (Manager) {
+    Manager->init();
+    Serial.print("Testmanager  initialised........");
+  }
   modbusRTU_Init();
   Serial2.begin(9600, SERIAL_8N1);
   mb.begin(&Serial2);

@@ -6,16 +6,32 @@ extern volatile bool ups_triggered;
 extern TaskHandle_t ISR_MAINS_POWER_LOSS;
 extern TaskHandle_t ISR_UPS_POWER_GAIN;
 extern TaskHandle_t ISR_UPS_POWER_LOSS;
+extern SemaphoreHandle_t mainLoss;
+
+TestManager* TestManager::instance = nullptr;
 
 TestManager::TestManager() {}
 
 TestManager::~TestManager() {}
+
+TestManager* TestManager::getInstance() {
+  if (instance == nullptr) {
+    instance = new TestManager();
+  }
+  return instance;
+}
+
+void TestManager::deleteInstance() {
+  delete instance;
+  instance = nullptr;
+}
 
 void TestManager::init() {
   if (_initialized) {
     return;  // Already initialized, do nothing
   }
   setupPins();
+  createISRTasks();
   initializeTestInstances();
 
   _initialized = true;  // Mark as initialized
@@ -89,48 +105,49 @@ void TestManager::createISRTasks() {
 }
 void TestManager::TestManagerTask(void* pvParameters) { vTaskDelete(NULL); }
 void TestManager::onMainsPowerLossTask(void* pvParameters) {
-  // while (true) {
-  //   instance[] if (mains_triggered) {
-  //     if (true) {
-  //       instance->_time_capture_running = true;
-  //       instance->startTimeCapture();
-  //       Serial.print("\033[31m");  // Start red color
-  //       Serial.print("mains Powerloss triggered...");
-  //       Serial.print("\033[0m");  // Reset color
-  //       mains_triggered = false;
-  //     }
-  //     Serial.print("mains task High Water Mark: ");
-  //     Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack
-  //     usage
 
-  //         vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
-  //     vTaskSuspend(NULL);
-  //   }
-  // }
+  while (true) {
+    if (xSemaphoreTake(mainLoss, portMAX_DELAY)) {
+      vTaskPrioritySet(&ISR_MAINS_POWER_LOSS, 3);
+      if (switchTest) {
+        switchTest->_dataCaptureRunning = true;
+        switchTest->startTestCapture();
+        Serial.print("\033[31m");  // Start red color
+        Serial.print("mains Powerloss triggered...");
+        Serial.print("\033[0m");  // Reset color
+        mains_triggered = false;
+      }
+      Serial.print("mains task High Water Mark: ");
+      Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack
+      Serial.println("Mains Loss trigger capture completed.... ");
+      vTaskPrioritySet(&ISR_MAINS_POWER_LOSS, 1);
+      vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
+      vTaskSuspend(NULL);
+    }
+  }
   vTaskDelete(NULL);
 }
 
 // // ISR for UPS power gain
 void TestManager::onUPSPowerGainTask(void* pvParameters) {
 
-  // while (true) {
-  //   if (ups_triggered) {
+  while (true) {
+    if (ups_triggered) {
 
-  //     if (instance) {
-  //       instance->stopTimeCapture();
-  //       Serial.print("\033[31m");  // Start red color
-  //       Serial.print("UPS Powerloss triggered...");
-  //       Serial.print("\033[0m");  // Reset color
-  //       ups_triggered = false;
-  //     }
-  //     Serial.print("UPS High Water Mark: ");
-  //     Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack
-  //     usage
+      if (switchTest) {
+        switchTest->stopTestCapture();
+        Serial.print("\033[31m");  // Start red color
+        Serial.print("UPS Powerloss triggered...");
+        Serial.print("\033[0m");  // Reset color
+        ups_triggered = false;
+      }
+      Serial.print("UPS High Water Mark: ");
+      Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack
 
-  //         vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
-  //     vTaskSuspend(NULL);
-  //   }
-  // }
+      vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
+      vTaskSuspend(NULL);
+    }
+  }
   vTaskDelete(NULL);
 }
 
@@ -138,11 +155,11 @@ void TestManager::onUPSPowerLossTask(void* pvParameters) { vTaskDelete(NULL); }
 
 void TestManager::initializeTestInstances() {
   // Initialize SwitchTest
-
-  testsSwitch[0].test = SwitchTest::getInstance();
+  switchTest = SwitchTest::getInstance();
+  testsSwitch[0].test = switchTest;
   testsSwitch[0].status = TestStatus::TEST_PENDING;
   testsSwitch[0].data = testsSwitch[0].test->data();
-  testsSwitch[0].test->init();
+  switchTest->init();
 
   numTests = MAX_TESTS;  // Set the number of tests
 }

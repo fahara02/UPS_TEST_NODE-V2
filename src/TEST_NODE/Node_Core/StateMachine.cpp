@@ -3,6 +3,7 @@
 #include <cstring>
 #include <iostream>
 namespace Node_Core {
+  
 
 StateMachine::StateMachine()
     : current_state(State::DEVICE_SHUTDOWN), retry_count(0), max_retest(0) {}

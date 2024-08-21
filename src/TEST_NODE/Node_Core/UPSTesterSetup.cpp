@@ -34,6 +34,8 @@ void UPSTesterSetup::deleteInstance() {
 
 void UPSTesterSetup::updateSettings(SettingType settingType,
                                     const void* newSetting) {
+  bool allsettings_updated = false;
+
   switch (settingType) {
     case SettingType::SPEC:
       _spec = *static_cast<const SetupSpec*>(newSetting);
@@ -43,13 +45,18 @@ void UPSTesterSetup::updateSettings(SettingType settingType,
       }
       break;
 
-    case SettingType::TEST:
-      _testSetting = *static_cast<const SetupTest*>(newSetting);
+    case SettingType::TEST: {
+      const SetupTest* newTest = static_cast<const SetupTest*>(newSetting);
+      bool modeChanged = (_testSetting.mode != newTest->mode);
+      _testSetting = *newTest;
       _testSetting.lastsetting_updated = millis();
       if (_testSetCallback) {
         _testSetCallback(true, _testSetting);
       }
-      break;
+      if (modeChanged && _testModeCallback) {
+        _testModeCallback(_testSetting.mode);
+      }
+    } break;
 
     case SettingType::TASK:
       _taskSetting = *static_cast<const SetupTask*>(newSetting);
@@ -98,18 +105,55 @@ void UPSTesterSetup::updateSettings(SettingType settingType,
         _reportSetCallback(true, _reportSetting);
       }
       break;
+
     case SettingType::ALL:
       _allSetting = *static_cast<const SetupUPSTest*>(newSetting);
       _allSetting.lastsetting_updated = millis();
-      if (_allSettingCallback) {
-        _allSettingCallback(true, _allSetting);
-      }
+      allsettings_updated = true;  // Assume all settings are updated directly
       break;
 
     default:
       Serial.println("Unknown setting type");
-      break;
+      return;
   }
+
+  // Determine if all settings have been updated recently
+  unsigned long currentTime = millis();
+  int updatedSettingsCount = 0;
+
+  if (currentTime - _spec.lastsetting_updated <= ONE_DAY_MS)
+    updatedSettingsCount++;
+  if (currentTime - _testSetting.lastsetting_updated <= ONE_DAY_MS)
+    updatedSettingsCount++;
+  if (currentTime - _taskSetting.lastsetting_updated <= ONE_DAY_MS)
+    updatedSettingsCount++;
+  if (currentTime - _taskParamsSetting.lastsetting_updated <= ONE_DAY_MS)
+    updatedSettingsCount++;
+  if (currentTime - _hardwareSetting.lastsetting_updated <= ONE_DAY_MS)
+    updatedSettingsCount++;
+  if (currentTime - _networkSetting.lastsetting_updated <= ONE_DAY_MS)
+    updatedSettingsCount++;
+  if (currentTime - _modbusSetting.lastsetting_updated <= ONE_DAY_MS)
+    updatedSettingsCount++;
+  if (currentTime - _reportSetting.lastsetting_updated <= ONE_DAY_MS)
+    updatedSettingsCount++;
+
+  // If most settings are updated, consider all settings updated
+  if (updatedSettingsCount >= 6) {
+    allsettings_updated = true;
+    _allSetting.lastsetting_updated = currentTime;
+    updatedSettingsCount = 0;
+  }
+  if (_user_update_call) {
+    allsettings_updated = true;
+    _allSetting.lastsetting_updated = currentTime;
+    _user_update_call = false;
+  }
+  // Trigger the all settings callback if available
+  if (_allSettingCallback) {
+    _allSettingCallback(allsettings_updated, _allSetting);
+  }
+
   serializeSettings("/tester_settings.json");
 }
 

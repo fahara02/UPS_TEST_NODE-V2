@@ -6,9 +6,10 @@
 #include <IPAddress.h>
 #include <functional>
 #include <stdint.h>
+const unsigned long ONE_DAY_MS = 86400000UL;  // 1 day in milliseconds
 
 namespace Node_Core {
-
+using OnTestModeCallback = std::function<void(TestMode mode)>;
 using OnSetupSpecCallback
     = std::function<void(bool spec_updated, SetupSpec spec)>;
 using OnSetupTestCallback
@@ -48,6 +49,10 @@ public:
   void serializeSettings(const char* filename);
   void deserializeSettings(const char* filename);
 
+  void registerTestModeCallback(OnTestModeCallback callback) {
+    _testModeCallback = callback;
+  }
+
   void registerSpecCallback(OnSetupSpecCallback callback);
   void registerTestCallback(OnSetupTestCallback callback);
   void registerTaskCallback(OnSetupTaskCallback callback);
@@ -62,6 +67,7 @@ private:
   UPSTesterSetup();
   ~UPSTesterSetup();
   static UPSTesterSetup* instance;
+  bool _user_update_call = false;
 
   SetupSpec _spec;
   SetupTest _testSetting;
@@ -74,6 +80,7 @@ private:
   SetupReport _reportSetting;
   SetupUPSTest _allSetting;
 
+  OnTestModeCallback _testModeCallback;
   OnSetupSpecCallback _specSetCallback;
   OnSetupTestCallback _testSetCallback;
   OnSetupTaskCallback _taskSetCallback;

@@ -53,8 +53,8 @@ struct SetupTask {
   int mainsISR_taskIdlePriority = 1;
   int upsISR_taskIdlePriority = 1;
   uint32_t mainTest_taskStack = 12000;
-  uint32_t mainsISR_taskStack = 12000;
-  uint32_t upsISR_taskStack = 12000;
+  uint32_t mainsISR_taskStack = 4096;
+  uint32_t upsISR_taskStack = 4096;
   unsigned long lastsetting_updated = 0UL;
 };
 

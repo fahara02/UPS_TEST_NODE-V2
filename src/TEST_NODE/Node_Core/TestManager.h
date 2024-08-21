@@ -40,6 +40,7 @@ template <typename T, typename U, TestType testype>
 class UPSTest;
 
 class SwitchTest;
+static SwitchTest* switchTest = nullptr;
 
 template <typename T, typename U, TestType testype>
 struct UPSTestRun {
@@ -50,8 +51,8 @@ struct UPSTestRun {
 
 class TestManager {
 public:
-  TestManager();
-  ~TestManager();
+  static TestManager* getInstance();
+  static void deleteInstance();
   UPSTestRun<SwitchTest, SwitchTestData, TestType::SwitchTest>
       testsSwitch[MAX_TESTS];
 
@@ -68,6 +69,9 @@ public:
   void initializeTestInstances();
 
 private:
+  TestManager();
+  ~TestManager();
+  static TestManager* instance;
   bool _initialized = false;
   bool _setupUpdated = false;
   uint8_t numTests;
@@ -84,6 +88,9 @@ private:
   void configureInterrupts();
   void createManagerTasks();
   void createISRTasks();
+
+  TestManager(const TestManager&) = delete;
+  TestManager& operator=(const TestManager&) = delete;
 };
 
 #endif
