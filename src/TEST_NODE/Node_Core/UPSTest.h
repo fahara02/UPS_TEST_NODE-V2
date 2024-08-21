@@ -162,11 +162,7 @@ UPSTest<T, U, testype>::UPSTest()
         this->onHardwareUpdate(hardware_updated, setting);
       });
 }
-// template <typename T, typename U, TestType testype>
-// T* UPSTest<T, U, testype>::getInstance() {
-//   static T instance;
-//   return &instance;
-// }
+
 template <typename T, typename U, TestType testype>
 void UPSTest<T, U, testype>::init() {
   initTestdataImpl();

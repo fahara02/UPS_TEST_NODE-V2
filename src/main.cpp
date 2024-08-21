@@ -49,9 +49,6 @@ ModbusRTU mb;
 void IRAM_ATTR keyISR1(void* pvParameters) {
   unsigned long currentTime = millis();
   if (currentTime - lastMainsTriggerTime > debounceDelay) {
-    // if (!mains_triggered) {
-    //   mains_triggered = true;
-    // }
     BaseType_t urgentTask = pdFALSE;
     lastMainsTriggerTime = currentTime;
     // xTaskResumeFromISR(ISR_MAINS_POWER_LOSS);
