@@ -52,9 +52,13 @@ void IRAM_ATTR keyISR1(void* pvParameters) {
     // if (!mains_triggered) {
     //   mains_triggered = true;
     // }
+    BaseType_t urgentTask = pdFALSE;
     lastMainsTriggerTime = currentTime;
     // xTaskResumeFromISR(ISR_MAINS_POWER_LOSS);
-    xSemaphoreGiveFromISR(mainLoss, NULL);
+    xSemaphoreGiveFromISR(mainLoss, &urgentTask);
+    if (urgentTask) {
+      vPortEvaluateYieldFromISR(urgentTask);
+    }
   }
 }
 void IRAM_ATTR keyISR2(void* pvParameters) {
