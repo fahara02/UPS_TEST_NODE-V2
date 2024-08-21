@@ -18,7 +18,6 @@ extern void IRAM_ATTR keyISR2(void* pvParameters);
 extern void IRAM_ATTR keyISR3(void* pvParameters);
 
 using namespace Node_Core;
-extern StateMachine* stateMachine;
 
 static TaskHandle_t TestManagerTaskHandle = NULL;
 extern TaskHandle_t switchTestTaskHandle;
@@ -79,6 +78,7 @@ private:
   bool _setupUpdated = false;
   uint8_t numTests;
 
+  StateMachine* stateMachine = nullptr;
   State _currentstate;
   SetupSpec _cfgSpec;
   SetupTest _cfgTest;

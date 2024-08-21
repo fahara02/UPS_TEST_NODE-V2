@@ -10,7 +10,15 @@ extern SemaphoreHandle_t mainLoss;
 
 TestManager* TestManager::instance = nullptr;
 
-TestManager::TestManager() {}
+TestManager::TestManager() {
+
+  stateMachine = StateMachine::getInstance();
+  if (stateMachine) {
+    Serial.println("State machine is on!");
+
+    stateMachine->handleEvent(Event::SELF_CHECK_OK);
+  }
+}
 
 TestManager::~TestManager() {}
 
@@ -32,6 +40,7 @@ void TestManager::init() {
   }
   setupPins();
   createISRTasks();
+  createManagerTasks();
   initializeTestInstances();
 
   _initialized = true;  // Mark as initialized
@@ -103,7 +112,28 @@ void TestManager::createISRTasks() {
                           _cfgTask.upsISR_taskIdlePriority, &ISR_UPS_POWER_LOSS,
                           _cfgTask.upsISR_taskCore);
 }
-void TestManager::TestManagerTask(void* pvParameters) { vTaskDelete(NULL); }
+void TestManager::TestManagerTask(void* pvParameters) {
+  uint32_t result2
+      = xEventGroupWaitBits(instance->stateMachine->_EgTestState,
+                            static_cast<EventBits_t>(State::DEVICE_READY),
+                            pdFALSE, pdFALSE, 2000 / portTICK_PERIOD_MS);
+
+  while (result2 & static_cast<EventBits_t>(State::DEVICE_READY)) {
+    Serial.print("Test manager task...");
+
+    Serial.print("Eventbit:");
+    Serial.println(result2);
+
+    if (instance->stateMachine->getCurrentState() == State::DEVICE_READY) {
+      Serial.println("DEVICE IS ON READY STATE");
+
+      vTaskDelay(pdMS_TO_TICKS(200));
+    }
+  };
+  Serial.print("Exiting test manager task.....");
+
+  vTaskDelete(NULL);
+}
 void TestManager::onMainsPowerLossTask(void* pvParameters) {
 
   while (true) {

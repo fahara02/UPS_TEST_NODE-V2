@@ -1,14 +1,16 @@
 #ifndef STATE_DEFINES_H_
 #define STATE_DEFINES_H_
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 #include <cstdint>
 
 namespace Node_Core {
 using StateBits = uint32_t;
 enum class State : StateBits {
-  DEVICE_ON = 1 << 0,
-  DEVICE_READY = 1 << 1,
-  DEVICE_DISCONNECTED = 1 << 2,
-  RETEST = 1 << 3,
+  DEVICE_ON = 1 << 0,            // 01
+  DEVICE_READY = 1 << 1,         // 10
+  DEVICE_DISCONNECTED = 1 << 2,  // 100
+  RETEST = 1 << 3,               // 1000
   MANUAL_MODE = 1 << 4,
   AUTO_MODE = 1 << 5,
   SWITCHING_TEST_START = 1 << 6,

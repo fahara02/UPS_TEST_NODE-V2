@@ -2,6 +2,8 @@
 #define STATE_MACHINE_H_
 
 #include "StateDefines.h"
+
+// #include "freertos/event_groups.h"
 #include <array>
 #include <atomic>
 #include <cstddef>
@@ -12,6 +14,7 @@ namespace Node_Core {
 class StateMachine {
 
 public:
+  EventGroupHandle_t _EgTestState = nullptr;
   static StateMachine *getInstance();
   static void deleteInstance();
 
@@ -36,7 +39,12 @@ public:
   struct Row {
     static Transition get_transition() {
       return {Start, EventTrigger, Next,
-              []() { /* Action based on ActionEvent */ },
+              []() {
+                constexpr Event action_event = ActionEvent;
+                instance->updateEventGroup(Start, false);
+                // Set the bits for the new state
+                instance->updateEventGroup(Next, true);
+              },
               []() { return true; }};
     }
   };
@@ -49,23 +57,23 @@ public:
   void setState(State new_state);
 
 private:
+  friend class TestManager;
   StateMachine();
   ~StateMachine();
   static StateMachine *instance;
   std::atomic<State> current_state{State::DEVICE_ON};
   std::atomic<int> retry_count{0};
-  std::atomic<StateBits> state_bits{0};  // StateBits to manage state as bits
+
   const int max_retries = 3;
   const int max_retest = 2;
-
-  StateMachine(const StateMachine &) = delete;
-  StateMachine &operator=(const StateMachine &) = delete;
-
+  void updateEventGroup(State state, bool set_bits);
   // Define the transition table with 28 transitions
-  const std::array<Transition, 39> transition_table
+  const std::array<Transition, 40> transition_table
       = StateMachine::TransitionTable(
 
           // Mode Selection
+          Row<State::DEVICE_ON, Event::SELF_CHECK_OK, State::DEVICE_READY,
+              Event::NONE>(),
           Row<State::DEVICE_READY, Event::MANUAL_OVERRIDE, State::MANUAL_MODE,
               Event::NONE>(),
           Row<State::DEVICE_READY, Event::AUTO_TEST_CMD, State::AUTO_MODE,
@@ -155,6 +163,9 @@ private:
           Row<State::FAULT, Event::RETRY_OK, State::DEVICE_READY,
               Event::NONE>(),
           Row<State::FAULT, Event::RESTART, State::DEVICE_ON, Event::NONE>());
+
+  StateMachine(const StateMachine &) = delete;
+  StateMachine &operator=(const StateMachine &) = delete;
 };
 
 }  // namespace Node_Core

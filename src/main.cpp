@@ -36,7 +36,7 @@ TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
 // Define the SwitchTest instance
 
 UPSTesterSetup* TesterSetup = nullptr;
-StateMachine* stateMachine = nullptr;
+
 TestManager* Manager = nullptr;
 // Task handles
 
@@ -83,10 +83,10 @@ void IRAM_ATTR keyISR3(void* pvParameters) {
 void modbusRTUTask(void* pvParameters) {
 
   while (true) {
-    Serial.print("Resuming modbus task... ");
+    // Serial.print("Resuming modbus task... ");
     mb.task();
-    Serial.print("Modbus Stack High Water Mark: ");
-    Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack
+    // Serial.print("Modbus Stack High Water Mark: ");
+    // Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack
     // usage
 
     vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
@@ -101,7 +101,6 @@ void setup() {
   Serial.print("Serial started........");
 
   TesterSetup = UPSTesterSetup::getInstance();
-  stateMachine = StateMachine::getInstance();
   Manager = TestManager::getInstance();
 
   if (Manager) {
