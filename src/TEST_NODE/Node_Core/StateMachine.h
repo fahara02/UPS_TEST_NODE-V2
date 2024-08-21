@@ -41,8 +41,8 @@ public:
       return {Start, EventTrigger, Next,
               []() {
                 constexpr Event action_event = ActionEvent;
+
                 instance->updateEventGroup(Start, false);
-                // Set the bits for the new state
                 instance->updateEventGroup(Next, true);
               },
               []() { return true; }};

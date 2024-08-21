@@ -113,27 +113,45 @@ void TestManager::createISRTasks() {
                           _cfgTask.upsISR_taskCore);
 }
 void TestManager::TestManagerTask(void* pvParameters) {
-  uint32_t result2
+  // Wait for the DEVICE_READY bit to be set initially
+  uint32_t result
       = xEventGroupWaitBits(instance->stateMachine->_EgTestState,
                             static_cast<EventBits_t>(State::DEVICE_READY),
-                            pdFALSE, pdFALSE, 2000 / portTICK_PERIOD_MS);
+                            pdFALSE, pdTRUE, portMAX_DELAY);
 
-  while (result2 & static_cast<EventBits_t>(State::DEVICE_READY)) {
+  Serial.print("Eventbit before loop: ");
+  Serial.println(result, BIN);  // Print bitmask in binary format for clarity
+
+  while (true) {
+    // Get the current event bits
+    result = xEventGroupGetBits(instance->stateMachine->_EgTestState);
+
     Serial.print("Test manager task...");
 
-    Serial.print("Eventbit:");
-    Serial.println(result2);
+    Serial.print("Eventbit: ");
+    Serial.println(result, BIN);  // Print bitmask in binary format for clarity
 
-    if (instance->stateMachine->getCurrentState() == State::DEVICE_READY) {
-      Serial.println("DEVICE IS ON READY STATE");
-
-      vTaskDelay(pdMS_TO_TICKS(200));
+    if (result & static_cast<EventBits_t>(State::DEVICE_READY)) {
+      if (instance->stateMachine->getCurrentState() == State::DEVICE_READY) {
+        Serial.println("DEVICE IS ON READY STATE");
+        instance->stateMachine->handleEvent(Event::AUTO_TEST_CMD);
+      }
     }
-  };
-  Serial.print("Exiting test manager task.....");
 
+    if (result & static_cast<EventBits_t>(State::AUTO_MODE)) {
+      if (instance->stateMachine->getCurrentState() == State::AUTO_MODE) {
+        Serial.println("DEVICE IS ON AUTO MODE");
+      }
+    }
+
+    // Delay to avoid rapid looping
+    vTaskDelay(pdMS_TO_TICKS(200));
+  }
+
+  Serial.print("Exiting test manager task.....");
   vTaskDelete(NULL);
 }
+
 void TestManager::onMainsPowerLossTask(void* pvParameters) {
 
   while (true) {
