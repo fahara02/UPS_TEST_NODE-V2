@@ -48,7 +48,7 @@ void StateMachine::updateStateEventGroup(State state, bool set_bits) {
     xEventGroupClearBits(TestState_EventGroup, bits);
   }
 }
-void StateMachine::updateSystemEventGroup(Event event, bool set_bits) {
+void StateMachine::NotifySystemEventGroup(Event event, bool set_bits) {
   EventBits_t bits_event = static_cast<EventBits_t>(event);
   Serial.print("New System Event");
 

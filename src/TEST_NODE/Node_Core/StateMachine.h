@@ -16,6 +16,7 @@ class StateMachine {
 public:
   EventGroupHandle_t TestState_EventGroup = nullptr;
   EventGroupHandle_t SystemEvents_EventGroup = nullptr;
+
   static StateMachine *getInstance();
   static void deleteInstance();
 
@@ -49,7 +50,8 @@ public:
               []() { return true; }};
     }
   };
-  void handleEventbits(EventBits_t event_bits);
+  void NotifySystemEventGroup(Event event, bool set_bits);
+
   void handleEvent(Event event);
   State getCurrentState() const;
   //   void serializeTransitions(const char *filename);
@@ -69,8 +71,7 @@ private:
   const int max_retries = 3;
   const int max_retest = 2;
   void updateStateEventGroup(State state, bool set_bits);
-  void updateSystemEventGroup(Event event, bool set_bits);
-
+  void handleEventbits(EventBits_t event_bits);
   void handleReport();
   void handleError();
 
