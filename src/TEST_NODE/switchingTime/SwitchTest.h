@@ -27,7 +27,8 @@ private:
   void stopTestCapture() override;
 
   bool processTestImpl() override;
-  bool checkRange() override;
+
+  bool checkTimerRange(unsigned long switchtime);
 };
 
 #endif  // SWITCH_TEST_H

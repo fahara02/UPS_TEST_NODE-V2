@@ -140,8 +140,10 @@ void TestManager::TestManagerTask(void* pvParameters) {
       if (switchTest) {
         switchTest->_cfgTest.testVARating = 1000;
         switchTest->_cfgTest.testDuration_ms = 5000;
-        logger.log(LogLevel::INFO, "checking task state");
+        logger.log(LogLevel::INFO, "starting switch test 25 percent  load");
+
         eTaskState estate;
+        logger.log(LogLevel::INFO, "checking task state");
         estate = eTaskGetState(switchTestTaskHandle);
 
         if (estate == eSuspended) {
@@ -153,7 +155,7 @@ void TestManager::TestManagerTask(void* pvParameters) {
           vTaskDelay(pdMS_TO_TICKS(100));
         }
       }
-      logger.log(LogLevel::INFO, "starting switch test 25 percent  load");
+
       vTaskDelay(pdMS_TO_TICKS(2000));
     }
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -209,6 +211,7 @@ void TestManager::onUPSPowerLossTask(void* pvParameters) { vTaskDelete(NULL); }
 void TestManager::initializeTestInstances() {
   // Initialize SwitchTest
   switchTest = SwitchTest::getInstance();
+
   testsSwitch[0].test = switchTest;
   testsSwitch[0].status = TestStatus::TEST_PENDING;
   testsSwitch[0].data = testsSwitch[0].test->data();

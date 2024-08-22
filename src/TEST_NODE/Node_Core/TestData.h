@@ -1,7 +1,7 @@
 #ifndef TEST_DATA_H
 #define TEST_DATA_H
 #include <stdint.h>
-enum TestResult { TEST_FAILED = 0, TEST_SUCESSFUL = 1 };
+enum TestResult { TEST_FAILED = 0, TEST_SUCCESSFUL = 1 };
 enum class ISRType { MAINS_TRIGGERED, UPS_TRIGGERED };
 enum class TestType {
   SwitchTest,
@@ -11,6 +11,7 @@ enum class TestType {
   WaveformTest,
   TunePWMTest,
 };
+
 static const char* testTypeToString(TestType type) {
   switch (type) {
     case TestType::SwitchTest:

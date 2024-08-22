@@ -98,7 +98,7 @@ protected:
   virtual void MainTestTask(void* pvParameters) = 0;
   virtual void startTestCapture() = 0;
   virtual void stopTestCapture() = 0;
-  virtual bool checkRange() = 0;
+
   virtual bool processTestImpl() = 0;
 
   U _data;
@@ -170,6 +170,7 @@ UPSTest<T, U, testype>::UPSTest()
 template <typename T, typename U, TestType testype>
 void UPSTest<T, U, testype>::init() {
   initTestdataImpl();
+  forceUpdate();
   createmainTask();
 }
 

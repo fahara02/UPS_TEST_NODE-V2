@@ -4,7 +4,7 @@
 
 namespace NodeTask {
 
-class IO_SETUP {}
+class IO_SETUP {};
 
 }  // namespace NodeTask
 
