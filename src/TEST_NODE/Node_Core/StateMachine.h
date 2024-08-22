@@ -68,96 +68,50 @@ private:
   const int max_retest = 2;
   void updateEventGroup(State state, bool set_bits);
   // Define the transition table with 28 transitions
-  const std::array<Transition, 40> transition_table
+  const std::array<Transition, 20> transition_table
       = StateMachine::TransitionTable(
 
-          // Mode Selection
-          Row<State::DEVICE_ON, Event::SELF_CHECK_OK, State::DEVICE_READY,
+          // Mode Selection 5
+          Row<State::DEVICE_ON, Event::SELF_CHECK_OK, State::DEVICE_OK,
               Event::NONE>(),
+          Row<State::DEVICE_OK, Event::SETTING_LOADED, State::DEVICE_SETUP,
+              Event::NONE>(),
+          Row<State::DEVICE_SETUP, Event::LOAD_BANK_CHECKED,
+              State::DEVICE_READY, Event::NONE>(),
           Row<State::DEVICE_READY, Event::MANUAL_OVERRIDE, State::MANUAL_MODE,
               Event::NONE>(),
           Row<State::DEVICE_READY, Event::AUTO_TEST_CMD, State::AUTO_MODE,
               Event::NONE>(),
 
-          // Switching Test Sequence
-          Row<State::AUTO_MODE, Event::INPUT_OUTPUT_READY,
-              State::SWITCHING_TEST_START, Event::NONE>(),
-          Row<State::SWITCHING_TEST_START, Event::TEST_DONE,
-              State::SWITCHING_TEST_25P_DONE, Event::NONE>(),
-          Row<State::SWITCHING_TEST_START, Event::TEST_FAILED, State::RETEST,
-              Event::NONE>(),  // Added
-          Row<State::SWITCHING_TEST_25P_DONE, Event::DATA_CAPTURE_OK,
-              State::SWITCHING_TEST_50P_START, Event::NONE>(),
-          Row<State::SWITCHING_TEST_25P_DONE, Event::TEST_FAILED, State::RETEST,
-              Event::NONE>(),  // Added
-          Row<State::SWITCHING_TEST_50P_START, Event::TEST_DONE,
-              State::SWITCHING_TEST_50P_DONE, Event::NONE>(),
-          Row<State::SWITCHING_TEST_50P_START, Event::TEST_FAILED,
-              State::RETEST,
-              Event::NONE>(),  // Added
-          Row<State::SWITCHING_TEST_50P_DONE, Event::DATA_CAPTURE_OK,
-              State::SWITCHING_TEST_75P_START, Event::NONE>(),
-          Row<State::SWITCHING_TEST_50P_DONE, Event::TEST_FAILED, State::RETEST,
-              Event::NONE>(),  // Added
-          Row<State::SWITCHING_TEST_75P_START, Event::TEST_DONE,
-              State::SWITCHING_TEST_75P_DONE, Event::NONE>(),
-          Row<State::SWITCHING_TEST_75P_START, Event::TEST_FAILED,
-              State::RETEST,
-              Event::NONE>(),  // Added
-          Row<State::SWITCHING_TEST_75P_DONE, Event::DATA_CAPTURE_OK,
-              State::SWITCHING_TEST_FULLLOAD_START, Event::NONE>(),
-          Row<State::SWITCHING_TEST_75P_DONE, Event::TEST_FAILED, State::RETEST,
-              Event::NONE>(),  // Added
-          Row<State::SWITCHING_TEST_FULLLOAD_START, Event::TEST_DONE,
-              State::SWITCHING_TEST_FULLLOAD_DONE, Event::NONE>(),
-          Row<State::SWITCHING_TEST_FULLLOAD_START, Event::TEST_FAILED,
-              State::RETEST, Event::NONE>(),  // Added
-          Row<State::SWITCHING_TEST_FULLLOAD_DONE, Event::DATA_CAPTURE_OK,
-              State::SWITCHING_TEST_OK, Event::NONE>(),
-          Row<State::SWITCHING_TEST_FULLLOAD_DONE, Event::TEST_FAILED,
-              State::RETEST, Event::NONE>(),  // Added
-          Row<State::SWITCHING_TEST_OK, Event::SAVE, State::READY_NEXT_TEST,
+          // Switching Test Sequence 8+5=13
+          Row<State::AUTO_MODE, Event::INPUT_OUTPUT_READY, State::TEST_START,
               Event::NONE>(),
-
-          // Efficiency Test Sequence
-          Row<State::READY_NEXT_TEST, Event::INPUT_OUTPUT_READY,
-              State::EFFICIENCY_TEST_START, Event::NONE>(),
-          Row<State::EFFICIENCY_TEST_START, Event::TEST_DONE,
-              State::EFFICIENCY_TEST_DONE, Event::NONE>(),
-          Row<State::EFFICIENCY_TEST_START, Event::TEST_FAILED, State::RETEST,
-              Event::NONE>(),  // Added
-          Row<State::EFFICIENCY_TEST_DONE, Event::DATA_CAPTURE_OK,
-              State::EFFICIENCY_TEST_OK, Event::NONE>(),
-          Row<State::EFFICIENCY_TEST_DONE, Event::TEST_FAILED, State::RETEST,
-              Event::NONE>(),  // Added
-          Row<State::EFFICIENCY_TEST_OK, Event::SAVE, State::READY_NEXT_TEST,
+          Row<State::TEST_START, Event::DATA_CAPTURED, State::TEST_IN_PROGRESS,
               Event::NONE>(),
-
-          // Backup Time Test Sequence
-          Row<State::READY_NEXT_TEST, Event::INPUT_OUTPUT_READY,
-              State::BACKUP_TIME_TEST_START, Event::NONE>(),
-          Row<State::BACKUP_TIME_TEST_START, Event::TEST_DONE,
-              State::BACKUP_TIME_TEST_DONE, Event::NONE>(),
-          Row<State::BACKUP_TIME_TEST_START, Event::TEST_FAILED, State::RETEST,
+          Row<State::TEST_START, Event::TEST_FAILED, State::RETEST,
               Event::NONE>(),  // Added
-          Row<State::BACKUP_TIME_TEST_DONE, Event::DATA_CAPTURE_OK,
-              State::BACKUP_TIME_TEST_OK, Event::NONE>(),
-          Row<State::BACKUP_TIME_TEST_DONE, Event::TEST_FAILED, State::RETEST,
+          Row<State::TEST_IN_PROGRESS, Event::VALID_DATA,
+              State::CURRENT_TEST_OK, Event::NONE>(),
+          Row<State::TEST_IN_PROGRESS, Event::TEST_FAILED, State::RETEST,
               Event::NONE>(),  // Added
-          Row<State::BACKUP_TIME_TEST_OK, Event::SAVE, State::ALL_TEST_DONE,
+          Row<State::CURRENT_TEST_OK, Event::SAVE, State::READY_NEXT_TEST,
               Event::NONE>(),
+          Row<State::CURRENT_TEST_OK, Event::INPUT_OUTPUT_READY,
+              State::READY_NEXT_TEST, Event::NONE>(),
+          Row<State::CURRENT_TEST_OK, Event::TEST_LIST_EMPTY,
+              State::ALL_TEST_DONE, Event::NONE>(),
 
-          // Test Data Handling
-          Row<State::ALL_TEST_DONE, Event::TRANSPORT_DATA,
+          // Test Data Handling 13+4=17
+          Row<State::ALL_TEST_DONE, Event::VALIDATE_TEST,
               State::REPORT_AVAILABLE, Event::NONE>(),
-          Row<State::REPORT_AVAILABLE, Event::PRINT_DATA,
-              State::PRINT_TEST_DATA, Event::NONE>(),
+          Row<State::REPORT_AVAILABLE, Event::DATA, State::TRANSPORT_DATA,
+              Event::NONE>(),
           Row<State::ALL_TEST_DONE, Event::MANUAL_DATA_ENTRY,
               State::ADDENDUM_TEST_DATA, Event::NONE>(),
-          Row<State::ADDENDUM_TEST_DATA, Event::TRANSPORT_DATA,
+          Row<State::ADDENDUM_TEST_DATA, Event::VALIDATE_TEST,
               State::REPORT_AVAILABLE, Event::NONE>(),
 
-          // Fault Handling
+          // Fault Handling 17+3=20
           Row<State::DEVICE_READY, Event::SYSTEM_FAULT, State::FAULT,
               Event::NONE>(),
           Row<State::FAULT, Event::RETRY_OK, State::DEVICE_READY,

@@ -15,6 +15,7 @@ TestManager::TestManager() {
   stateMachine = StateMachine::getInstance();
   if (stateMachine) {
     Serial.println("State machine is on!");
+    _currentstate = stateMachine->getCurrentState();
 
     stateMachine->handleEvent(Event::SELF_CHECK_OK);
   }
@@ -121,7 +122,7 @@ void TestManager::TestManagerTask(void* pvParameters) {
 
   Serial.print("Eventbit before loop: ");
   Serial.println(result, BIN);  // Print bitmask in binary format for clarity
-
+  int count = 0;
   while (true) {
     // Get the current event bits
     result = xEventGroupGetBits(instance->stateMachine->_EgTestState);
@@ -134,13 +135,21 @@ void TestManager::TestManagerTask(void* pvParameters) {
     if (result & static_cast<EventBits_t>(State::DEVICE_READY)) {
       if (instance->stateMachine->getCurrentState() == State::DEVICE_READY) {
         Serial.println("DEVICE IS ON READY STATE");
-        instance->stateMachine->handleEvent(Event::AUTO_TEST_CMD);
+        count = count + 1;
+        if (count == 3) {
+          Serial.println("changing state now");
+          instance->stateMachine->handleEvent(Event::AUTO_TEST_CMD);
+        }
       }
     }
 
     if (result & static_cast<EventBits_t>(State::AUTO_MODE)) {
       if (instance->stateMachine->getCurrentState() == State::AUTO_MODE) {
         Serial.println("DEVICE IS ON AUTO MODE");
+      }
+      if (result & static_cast<EventBits_t>(State::DEVICE_READY)) {
+
+        Serial.println("READY STATE ALSO GETS PASSED??");
       }
     }
 
