@@ -8,7 +8,10 @@ namespace Node_Core {
 StateMachine* StateMachine::instance = nullptr;
 
 StateMachine::StateMachine()
-    : current_state(State::DEVICE_ON), retry_count(0), max_retest(0) {
+    : _old_state(State::DEVICE_ON),
+      current_state(State::DEVICE_ON),
+      retry_count(0),
+      max_retest(0) {
 
   _EgTestState = xEventGroupCreate();
 }
@@ -47,23 +50,50 @@ void StateMachine::updateEventGroup(State state, bool set_bits) {
 
 void StateMachine::handleEvent(Event event) {
 
-  // if (event == Event::SELF_CHECK_OK) {
-  //   if (current_state == State::DEVICE_ON) {
-  //     setState(State::DEVICE_READY);
-  //     return;
-  //   }
-  // }
+  if (event == Event::SYSTEM_FAULT) {
+    State old_state = instance->getCurrentState();
+    _old_state.store(old_state);
+    State new_state = State::FAULT;
+    setState(new_state);
+    updateEventGroup(current_state, true);  // set the current statebit
+    updateEventGroup(old_state, false);     // clear the old state  state bit
+    return;
+  }
+  if (event == Event::USER_PAUSED) {
+    State old_state = instance->getCurrentState();
+    _old_state.store(old_state);
+    State new_state = State::SYSTEM_PAUSED;
+    setState(new_state);
+    updateEventGroup(new_state, true);   // set the current statebit
+    updateEventGroup(old_state, false);  // clear the old state  state bit
+    return;
+  }
 
+  if (event == Event::USER_TUNE) {
+    State old_state = instance->getCurrentState();
+    _old_state.store(old_state);
+    State new_state = State::SYSTEM_TUNING;
+    setState(new_state);
+    updateEventGroup(new_state, true);   // set the current statebit
+    updateEventGroup(old_state, false);  // clear the old state  state bit
+    return;
+  }
+
+  if (event == Event::ERROR) {
+    handleError();
+    return;
+  }
+  if (event == Event::REPORT_COMPLETE) {
+    handleReport();
+    return;
+  }
   // Manually search for the transition
   for (const auto& transition : transition_table) {
     if (transition.current_state == current_state
         && transition.event == event) {
       if (transition.guard()) {
-        if (event == Event::WIFI_DISCONNECTED
-            && current_state != State::DEVICE_READY) {
-          retry_count = 0;
-        }
-
+        State old_state = current_state;
+        _old_state.store(old_state);
         setState(transition.next_state);
         transition.action();
         return;
@@ -72,6 +102,11 @@ void StateMachine::handleEvent(Event event) {
   }
 }
 
+void StateMachine::handleError() { updateEventGroup(State::LOG_ERROR, true); }
+
+void StateMachine::handleReport() {
+  updateEventGroup(State::REPORT_AVAILABLE, true);
+}
 // Convert State enum to string
 
 }  // namespace Node_Core

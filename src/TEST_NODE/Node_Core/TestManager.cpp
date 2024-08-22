@@ -92,8 +92,7 @@ void TestManager::configureInterrupts() {
 }
 void TestManager::createManagerTasks() {
   xTaskCreatePinnedToCore(TestManagerTask, "MainsTestManager",
-                          _cfgTask.mainTest_taskStack, &_cfgTaskParam,
-                          _cfgTask.mainTest_taskIdlePriority,
+                          _cfgTask.mainTest_taskStack, &_cfgTaskParam, 3,
                           &TestManagerTaskHandle, _cfgTask.mainsISR_taskCore);
 }
 void TestManager::createISRTasks() {
@@ -113,13 +112,14 @@ void TestManager::createISRTasks() {
                           _cfgTask.upsISR_taskIdlePriority, &ISR_UPS_POWER_LOSS,
                           _cfgTask.upsISR_taskCore);
 }
+
 void TestManager::TestManagerTask(void* pvParameters) {
   // Wait for the DEVICE_READY bit to be set initially
-  uint32_t result
-      = xEventGroupWaitBits(instance->stateMachine->_EgTestState,
-                            static_cast<EventBits_t>(State::DEVICE_READY),
-                            pdFALSE, pdTRUE, portMAX_DELAY);
-
+  // uint32_t result
+  //     = xEventGroupWaitBits(instance->stateMachine->_EgTestState,
+  //                           static_cast<EventBits_t>(State::DEVICE_READY),
+  //                           pdFALSE, pdTRUE, portMAX_DELAY);
+  uint32_t result = xEventGroupGetBits(instance->stateMachine->_EgTestState);
   Serial.print("Eventbit before loop: ");
   Serial.println(result, BIN);  // Print bitmask in binary format for clarity
   int count = 0;
@@ -132,24 +132,25 @@ void TestManager::TestManagerTask(void* pvParameters) {
     Serial.print("Eventbit: ");
     Serial.println(result, BIN);  // Print bitmask in binary format for clarity
 
-    if (result & static_cast<EventBits_t>(State::DEVICE_READY)) {
-      if (instance->stateMachine->getCurrentState() == State::DEVICE_READY) {
-        Serial.println("DEVICE IS ON READY STATE");
+    if (result & static_cast<EventBits_t>(State::DEVICE_OK)) {
+      if (instance->stateMachine->getCurrentState() == State::DEVICE_OK) {
+        Serial.println("DEVICE IS ON DEVICE_OK");
         count = count + 1;
         if (count == 3) {
           Serial.println("changing state now");
-          instance->stateMachine->handleEvent(Event::AUTO_TEST_CMD);
+          instance->stateMachine->handleEvent(Event::SETTING_LOADED);
         }
       }
     }
 
-    if (result & static_cast<EventBits_t>(State::AUTO_MODE)) {
-      if (instance->stateMachine->getCurrentState() == State::AUTO_MODE) {
-        Serial.println("DEVICE IS ON AUTO MODE");
+    if (result & static_cast<EventBits_t>(State::DEVICE_SETUP)) {
+      if (instance->stateMachine->getCurrentState() == State::DEVICE_SETUP) {
+        Serial.println("DEVICE IS ON DEVICE_SETUP");
       }
-      if (result & static_cast<EventBits_t>(State::DEVICE_READY)) {
-
-        Serial.println("READY STATE ALSO GETS PASSED??");
+      count = count + 1;
+      if (count == 7) {
+        Serial.println("Making errors now");
+        instance->stateMachine->handleEvent(Event::ERROR);
       }
     }
 

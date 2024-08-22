@@ -61,14 +61,19 @@ private:
   StateMachine();
   ~StateMachine();
   static StateMachine *instance;
+  std::atomic<State> _old_state{State::DEVICE_ON};
   std::atomic<State> current_state{State::DEVICE_ON};
   std::atomic<int> retry_count{0};
 
   const int max_retries = 3;
   const int max_retest = 2;
   void updateEventGroup(State state, bool set_bits);
+
+  void handleReport();
+  void handleError();
+
   // Define the transition table with 28 transitions
-  const std::array<Transition, 20> transition_table
+  const std::array<Transition, 26> transition_table
       = StateMachine::TransitionTable(
 
           // Mode Selection 5
@@ -96,25 +101,38 @@ private:
               Event::NONE>(),  // Added
           Row<State::CURRENT_TEST_OK, Event::SAVE, State::READY_NEXT_TEST,
               Event::NONE>(),
-          Row<State::CURRENT_TEST_OK, Event::INPUT_OUTPUT_READY,
-              State::READY_NEXT_TEST, Event::NONE>(),
+          Row<State::READY_NEXT_TEST, Event::INPUT_OUTPUT_READY,
+              State::TEST_START, Event::NONE>(),
           Row<State::CURRENT_TEST_OK, Event::TEST_LIST_EMPTY,
               State::ALL_TEST_DONE, Event::NONE>(),
+          Row<State::CURRENT_TEST_OK, Event::TEST_FAILED, State::RECOVER_DATA,
+              Event::NONE>(),
+          Row<State::RECOVER_DATA, Event::VALID_DATA, State::START_FROM_SAVE,
+              Event::NONE>(),
 
           // Test Data Handling 13+4=17
-          Row<State::ALL_TEST_DONE, Event::VALIDATE_TEST,
-              State::REPORT_AVAILABLE, Event::NONE>(),
-          Row<State::REPORT_AVAILABLE, Event::DATA, State::TRANSPORT_DATA,
+          Row<State::ALL_TEST_DONE, Event::JSON_READY, State::TRANSPORT_DATA,
               Event::NONE>(),
+          Row<State::ALL_TEST_DONE, Event::TEST_FAILED, State::START_FROM_SAVE,
+              Event::NONE>(),
+          Row<State::START_FROM_SAVE, Event::INPUT_OUTPUT_READY,
+              State::TEST_START, Event::NONE>(),
           Row<State::ALL_TEST_DONE, Event::MANUAL_DATA_ENTRY,
               State::ADDENDUM_TEST_DATA, Event::NONE>(),
-          Row<State::ADDENDUM_TEST_DATA, Event::VALIDATE_TEST,
-              State::REPORT_AVAILABLE, Event::NONE>(),
+          Row<State::ADDENDUM_TEST_DATA, Event::JSON_READY,
+              State::TRANSPORT_DATA, Event::NONE>(),
+          Row<State::ADDENDUM_TEST_DATA, Event::TEST_FAILED,
+              State::START_FROM_SAVE, Event::NONE>(),
+
+          Row<State::SYSTEM_TUNING, Event::AUTO_TEST_CMD, State::RECOVER_DATA,
+              Event::NONE>(),
+          Row<State::FAULT, Event::FAULT_CLEARED, State::RECOVER_DATA,
+              Event::NONE>(),
+          Row<State::SYSTEM_PAUSED, Event::AUTO_TEST_CMD,
+              State::START_FROM_SAVE, Event::NONE>(),
 
           // Fault Handling 17+3=20
           Row<State::DEVICE_READY, Event::SYSTEM_FAULT, State::FAULT,
-              Event::NONE>(),
-          Row<State::FAULT, Event::RETRY_OK, State::DEVICE_READY,
               Event::NONE>(),
           Row<State::FAULT, Event::RESTART, State::DEVICE_ON, Event::NONE>());
 
