@@ -30,6 +30,23 @@ public:
     this->log(LogLevel::INFO, "Logtask started");
   }
 
+  String formatLogLevel(LogLevel level) {
+    switch (level) {
+      case LogLevel::INFO:
+        return "\033[34m[INFO] ";  // Blue text
+      case LogLevel::WARNING:
+        return "\033[33m[WARNING] ";  // Yellow text
+      case LogLevel::ERROR:
+        return "\033[31m[ERROR] ";  // Red text
+      case LogLevel::SUCCESS:
+        return "\033[32m[SUCCESS] ";  // Green text
+      case LogLevel::TEST:
+        return "\033[36m[TEST] ";  // Cyan text
+      default:
+        return "\033[0m";  // Default to no color
+    }
+  }
+
   // Log function with formatted output
   void log(LogLevel level, const char* format, ...) {
     va_list args;
@@ -38,75 +55,62 @@ public:
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    String output;
-
-    switch (level) {
-      case LogLevel::INFO:
-        output = "\033[34m[INFO] ";  // Blue text
-        break;
-      case LogLevel::WARNING:
-        output = "\033[33m[WARNING] ";  // Yellow text
-        break;
-      case LogLevel::ERROR:
-        output = "\033[31m[ERROR] ";  // Red text
-        break;
-      case LogLevel::SUCCESS:
-        output = "\033[32m[SUCCESS] ";  // Green text
-        break;
-      case LogLevel::TEST:
-        output = "";  // We will handle this case separately below
-        break;
-      default:
-        output = "\033[0m";  // Default to no color
-        break;
-    }
-
-    if (level == LogLevel::TEST) {
-      const char* colors[] = {
-          // "\033[31m[TEST]",  // Red
-          "\033[33m",  // Yellow
-                       // "\033[32m",  // Green
-          "\033[36m",  // Cyan
-                       //  "\033[34m",  // Blue
-          "\033[35m"   // Magenta
-      };
-      int colorIndex = 0;
-      int colorsCount = sizeof(colors) / sizeof(colors[0]);
-
-      for (size_t i = 0; i < strlen(buffer); i++) {
-        output += colors[colorIndex];
-        output += buffer[i];
-        colorIndex = (colorIndex + 1) % colorsCount;
-      }
-      output += "\033[0m[TEST]";  // Reset color
-    } else {
-      output += buffer;
-      output += "\033[0m[TEST]";  // Reset color
-    }
+    String output = formatLogLevel(level);
+    output += buffer;
+    output += "\033[0m";  // Reset color
 
     Serial.println(output);
+  }
+  void log(LogLevel level, int number) { log(level, "%d", number); }
+
+  // Overload for unsigned integers
+  void log(LogLevel level, unsigned int number) { log(level, "%u", number); }
+
+  // Overload for long
+  void log(LogLevel level, long number) { log(level, "%ld", number); }
+
+  // Overload for unsigned long
+  void log(LogLevel level, unsigned long number) { log(level, "%lu", number); }
+
+  // Overload for floats
+  void log(LogLevel level, float number) { log(level, "%.2f", number); }
+
+  // Overload for doubles
+  void log(LogLevel level, double number) { log(level, "%.2lf", number); }
+
+  // Overloaded log function for combined string and number logging
+  void log(LogLevel level, const char* message, int number) {
+    log(level, "%s %d", message, number);
+  }
+
+  // Overloaded log function for unsigned int
+  void log(LogLevel level, const char* message, unsigned int number) {
+    log(level, "%s %u", message, number);
+  }
+
+  // Overloaded log function for long
+  void log(LogLevel level, const char* message, long number) {
+    log(level, "%s %ld", message, number);
+  }
+
+  // Overloaded log function for unsigned long
+  void log(LogLevel level, const char* message, unsigned long number) {
+    log(level, "%s %lu", message, number);
+  }
+
+  // Overloaded log function for float
+  void log(LogLevel level, const char* message, float number) {
+    log(level, "%s %.2f", message, number);
+  }
+
+  // Overloaded log function for double
+  void log(LogLevel level, const char* message, double number) {
+    log(level, "%s %.2lf", message, number);
   }
 
   // Log function for binary output
   void logBinary(LogLevel level, uint32_t result) {
-    String output;
-    switch (level) {
-      case LogLevel::INFO:
-        output = "\033[34m[INFO] ";  // Blue text
-        break;
-      case LogLevel::WARNING:
-        output = "\033[33m[WARNING] ";  // Yellow text
-        break;
-      case LogLevel::ERROR:
-        output = "\033[31m[ERROR] ";  // Red text
-        break;
-      case LogLevel::SUCCESS:
-        output = "\033[32m[SUCCESS] ";  // Green text
-        break;
-      case LogLevel::TEST:
-        output = "\033[36m[TEST] ";  // Green text
-        break;
-    }
+    String output = formatLogLevel(level);
     output += "Result in binary: ";
     Serial.print(output);
     Serial.println(result, BIN);  // Print the result in binary format

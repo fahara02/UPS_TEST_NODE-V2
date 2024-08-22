@@ -149,11 +149,8 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
 
     unsigned long elapsedTime = millis() - currentTestStartTime;
     long remainingTime = _testDuration - elapsedTime;
-    logger.log(LogLevel::TEST, " test duration");
-    Serial.println(_testDuration);
-
-    logger.log(LogLevel::TEST, " remaining single test time");
-    Serial.println(remainingTime);
+    logger.log(LogLevel::TEST, " test duration", _testDuration);
+    logger.log(LogLevel::TEST, " remaining single test time:", remainingTime);
 
     if (elapsedTime >= _testDuration) {
       Serial.println("Ending switch test...");
