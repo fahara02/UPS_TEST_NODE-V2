@@ -119,13 +119,14 @@ void TestManager::TestManagerTask(void* pvParameters) {
   //     = xEventGroupWaitBits(instance->stateMachine->_EgTestState,
   //                           static_cast<EventBits_t>(State::DEVICE_READY),
   //                           pdFALSE, pdTRUE, portMAX_DELAY);
-  uint32_t result = xEventGroupGetBits(instance->stateMachine->_EgTestState);
+  uint32_t result
+      = xEventGroupGetBits(instance->stateMachine->TestState_EventGroup);
   Serial.print("Eventbit before loop: ");
   Serial.println(result, BIN);  // Print bitmask in binary format for clarity
   int count = 0;
   while (true) {
     // Get the current event bits
-    result = xEventGroupGetBits(instance->stateMachine->_EgTestState);
+    result = xEventGroupGetBits(instance->stateMachine->TestState_EventGroup);
 
     Serial.print("Test manager task...");
 

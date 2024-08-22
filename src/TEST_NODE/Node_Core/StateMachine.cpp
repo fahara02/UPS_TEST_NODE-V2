@@ -13,7 +13,8 @@ StateMachine::StateMachine()
       retry_count(0),
       max_retest(0) {
 
-  _EgTestState = xEventGroupCreate();
+  TestState_EventGroup = xEventGroupCreate();
+  SystemEvents_EventGroup = xEventGroupCreate();
 }
 
 StateMachine::~StateMachine() {}
@@ -37,15 +38,30 @@ void StateMachine::setState(State new_state) {
 
 State StateMachine::getCurrentState() const { return current_state; }
 
-void StateMachine::updateEventGroup(State state, bool set_bits) {
+void StateMachine::updateStateEventGroup(State state, bool set_bits) {
   EventBits_t bits = static_cast<EventBits_t>(state);
   Serial.print("updateEvent Triggered!");
 
   if (set_bits) {
-    xEventGroupSetBits(_EgTestState, bits);
+    xEventGroupSetBits(TestState_EventGroup, bits);
   } else {
-    xEventGroupClearBits(_EgTestState, bits);
+    xEventGroupClearBits(TestState_EventGroup, bits);
   }
+}
+void StateMachine::updateSystemEventGroup(Event event, bool set_bits) {
+  EventBits_t bits_event = static_cast<EventBits_t>(event);
+  Serial.print("New System Event");
+
+  if (set_bits) {
+    xEventGroupSetBits(SystemEvents_EventGroup, bits_event);
+  } else {
+    xEventGroupClearBits(SystemEvents_EventGroup, bits_event);
+  }
+}
+
+void StateMachine::handleEventbits(EventBits_t event_bits) {
+  Event event = static_cast<Event>(event_bits);
+  instance->handleEvent(event);
 }
 
 void StateMachine::handleEvent(Event event) {
@@ -55,8 +71,8 @@ void StateMachine::handleEvent(Event event) {
     _old_state.store(old_state);
     State new_state = State::FAULT;
     setState(new_state);
-    updateEventGroup(current_state, true);  // set the current statebit
-    updateEventGroup(old_state, false);     // clear the old state  state bit
+    updateStateEventGroup(current_state, true);  // set the current statebit
+    updateStateEventGroup(old_state, false);  // clear the old state  state bit
     return;
   }
   if (event == Event::USER_PAUSED) {
@@ -64,8 +80,8 @@ void StateMachine::handleEvent(Event event) {
     _old_state.store(old_state);
     State new_state = State::SYSTEM_PAUSED;
     setState(new_state);
-    updateEventGroup(new_state, true);   // set the current statebit
-    updateEventGroup(old_state, false);  // clear the old state  state bit
+    updateStateEventGroup(new_state, true);   // set the current statebit
+    updateStateEventGroup(old_state, false);  // clear the old state  state bit
     return;
   }
 
@@ -74,8 +90,8 @@ void StateMachine::handleEvent(Event event) {
     _old_state.store(old_state);
     State new_state = State::SYSTEM_TUNING;
     setState(new_state);
-    updateEventGroup(new_state, true);   // set the current statebit
-    updateEventGroup(old_state, false);  // clear the old state  state bit
+    updateStateEventGroup(new_state, true);   // set the current statebit
+    updateStateEventGroup(old_state, false);  // clear the old state  state bit
     return;
   }
 
@@ -102,10 +118,12 @@ void StateMachine::handleEvent(Event event) {
   }
 }
 
-void StateMachine::handleError() { updateEventGroup(State::LOG_ERROR, true); }
+void StateMachine::handleError() {
+  updateStateEventGroup(State::LOG_ERROR, true);
+}
 
 void StateMachine::handleReport() {
-  updateEventGroup(State::REPORT_AVAILABLE, true);
+  updateStateEventGroup(State::REPORT_AVAILABLE, true);
 }
 // Convert State enum to string
 

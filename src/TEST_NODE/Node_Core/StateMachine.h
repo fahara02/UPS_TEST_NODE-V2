@@ -14,7 +14,8 @@ namespace Node_Core {
 class StateMachine {
 
 public:
-  EventGroupHandle_t _EgTestState = nullptr;
+  EventGroupHandle_t TestState_EventGroup = nullptr;
+  EventGroupHandle_t SystemEvents_EventGroup = nullptr;
   static StateMachine *getInstance();
   static void deleteInstance();
 
@@ -42,17 +43,17 @@ public:
               []() {
                 constexpr Event action_event = ActionEvent;
 
-                instance->updateEventGroup(Start, false);
-                instance->updateEventGroup(Next, true);
+                instance->updateStateEventGroup(Start, false);
+                instance->updateStateEventGroup(Next, true);
               },
               []() { return true; }};
     }
   };
-
+  void handleEventbits(EventBits_t event_bits);
   void handleEvent(Event event);
   State getCurrentState() const;
-  void serializeTransitions(const char *filename);
-  void deserializeTransitions(const char *filename);
+  //   void serializeTransitions(const char *filename);
+  //   void deserializeTransitions(const char *filename);
 
   void setState(State new_state);
 
@@ -67,7 +68,8 @@ private:
 
   const int max_retries = 3;
   const int max_retest = 2;
-  void updateEventGroup(State state, bool set_bits);
+  void updateStateEventGroup(State state, bool set_bits);
+  void updateSystemEventGroup(Event event, bool set_bits);
 
   void handleReport();
   void handleError();
