@@ -118,50 +118,17 @@ void TestManager::createISRTasks() {
 }
 
 void TestManager::TestManagerTask(void* pvParameters) {
-  // Wait for the DEVICE_READY bit to be set initially
-  // uint32_t result
-  //     = xEventGroupWaitBits(instance->stateMachine->_EgTestState,
-  //                           static_cast<EventBits_t>(State::DEVICE_READY),
-  //                           pdFALSE, pdTRUE, portMAX_DELAY);
+
   uint32_t result
       = xEventGroupGetBits(instance->stateMachine->TestState_EventGroup);
-  logger.log(LogLevel::WARNING, "EVENT BIT: ");
-  Serial.println(result, BIN);  // Print bitmask in binary format for clarity
-  int count = 0;
+
   while (true) {
-    logger.log(LogLevel::INFO, "Resuming Test manager task... ");
     result = xEventGroupGetBits(instance->stateMachine->TestState_EventGroup);
-
-    logger.log(LogLevel::WARNING, "EVENT BIT: ");
-    logger.logBinary(LogLevel::ERROR, result);
-
-    if (result & static_cast<EventBits_t>(State::DEVICE_OK)) {
-      if (instance->stateMachine->getCurrentState() == State::DEVICE_OK) {
-        Serial.println("DEVICE IS ON DEVICE_OK");
-        count = count + 1;
-        if (count == 3) {
-          Serial.println("changing state now");
-          instance->stateMachine->handleEvent(Event::SETTING_LOADED);
-        }
-      }
-    }
-
-    if (result & static_cast<EventBits_t>(State::DEVICE_SETUP)) {
-      if (instance->stateMachine->getCurrentState() == State::DEVICE_SETUP) {
-        Serial.println("DEVICE IS ON DEVICE_SETUP");
-      }
-      count = count + 1;
-      if (count == 7) {
-        Serial.println("Making errors now");
-        instance->stateMachine->handleEvent(Event::ERROR);
-      }
-    }
-
-    // Delay to avoid rapid looping
+    logger.log(LogLevel::INFO, "EVENT BIT: ");
+    logger.logBinary(LogLevel::INFO, result);
     vTaskDelay(pdMS_TO_TICKS(200));
   }
 
-  Serial.print("Exiting test manager task.....");
   vTaskDelete(NULL);
 }
 
@@ -173,15 +140,12 @@ void TestManager::onMainsPowerLossTask(void* pvParameters) {
       if (switchTest) {
         switchTest->_dataCaptureRunning = true;
         switchTest->startTestCapture();
-        Serial.print("\033[31m");  // Start red color
-        Serial.print("mains Powerloss triggered...");
-        Serial.print("\033[0m");  // Reset color
+        logger.log(LogLevel::INTR, "mains Powerloss triggered...");
         mains_triggered = false;
       }
-      Serial.print("mains task High Water Mark: ");
-      Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack
-      Serial.println("Mains Loss trigger capture completed.... ");
-      vTaskPrioritySet(&ISR_MAINS_POWER_LOSS, 1);
+
+      logger.log(LogLevel::INFO, "mains task High Water Mark:",
+                 uxTaskGetStackHighWaterMark(NULL));
       vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
       vTaskSuspend(NULL);
     }
@@ -197,13 +161,11 @@ void TestManager::onUPSPowerGainTask(void* pvParameters) {
 
       if (switchTest) {
         switchTest->stopTestCapture();
-        Serial.print("\033[31m");  // Start red color
-        Serial.print("UPS Powerloss triggered...");
-        Serial.print("\033[0m");  // Reset color
+        logger.log(LogLevel::INTR, "UPS Powerloss triggered...");
         ups_triggered = false;
       }
-      Serial.print("UPS High Water Mark: ");
-      Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack
+      logger.log(LogLevel::INFO,
+                 "UPS High Water Mark:", uxTaskGetStackHighWaterMark(NULL));
 
       vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
       vTaskSuspend(NULL);

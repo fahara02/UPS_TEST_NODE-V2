@@ -140,7 +140,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
 
   while (millis() - testStartTime < testDurationWithRetest) {
     if (!_testinProgress) {
-      Serial.print("Starting test attempt ");
+      logger.log(LogLevel::TEST, "Starting test Attempt");
       Serial.println(retries + 1);
       simulatePowerCut();
       currentTestStartTime = millis();
@@ -153,19 +153,18 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
     logger.log(LogLevel::TEST, " remaining single test time:", remainingTime);
 
     if (elapsedTime >= _testDuration) {
-      Serial.println("Ending switch test...");
+      logger.log(LogLevel::TEST, "Ending Switching Test");
       simulatePowerRestore();
       _testinProgress = false;
 
       vTaskDelay(pdMS_TO_TICKS(100));  // Small delay before processing
 
       if (_dataCaptureOk) {
-        Serial.println("Processing time capture...");
+        logger.log(LogLevel::TEST, "Processing time captured");
 
         if (processTestImpl()) {
-          Serial.print("Switching Time: ");
-          Serial.print(_data.switchTest[_currentTest].switchtime);
-          Serial.println(" ms");
+          logger.log(LogLevel::TEST, "Switching Time: ",
+                     _data.switchTest[_currentTest].switchtime);
           sendEndSignal();
           valid_data = true;
           break;  // Exit the loop as the test was successful
@@ -173,11 +172,12 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
 
       } else {
         _data.switchTest[_currentTest].valid_data = false;
-        Serial.println("Invalid timing data, retrying...");
+        logger.log(LogLevel::ERROR, "Invalid timing data, retrying...");
+
         retries++;
 
         if (retries >= maximum_retest_number) {
-          Serial.println("Max retries reached. Test failed.");
+          logger.log(LogLevel::ERROR, "Max retries reached. Test failed.");
           break;
         }
       }
@@ -189,10 +189,10 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
   }
 
   if (!valid_data) {
-    Serial.println("Test duration elapsed or test failed.");
+    logger.log(LogLevel::ERROR, "Test failed");
     return TEST_FAILED;
   } else {
-    Serial.println("Test completed successfully.");
+    logger.log(LogLevel::SUCCESS, "Test completed Successfully");
     return TEST_SUCESSFUL;
   }
 }

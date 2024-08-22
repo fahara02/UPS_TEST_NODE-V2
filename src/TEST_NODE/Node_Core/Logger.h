@@ -5,6 +5,11 @@
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#ifdef ARDUINO_ARCH_ESP32
+#include <HTTPClient.h>
+#else
+#include "esp_http_client.h"
+#endif
 
 namespace Node_Core {
 enum class LogLevel {
@@ -13,6 +18,7 @@ enum class LogLevel {
   ERROR,
   SUCCESS,
   TEST,
+  INTR,
 };
 
 class Logger {
@@ -41,7 +47,9 @@ public:
       case LogLevel::SUCCESS:
         return "\033[32m[SUCCESS] ";  // Green text
       case LogLevel::TEST:
-        return "\033[36m[TEST] ";  // Cyan text
+        return "\033[33m[TEST] ";  // Cyan text
+      case LogLevel::INTR:
+        return "\033[31m[INTERUUPT] ";  // Red text
       default:
         return "\033[0m";  // Default to no color
     }
@@ -60,6 +68,7 @@ public:
     output += "\033[0m";  // Reset color
 
     Serial.println(output);
+    // httpPostLog(output);
   }
   void log(LogLevel level, int number) { log(level, "%d", number); }
 
@@ -165,7 +174,51 @@ private:
       vTaskDelay(pdMS_TO_TICKS(1000));  // Example delay
     }
   }
+  void httpPostLog(const String& logMessage) {
+#ifdef ARDUINO_ARCH_ESP32
+    // Using Arduino HTTPClient
+    HTTPClient http;
+    http.begin("http://your-server.com/log");  // URL of your server
+    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
+    String payload = "log=" + logMessage;
+    int httpResponseCode = http.POST(payload);
+
+    if (httpResponseCode > 0) {
+      String response = http.getString();
+      Serial.println("HTTP Response code: " + String(httpResponseCode));
+      Serial.println("Server response: " + response);
+    } else {
+      Serial.println("Error on sending POST: " + String(httpResponseCode));
+    }
+
+    http.end();
+#else
+    // Using ESP-IDF HTTP client
+    esp_http_client_config_t config = {
+        .url = "http://your-server.com/log",
+        .method = HTTP_METHOD_POST,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+
+    esp_http_client_set_header(client, "Content-Type",
+                               "application/x-www-form-urlencoded");
+
+    String payload = "log=" + logMessage;
+    esp_http_client_set_post_field(client, payload.c_str(), payload.length());
+
+    esp_err_t err = esp_http_client_perform(client);
+    if (err == ESP_OK) {
+      Serial.printf("HTTP POST Status = %d, content_length = %d\n",
+                    esp_http_client_get_status_code(client),
+                    esp_http_client_get_content_length(client));
+    } else {
+      Serial.printf("HTTP POST request failed: %s\n", esp_err_to_name(err));
+    }
+
+    esp_http_client_cleanup(client);
+#endif
+  }
   // Callback function pointer
   void (*errorCallback)(UPSError);
 };
