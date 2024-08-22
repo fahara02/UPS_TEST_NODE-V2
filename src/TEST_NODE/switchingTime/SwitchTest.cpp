@@ -46,14 +46,16 @@ void SwitchTest::MainTestTask(void* pvParameters) {
   if (instance) {
     while (true) {
       TaskParams* params = (TaskParams*)pvParameters;
-      Serial.print("Switchtask VA rating is: ");
+      logger.log(LogLevel::TEST, "Switchtask VA rating is: ");
+
       Serial.println(params->setupParams.task_TestVARating);
+      logger.log(LogLevel::TEST, "Switchtask duration is: ");
       Serial.print("Switchtask duration is: ");
       Serial.println(params->setupParams.task_testDuration_ms);
 
       instance->run(params->setupParams.task_TestVARating,
                     params->setupParams.task_testDuration_ms);
-      Serial.print("Switch Stack High Water Mark: ");
+      logger.log(LogLevel::WARNING, "Hihg Water mark ");
       Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack usage
       vTaskDelay(pdMS_TO_TICKS(100));  // Delay to prevent tight loop
     }
@@ -66,8 +68,7 @@ void SwitchTest::startTestCapture() {
   if (_dataCaptureRunning) {
     _data.switchTest[_currentTest].starttime = millis();
     _dataCaptureOk = false;
-    Serial.println("time capture started...");
-    Serial.print("start time:");
+    logger.log(LogLevel::TEST, " time captured, starttime:");
     Serial.println(_data.switchTest[_currentTest].starttime);
   }
 
@@ -80,17 +81,16 @@ void SwitchTest::startTestCapture() {
 void SwitchTest::stopTestCapture() {
   if (_dataCaptureRunning) {
     _data.switchTest[_currentTest].endtime = millis();
-    Serial.println("time capture done...");
-    Serial.print("stop time:");
+    logger.log(LogLevel::TEST, " time captured, stoptime:");
     Serial.println(_data.switchTest[_currentTest].endtime);
-    Serial.print("switch time:");
+    logger.log(LogLevel::TEST, " switch time");
     Serial.println(_data.switchTest[_currentTest].endtime
                    - _data.switchTest[_currentTest].starttime);
     _dataCaptureRunning = false;
     _dataCaptureOk = true;  // Set flag to process timing data
 
     if (_dataCaptureOk) {
-      Serial.println("time capture ok recorded");
+      logger.log(LogLevel::SUCCESS, " time capture ok");
     }
   }
 }
@@ -149,10 +149,10 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
 
     unsigned long elapsedTime = millis() - currentTestStartTime;
     long remainingTime = _testDuration - elapsedTime;
-    Serial.print("test duration set is:");
+    logger.log(LogLevel::TEST, " test duration");
     Serial.println(_testDuration);
 
-    Serial.print("Remaining single test time: ");
+    logger.log(LogLevel::TEST, " remaining single test time");
     Serial.println(remainingTime);
 
     if (elapsedTime >= _testDuration) {

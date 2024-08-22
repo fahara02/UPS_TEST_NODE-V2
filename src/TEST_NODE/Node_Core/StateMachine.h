@@ -54,8 +54,6 @@ public:
 
   void handleEvent(Event event);
   State getCurrentState() const;
-  //   void serializeTransitions(const char *filename);
-  //   void deserializeTransitions(const char *filename);
 
   void setState(State new_state);
 
@@ -76,7 +74,7 @@ private:
   void handleError();
 
   // Define the transition table with 28 transitions
-  const std::array<Transition, 29> transition_table
+  const std::array<Transition, 28> transition_table
       = StateMachine::TransitionTable(
 
           // Mode Selection 5
@@ -141,8 +139,6 @@ private:
               State::START_FROM_SAVE, Event::NONE>(),
 
           // Fault Handling 17+3=20
-          Row<State::DEVICE_READY, Event::SYSTEM_FAULT, State::FAULT,
-              Event::NONE>(),
           Row<State::FAULT, Event::RESTART, State::DEVICE_ON, Event::NONE>());
 
   StateMachine(const StateMachine &) = delete;

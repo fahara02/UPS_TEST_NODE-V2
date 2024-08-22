@@ -1,5 +1,6 @@
 #include "Adafruit_MAX31855.h"
 #include "FS.h"
+#include "Logger.h"
 #include "ModbusManager.h"
 #include "SwitchTest.h"
 #include "TestManager.h"
@@ -11,6 +12,11 @@
 #include <LittleFS.h>
 #include <Wire.h>
 #include <esp32-hal-log.h>
+
+using namespace Node_Core;
+
+// Global Logger Instance
+Logger& logger = Logger::getInstance();
 
 volatile unsigned long lastMainsTriggerTime = 0;
 volatile unsigned long lastUPSTriggerTime = 0;
@@ -97,15 +103,15 @@ void modbusRTUTask(void* pvParameters) {
 void setup() {
   mainLoss = xSemaphoreCreateBinary();
   // Initialize Serial for debugging
-  Serial.begin(115200);
-  Serial.print("Serial started........");
+  logger.init();
+  logger.log(LogLevel::INFO, "Serial started........");
 
   TesterSetup = UPSTesterSetup::getInstance();
   Manager = TestManager::getInstance();
 
   if (Manager) {
     Manager->init();
-    Serial.print("Testmanager  initialised........");
+    logger.log(LogLevel::INFO, "Testmanager  initialised........");
   }
   modbusRTU_Init();
   Serial2.begin(9600, SERIAL_8N1);

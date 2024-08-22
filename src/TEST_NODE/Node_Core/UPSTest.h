@@ -3,10 +3,14 @@
 
 #include "Arduino.h"
 #include "HardwareConfig.h"
+#include "Logger.h"
 #include "TestData.h"
 #include "TestManager.h"
 #include "UPSTestBase.h"
 #include "UPSTesterSetup.h"
+
+using namespace Node_Core;
+extern Logger& logger;
 
 extern volatile bool mains_triggered;
 extern volatile bool ups_triggered;

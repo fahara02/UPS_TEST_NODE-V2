@@ -1,9 +1,12 @@
 #include "StateMachine.h"
 #include "Arduino.h"
+#include "Logger.h"
 #include "StateDefines.h"
 #include <cstring>
 #include <iostream>
 
+using namespace Node_Core;
+extern Logger& logger;
 namespace Node_Core {
 StateMachine* StateMachine::instance = nullptr;
 
@@ -40,7 +43,7 @@ State StateMachine::getCurrentState() const { return current_state; }
 
 void StateMachine::updateStateEventGroup(State state, bool set_bits) {
   EventBits_t bits = static_cast<EventBits_t>(state);
-  Serial.print("updateEvent Triggered!");
+  logger.log(LogLevel::INFO, "New update State Event");
 
   if (set_bits) {
     xEventGroupSetBits(TestState_EventGroup, bits);
@@ -50,8 +53,7 @@ void StateMachine::updateStateEventGroup(State state, bool set_bits) {
 }
 void StateMachine::NotifySystemEventGroup(Event event, bool set_bits) {
   EventBits_t bits_event = static_cast<EventBits_t>(event);
-  Serial.print("New System Event received, Processing");
-
+  logger.log(LogLevel::INFO, "New System Event received, Processing");
   if (set_bits) {
     xEventGroupSetBits(SystemEvents_EventGroup, bits_event);
   } else {
@@ -111,6 +113,7 @@ void StateMachine::handleEvent(Event event) {
         State old_state = current_state;
         _old_state.store(old_state);
         setState(transition.next_state);
+        logger.log(LogLevel::INFO, "state changed");
         transition.action();
         return;
       }

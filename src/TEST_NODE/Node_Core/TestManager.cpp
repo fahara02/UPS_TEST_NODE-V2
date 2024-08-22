@@ -1,5 +1,9 @@
 #include "TestManager.h"
+#include "Logger.h"
 #include "TestData.h"
+
+using namespace Node_Core;
+extern Logger& logger;
 
 extern volatile bool mains_triggered;
 extern volatile bool ups_triggered;
@@ -14,7 +18,7 @@ TestManager::TestManager() {
 
   stateMachine = StateMachine::getInstance();
   if (stateMachine) {
-    Serial.println("State machine is on!");
+    logger.log(LogLevel::SUCCESS, "State machine is on!");
     _currentstate = stateMachine->getCurrentState();
 
     stateMachine->handleEvent(Event::SELF_CHECK_OK);
@@ -66,13 +70,15 @@ void TestManager::setupPins() {
   ledcWrite(_cfgHardware.pwmchannelNo, 0);
   ledcAttachPin(LOAD_PWM_PIN, 0);
   configureInterrupts();
-  Serial.println("After configuring interrupts:");
+
+  logger.log(LogLevel::SUCCESS, "Interrupts configured");
   pinMode(SENSE_MAINS_POWER_PIN, INPUT_PULLDOWN);
   pinMode(SENSE_UPS_POWER_PIN, INPUT_PULLDOWN);
   pinMode(SENSE_UPS_POWER_DOWN, INPUT_PULLDOWN);
 }
 
 void TestManager::configureInterrupts() {
+  logger.log(LogLevel::INFO, "configuring Interrupts ");
   gpio_num_t mainpowerPin = static_cast<gpio_num_t>(SENSE_MAINS_POWER_PIN);
   gpio_num_t upspowerupPin = static_cast<gpio_num_t>(SENSE_UPS_POWER_PIN);
   gpio_num_t upsshutdownPin = static_cast<gpio_num_t>(SENSE_UPS_POWER_DOWN);
@@ -87,8 +93,6 @@ void TestManager::configureInterrupts() {
   gpio_isr_handler_add(mainpowerPin, keyISR1, NULL);
   gpio_isr_handler_add(upspowerupPin, keyISR2, NULL);
   gpio_isr_handler_add(upsshutdownPin, keyISR3, NULL);
-
-  Serial.print("Interrupt configuration complete\n");
 }
 void TestManager::createManagerTasks() {
   xTaskCreatePinnedToCore(TestManagerTask, "MainsTestManager",
@@ -121,17 +125,15 @@ void TestManager::TestManagerTask(void* pvParameters) {
   //                           pdFALSE, pdTRUE, portMAX_DELAY);
   uint32_t result
       = xEventGroupGetBits(instance->stateMachine->TestState_EventGroup);
-  Serial.print("Eventbit before loop: ");
+  logger.log(LogLevel::WARNING, "EVENT BIT: ");
   Serial.println(result, BIN);  // Print bitmask in binary format for clarity
   int count = 0;
   while (true) {
-    // Get the current event bits
+    logger.log(LogLevel::INFO, "Resuming Test manager task... ");
     result = xEventGroupGetBits(instance->stateMachine->TestState_EventGroup);
 
-    Serial.print("Test manager task...");
-
-    Serial.print("Eventbit: ");
-    Serial.println(result, BIN);  // Print bitmask in binary format for clarity
+    logger.log(LogLevel::WARNING, "EVENT BIT: ");
+    logger.logBinary(LogLevel::ERROR, result);
 
     if (result & static_cast<EventBits_t>(State::DEVICE_OK)) {
       if (instance->stateMachine->getCurrentState() == State::DEVICE_OK) {
