@@ -76,7 +76,7 @@ private:
   void handleError();
 
   // Define the transition table with 28 transitions
-  const std::array<Transition, 26> transition_table
+  const std::array<Transition, 29> transition_table
       = StateMachine::TransitionTable(
 
           // Mode Selection 5
@@ -90,6 +90,12 @@ private:
               Event::NONE>(),
           Row<State::DEVICE_READY, Event::AUTO_TEST_CMD, State::AUTO_MODE,
               Event::NONE>(),
+          Row<State::MANUAL_MODE, Event::NETWORK_DISCONNECTED, State::FAULT,
+              Event::NONE>(),
+          Row<State::AUTO_MODE, Event::NETWORK_DISCONNECTED, State::DEVICE_OK,
+              Event::NONE>(),
+          Row<State::DEVICE_SETUP, Event::NETWORK_DISCONNECTED,
+              State::DEVICE_OK, Event::NONE>(),
 
           // Switching Test Sequence 8+5=13
           Row<State::AUTO_MODE, Event::INPUT_OUTPUT_READY, State::TEST_START,
@@ -110,13 +116,13 @@ private:
               State::ALL_TEST_DONE, Event::NONE>(),
           Row<State::CURRENT_TEST_OK, Event::TEST_FAILED, State::RECOVER_DATA,
               Event::NONE>(),
-          Row<State::RECOVER_DATA, Event::VALID_DATA, State::START_FROM_SAVE,
+          Row<State::RECOVER_DATA, Event::SAVE, State::START_FROM_SAVE,
               Event::NONE>(),
 
           // Test Data Handling 13+4=17
           Row<State::ALL_TEST_DONE, Event::JSON_READY, State::TRANSPORT_DATA,
               Event::NONE>(),
-          Row<State::ALL_TEST_DONE, Event::TEST_FAILED, State::START_FROM_SAVE,
+          Row<State::ALL_TEST_DONE, Event::TEST_FAILED, State::RECOVER_DATA,
               Event::NONE>(),
           Row<State::START_FROM_SAVE, Event::INPUT_OUTPUT_READY,
               State::TEST_START, Event::NONE>(),
@@ -125,7 +131,7 @@ private:
           Row<State::ADDENDUM_TEST_DATA, Event::JSON_READY,
               State::TRANSPORT_DATA, Event::NONE>(),
           Row<State::ADDENDUM_TEST_DATA, Event::TEST_FAILED,
-              State::START_FROM_SAVE, Event::NONE>(),
+              State::RECOVER_DATA, Event::NONE>(),
 
           Row<State::SYSTEM_TUNING, Event::AUTO_TEST_CMD, State::RECOVER_DATA,
               Event::NONE>(),

@@ -50,7 +50,7 @@ void StateMachine::updateStateEventGroup(State state, bool set_bits) {
 }
 void StateMachine::NotifySystemEventGroup(Event event, bool set_bits) {
   EventBits_t bits_event = static_cast<EventBits_t>(event);
-  Serial.print("New System Event");
+  Serial.print("New System Event received, Processing");
 
   if (set_bits) {
     xEventGroupSetBits(SystemEvents_EventGroup, bits_event);
@@ -99,7 +99,7 @@ void StateMachine::handleEvent(Event event) {
     handleError();
     return;
   }
-  if (event == Event::REPORT_COMPLETE) {
+  if (event == Event::REPORT_SEND) {
     handleReport();
     return;
   }
