@@ -92,6 +92,8 @@ private:
   void createManagerTasks();
   void createISRTasks();
 
+  void pauseallTestTask();
+
   TestManager(const TestManager&) = delete;
   TestManager& operator=(const TestManager&) = delete;
 };

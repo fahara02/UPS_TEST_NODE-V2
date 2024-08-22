@@ -10,7 +10,10 @@ extern volatile bool ups_triggered;
 extern TaskHandle_t ISR_MAINS_POWER_LOSS;
 extern TaskHandle_t ISR_UPS_POWER_GAIN;
 extern TaskHandle_t ISR_UPS_POWER_LOSS;
+
 extern SemaphoreHandle_t mainLoss;
+extern SemaphoreHandle_t upsLoss;
+extern SemaphoreHandle_t upsGain;
 
 TestManager* TestManager::instance = nullptr;
 
@@ -45,10 +48,17 @@ void TestManager::init() {
   }
   setupPins();
   createISRTasks();
-  createManagerTasks();
   initializeTestInstances();
+  pauseallTestTask();
+
+  createManagerTasks();
 
   _initialized = true;  // Mark as initialized
+}
+
+void TestManager::pauseallTestTask() {
+  vTaskSuspend(switchTestTaskHandle);
+  logger.log(LogLevel::WARNING, "SwitchTest task is paused");
 }
 
 void TestManager::setupPins() {
@@ -121,11 +131,30 @@ void TestManager::TestManagerTask(void* pvParameters) {
 
   uint32_t result
       = xEventGroupGetBits(instance->stateMachine->TestState_EventGroup);
+  State currentState = instance->stateMachine->getCurrentState();
 
   while (true) {
-    result = xEventGroupGetBits(instance->stateMachine->TestState_EventGroup);
-    logger.log(LogLevel::INFO, "EVENT BIT: ");
-    logger.logBinary(LogLevel::INFO, result);
+
+    while (currentState == State::DEVICE_OK) {
+      logger.log(LogLevel::TEST, "starting switch test process");
+      if (switchTest) {
+        switchTest->_cfgTest.testVARating = 1000;
+        switchTest->_cfgTest.testDuration_ms = 5000;
+        logger.log(LogLevel::INFO, "checking task state");
+        eTaskState estate;
+        estate = eTaskGetState(switchTestTaskHandle);
+
+        if (estate == eSuspended) {
+          logger.log(LogLevel::INFO, "resuming blocked task");
+          vTaskResume(switchTestTaskHandle);
+
+          vTaskPrioritySet(&switchTestTaskHandle, 3);
+          vTaskDelay(pdMS_TO_TICKS(100));
+        }
+      }
+      logger.log(LogLevel::INFO, "starting switch test 25 percent  load");
+    }
+
     vTaskDelay(pdMS_TO_TICKS(200));
   }
 
@@ -157,7 +186,7 @@ void TestManager::onMainsPowerLossTask(void* pvParameters) {
 void TestManager::onUPSPowerGainTask(void* pvParameters) {
 
   while (true) {
-    if (ups_triggered) {
+    if (xSemaphoreTake(upsGain, portMAX_DELAY)) {
 
       if (switchTest) {
         switchTest->stopTestCapture();

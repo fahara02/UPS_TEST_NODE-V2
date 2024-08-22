@@ -46,17 +46,16 @@ void SwitchTest::MainTestTask(void* pvParameters) {
   if (instance) {
     while (true) {
       TaskParams* params = (TaskParams*)pvParameters;
-      logger.log(LogLevel::TEST, "Switchtask VA rating is: ");
-
-      Serial.println(params->setupParams.task_TestVARating);
-      logger.log(LogLevel::TEST, "Switchtask duration is: ");
-      Serial.print("Switchtask duration is: ");
-      Serial.println(params->setupParams.task_testDuration_ms);
+      logger.log(LogLevel::TEST, "Switchtask VA rating is: ",
+                 params->setupParams.task_TestVARating);
+      logger.log(LogLevel::TEST, "Switchtask duration is: ",
+                 params->setupParams.task_testDuration_ms);
 
       instance->run(params->setupParams.task_TestVARating,
                     params->setupParams.task_testDuration_ms);
-      logger.log(LogLevel::WARNING, "Hihg Water mark ");
-      Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack usage
+      logger.log(LogLevel::WARNING, "Hihg Water mark ",
+                 uxTaskGetStackHighWaterMark(NULL));
+
       vTaskDelay(pdMS_TO_TICKS(100));  // Delay to prevent tight loop
     }
   }
@@ -68,12 +67,10 @@ void SwitchTest::startTestCapture() {
   if (_dataCaptureRunning) {
     _data.switchTest[_currentTest].starttime = millis();
     _dataCaptureOk = false;
-    logger.log(LogLevel::TEST, " time captured, starttime:");
-    Serial.println(_data.switchTest[_currentTest].starttime);
-  }
-
-  else {
-    Serial.println("Debounce...");
+    logger.log(LogLevel::TEST, " time captured, starttime:",
+               _data.switchTest[_currentTest].starttime);
+  } else {
+    logger.log(LogLevel::ERROR, "Debounce ");
   }
 }
 
@@ -81,11 +78,13 @@ void SwitchTest::startTestCapture() {
 void SwitchTest::stopTestCapture() {
   if (_dataCaptureRunning) {
     _data.switchTest[_currentTest].endtime = millis();
-    logger.log(LogLevel::TEST, " time captured, stoptime:");
-    Serial.println(_data.switchTest[_currentTest].endtime);
-    logger.log(LogLevel::TEST, " switch time");
-    Serial.println(_data.switchTest[_currentTest].endtime
+    logger.log(LogLevel::TEST, " time captured, stoptime:",
+               _data.switchTest[_currentTest].endtime);
+
+    logger.log(LogLevel::TEST, " switch time: ",
+               _data.switchTest[_currentTest].endtime
                    - _data.switchTest[_currentTest].starttime);
+
     _dataCaptureRunning = false;
     _dataCaptureOk = true;  // Set flag to process timing data
 
@@ -140,8 +139,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
 
   while (millis() - testStartTime < testDurationWithRetest) {
     if (!_testinProgress) {
-      logger.log(LogLevel::TEST, "Starting test Attempt");
-      Serial.println(retries + 1);
+      logger.log(LogLevel::INFO, "Starting test Attempt:", retries + 1);
       simulatePowerCut();
       currentTestStartTime = millis();
       _testinProgress = true;

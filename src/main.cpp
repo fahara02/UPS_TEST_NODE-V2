@@ -26,6 +26,8 @@ volatile bool check_ups_shutdown = false;
 const unsigned long debounceDelay = 100;
 
 SemaphoreHandle_t mainLoss = NULL;
+SemaphoreHandle_t upsLoss = NULL;
+SemaphoreHandle_t upsGain = NULL;
 
 TaskHandle_t modbusRTUTaskHandle = NULL;
 TaskHandle_t switchTestTaskHandle = NULL;
@@ -68,21 +70,25 @@ void IRAM_ATTR keyISR1(void* pvParameters) {
 void IRAM_ATTR keyISR2(void* pvParameters) {
   unsigned long currentTime = millis();
   if (currentTime - lastUPSTriggerTime > debounceDelay) {
-    if (!ups_triggered) {
-      ups_triggered = true;
+    BaseType_t urgentTask = pdFALSE;
+    lastMainsTriggerTime = currentTime;
+    // xTaskResumeFromISR(ISR_MAINS_POWER_LOSS);
+    xSemaphoreGiveFromISR(upsGain, &urgentTask);
+    if (urgentTask) {
+      vPortEvaluateYieldFromISR(urgentTask);
     }
-    lastUPSTriggerTime = currentTime;
-    xTaskResumeFromISR(ISR_UPS_POWER_LOSS);
   }
 }
 void IRAM_ATTR keyISR3(void* pvParameters) {
   unsigned long currentTime = millis();
   if (currentTime - lastUPSTriggerTime > debounceDelay) {
-    if (!ups_triggered) {
-      ups_triggered = true;
+    BaseType_t urgentTask = pdFALSE;
+    lastMainsTriggerTime = currentTime;
+    // xTaskResumeFromISR(ISR_MAINS_POWER_LOSS);
+    xSemaphoreGiveFromISR(upsLoss, &urgentTask);
+    if (urgentTask) {
+      vPortEvaluateYieldFromISR(urgentTask);
     }
-    lastUPSTriggerTime = currentTime;
-    xTaskResumeFromISR(ISR_UPS_POWER_GAIN);
   }
 }
 
@@ -102,6 +108,8 @@ void modbusRTUTask(void* pvParameters) {
 
 void setup() {
   mainLoss = xSemaphoreCreateBinary();
+  upsGain = xSemaphoreCreateBinary();
+  upsLoss = xSemaphoreCreateBinary();
   // Initialize Serial for debugging
   logger.init();
   logger.log(LogLevel::INFO, "Serial started........");
