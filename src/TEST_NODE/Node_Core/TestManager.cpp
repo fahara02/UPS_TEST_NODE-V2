@@ -136,7 +136,7 @@ void TestManager::TestManagerTask(void* pvParameters) {
   while (true) {
 
     while (currentState == State::DEVICE_OK) {
-      logger.log(LogLevel::TEST, "starting switch test process");
+      logger.log(LogLevel::INFO, "starting switch test process");
       if (switchTest) {
         switchTest->_cfgTest.testVARating = 1000;
         switchTest->_cfgTest.testDuration_ms = 5000;
@@ -149,13 +149,14 @@ void TestManager::TestManagerTask(void* pvParameters) {
           vTaskResume(switchTestTaskHandle);
 
           vTaskPrioritySet(&switchTestTaskHandle, 3);
+
           vTaskDelay(pdMS_TO_TICKS(100));
         }
       }
       logger.log(LogLevel::INFO, "starting switch test 25 percent  load");
+      vTaskDelay(pdMS_TO_TICKS(2000));
     }
-
-    vTaskDelay(pdMS_TO_TICKS(200));
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 
   vTaskDelete(NULL);

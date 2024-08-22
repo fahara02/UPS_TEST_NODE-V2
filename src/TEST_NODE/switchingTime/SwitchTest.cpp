@@ -45,14 +45,13 @@ void SwitchTest::initTestdataImpl() {
 void SwitchTest::MainTestTask(void* pvParameters) {
   if (instance) {
     while (true) {
-      TaskParams* params = (TaskParams*)pvParameters;
-      logger.log(LogLevel::TEST, "Switchtask VA rating is: ",
-                 params->setupParams.task_TestVARating);
-      logger.log(LogLevel::TEST, "Switchtask duration is: ",
-                 params->setupParams.task_testDuration_ms);
+      // TaskParams* params = (TaskParams*)pvParameters;
+      logger.log(LogLevel::TEST,
+                 "Switchtask VA rating is: ", _cfgTest.testVARating);
+      logger.log(LogLevel::TEST,
+                 "Switchtask duration is: ", _cfgTest.testDuration_ms);
 
-      instance->run(params->setupParams.task_TestVARating,
-                    params->setupParams.task_testDuration_ms);
+      instance->run(_cfgTest.testVARating, _cfgTest.testDuration_ms);
       logger.log(LogLevel::WARNING, "Hihg Water mark ",
                  uxTaskGetStackHighWaterMark(NULL));
 
