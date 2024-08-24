@@ -11,8 +11,10 @@
 #include "UPSTest.h"
 
 #include "SwitchTest.h"
+#include "TestSync.h"
 #include "UPSError.h"
 #include "UPSTesterSetup.h"
+
 
 extern void IRAM_ATTR keyISR1(void* pvParameters);
 extern void IRAM_ATTR keyISR2(void* pvParameters);
