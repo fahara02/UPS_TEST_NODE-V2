@@ -148,16 +148,18 @@ void setup() {
     logger.log(LogLevel::INFO, "Artificially getting to AUTO MODE");
     Manager->triggerEvent(Event::SELF_CHECK_OK);
     vTaskDelay(pdTICKS_TO_MS(100));
-    Manager->triggerEvent(Event::SETTING_LOADED);
+    Manager->triggerEvent(Event::USER_PAUSED);
     vTaskDelay(pdTICKS_TO_MS(100));
-    Manager->triggerEvent(Event::LOAD_BANK_CHECKED);
+    Manager->triggerEvent(Event::SYSTEM_FAULT);
     vTaskDelay(pdTICKS_TO_MS(100));
-    logger.log(LogLevel::INFO, "Triggering Auto test cmd event........");
-    Manager->triggerEvent(Event::AUTO_TEST_CMD);
-    vTaskDelay(pdTICKS_TO_MS(100));
-    logger.log(LogLevel::INFO, "Triggering input output ready event........");
-    Manager->triggerEvent(Event::INPUT_OUTPUT_READY);
-    vTaskDelay(pdTICKS_TO_MS(100));
+    // Manager->triggerEvent(Event::LOAD_BANK_CHECKED);
+    // vTaskDelay(pdTICKS_TO_MS(100));
+    // logger.log(LogLevel::INFO, "Triggering Auto test cmd event........");
+    // Manager->triggerEvent(Event::AUTO_TEST_CMD);
+    // vTaskDelay(pdTICKS_TO_MS(100));
+    // logger.log(LogLevel::INFO, "Triggering input output ready
+    // event........"); Manager->triggerEvent(Event::INPUT_OUTPUT_READY);
+    // vTaskDelay(pdTICKS_TO_MS(100));
   }
 }
 void loop() {

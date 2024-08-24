@@ -74,20 +74,19 @@ void StateMachine::handleEvent(Event event) {
     State old_state = instance->getCurrentState();
     _old_state.store(old_state);
     State new_state = State::FAULT;
-    updateStateEventGroup(old_state, false);  // clear the old state  state bit
     setState(new_state);
-    updateStateEventGroup(current_state, true);  // set the current statebit
-
+    updateStateEventGroup(old_state, false);
+    updateStateEventGroup(current_state, true);
     return;
   }
   if (event == Event::USER_PAUSED) {
     State old_state = instance->getCurrentState();
     _old_state.store(old_state);
     State new_state = State::SYSTEM_PAUSED;
-    updateStateEventGroup(old_state, false);  // clear the old state  state bit
     setState(new_state);
-    updateStateEventGroup(new_state, true);  // set the current statebit
-
+    updateStateEventGroup(old_state, false);
+    updateStateEventGroup(new_state, true);
+    logger.log(LogLevel::WARNING, "State now in:%s", stateToString(new_state));
     return;
   }
 
@@ -120,8 +119,7 @@ void StateMachine::handleEvent(Event event) {
         logger.log(LogLevel::INFO, "State changed from %s to %s",
                    stateToString(old_state),
                    stateToString(transition.next_state));
-        // updateStateEventGroup(old_state, false);
-        // updateStateEventGroup(transition.next_state, true);
+
         transition.action();  // Execute the associated action
         return;
       }
@@ -134,7 +132,7 @@ void StateMachine::handleEvent(Event event) {
 }
 
 void StateMachine::handleError() {
-  updateStateEventGroup(State::LOG_ERROR, true);
+  // updateStateEventGroup(State::LOG_ERROR, true);
 }
 
 void StateMachine::handleReport() {

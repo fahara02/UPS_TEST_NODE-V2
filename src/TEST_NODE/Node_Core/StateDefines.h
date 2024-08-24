@@ -29,10 +29,10 @@ enum class State : StateBits {
   TRANSPORT_DATA = 1 << 17,
   SYSTEM_TUNING = 1 << 18,
   FAULT = 1 << 19,
-  MANUAL_NEXT_TEST = 1 << 20,
-  REPORT_AVAILABLE = 1 << 21,
-  NEW_TEST = 1 << 22,
-  LOG_ERROR = 1 << 23,
+  // MANUAL_NEXT_TEST = 1 << 20,
+  REPORT_AVAILABLE = 1 << 20,
+  // NEW_TEST = 1 << 22,
+  // LOG_ERROR = 1 << 23,
 };
 
 enum class Event : EventBits_t {
@@ -103,14 +103,14 @@ static const char* stateToString(State state) {
       return "SYSTEM_TUNING";
     case State::FAULT:
       return "FAULT";
-    case State::MANUAL_NEXT_TEST:
-      return "MANUAL_NEXT_TEST";
-    case State::REPORT_AVAILABLE:
-      return "REPORT_AVAILABLE";
-    case State::NEW_TEST:
-      return "NEW_TEST";
-    case State::LOG_ERROR:
-      return "LOG_ERROR";
+    // case State::MANUAL_NEXT_TEST:
+    //   return "MANUAL_NEXT_TEST";
+    // case State::REPORT_AVAILABLE:
+    //   return "REPORT_AVAILABLE";
+    // case State::NEW_TEST:
+    //   return "NEW_TEST";
+    // case State::LOG_ERROR:
+    //   return "LOG_ERROR";
     default:
       return "UNKNOWN_STATE";
   }
