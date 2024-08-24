@@ -15,7 +15,6 @@
 #include "UPSError.h"
 #include "UPSTesterSetup.h"
 
-
 extern void IRAM_ATTR keyISR1(void* pvParameters);
 extern void IRAM_ATTR keyISR2(void* pvParameters);
 extern void IRAM_ATTR keyISR3(void* pvParameters);
@@ -66,6 +65,7 @@ public:
   void runTests();
   void manageTests();
   void terminateTest();
+  void triggerEvent(Event event);
 
   static void TestManagerTask(void* pvParameters);
   static void onMainsPowerLossTask(void* pvParameters);
@@ -79,6 +79,7 @@ private:
   static TestManager* instance;
   bool _initialized = false;
   bool _setupUpdated = false;
+  bool _addedTestbatch = false;
   uint8_t numTests;
 
   StateMachine* stateMachine = nullptr;

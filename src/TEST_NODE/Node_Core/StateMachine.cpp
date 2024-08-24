@@ -34,26 +34,27 @@ void StateMachine::deleteInstance() {
   instance = nullptr;
 }
 
-void StateMachine::setState(State new_state) {
-  current_state.store(new_state);
-  // Add any additional logic required when the state changes
-}
+void StateMachine::setState(State new_state) { current_state.store(new_state); }
 
 State StateMachine::getCurrentState() const { return current_state; }
 
 void StateMachine::updateStateEventGroup(State state, bool set_bits) {
   EventBits_t bits = static_cast<EventBits_t>(state);
-  logger.log(LogLevel::INFO, "New update State Event");
 
   if (set_bits) {
+    logger.log(LogLevel::INFO, "setting event bits for  %s",
+               stateToString(state));
     xEventGroupSetBits(TestState_EventGroup, bits);
   } else {
+    logger.log(LogLevel::INFO, "clearing event bits for  %s",
+               stateToString(state));
     xEventGroupClearBits(TestState_EventGroup, bits);
   }
 }
 void StateMachine::NotifySystemEventGroup(Event event, bool set_bits) {
   EventBits_t bits_event = static_cast<EventBits_t>(event);
-  logger.log(LogLevel::INFO, "New System Event received, Processing");
+  logger.log(LogLevel::INFO, "Processing System Event %s",
+             eventToString(event));
   if (set_bits) {
     xEventGroupSetBits(SystemEvents_EventGroup, bits_event);
   } else {
@@ -67,23 +68,26 @@ void StateMachine::handleEventbits(EventBits_t event_bits) {
 }
 
 void StateMachine::handleEvent(Event event) {
+  logger.log(LogLevel::INFO, "Handling event %s", eventToString(event));
 
   if (event == Event::SYSTEM_FAULT) {
     State old_state = instance->getCurrentState();
     _old_state.store(old_state);
     State new_state = State::FAULT;
+    updateStateEventGroup(old_state, false);  // clear the old state  state bit
     setState(new_state);
     updateStateEventGroup(current_state, true);  // set the current statebit
-    updateStateEventGroup(old_state, false);  // clear the old state  state bit
+
     return;
   }
   if (event == Event::USER_PAUSED) {
     State old_state = instance->getCurrentState();
     _old_state.store(old_state);
     State new_state = State::SYSTEM_PAUSED;
-    setState(new_state);
-    updateStateEventGroup(new_state, true);   // set the current statebit
     updateStateEventGroup(old_state, false);  // clear the old state  state bit
+    setState(new_state);
+    updateStateEventGroup(new_state, true);  // set the current statebit
+
     return;
   }
 
@@ -109,16 +113,24 @@ void StateMachine::handleEvent(Event event) {
   for (const auto& transition : transition_table) {
     if (transition.current_state == current_state
         && transition.event == event) {
-      if (transition.guard()) {
+      if (transition.guard()) {  // Check guard condition
         State old_state = current_state;
         _old_state.store(old_state);
-        setState(transition.next_state);
-        logger.log(LogLevel::INFO, "state changed");
-        transition.action();
+        setState(transition.next_state);  // Transition to the next state
+        logger.log(LogLevel::INFO, "State changed from %s to %s",
+                   stateToString(old_state),
+                   stateToString(transition.next_state));
+        // updateStateEventGroup(old_state, false);
+        // updateStateEventGroup(transition.next_state, true);
+        transition.action();  // Execute the associated action
         return;
       }
     }
   }
+
+  // No valid transition found
+  logger.log(LogLevel::WARNING, "No transition found for event %s in state %s",
+             eventToString(event), stateToString(current_state));
 }
 
 void StateMachine::handleError() {

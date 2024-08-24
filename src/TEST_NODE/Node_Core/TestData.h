@@ -3,13 +3,14 @@
 #include <stdint.h>
 enum TestResult { TEST_FAILED = 0, TEST_SUCCESSFUL = 1 };
 enum class ISRType { MAINS_TRIGGERED, UPS_TRIGGERED };
-enum class TestType {
-  SwitchTest,
-  BackupTimeTest,
-  EfficiencyTest,
-  InputVoltageTest,
-  WaveformTest,
-  TunePWMTest,
+enum class TestType : uint8_t {
+
+  SwitchTest,        // 1
+  BackupTimeTest,    // 2
+  EfficiencyTest,    // 3
+  InputVoltageTest,  // 4
+  WaveformTest,      // 5
+  TunePWMTest        // 6
 };
 
 static const char* testTypeToString(TestType type) {

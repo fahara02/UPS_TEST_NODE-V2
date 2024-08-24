@@ -42,7 +42,7 @@ public:
     static Transition get_transition() {
       return {Start, EventTrigger, Next,
               []() {
-                constexpr Event action_event = ActionEvent;
+                // constexpr Event action_event = ActionEvent;
 
                 instance->updateStateEventGroup(Start, false);
                 instance->updateStateEventGroup(Next, true);

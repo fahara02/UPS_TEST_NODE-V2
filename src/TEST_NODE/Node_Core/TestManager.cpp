@@ -4,6 +4,7 @@
 
 using namespace Node_Core;
 extern Logger& logger;
+extern TestSync& UPSTestSync;
 
 extern volatile bool mains_triggered;
 extern volatile bool ups_triggered;
@@ -17,14 +18,13 @@ extern SemaphoreHandle_t upsGain;
 
 TestManager* TestManager::instance = nullptr;
 
-TestManager::TestManager() {
+TestManager::TestManager()
+    : _initialized(false), _setupUpdated(false), _addedTestbatch(false) {
 
   stateMachine = StateMachine::getInstance();
   if (stateMachine) {
     logger.log(LogLevel::SUCCESS, "State machine is on!");
     _currentstate = stateMachine->getCurrentState();
-
-    stateMachine->handleEvent(Event::SELF_CHECK_OK);
   }
 }
 
@@ -50,7 +50,6 @@ void TestManager::init() {
   createISRTasks();
   initializeTestInstances();
   pauseallTestTask();
-
   createManagerTasks();
 
   _initialized = true;  // Mark as initialized
@@ -59,6 +58,10 @@ void TestManager::init() {
 void TestManager::pauseallTestTask() {
   vTaskSuspend(switchTestTaskHandle);
   logger.log(LogLevel::WARNING, "SwitchTest task is paused");
+}
+void TestManager::triggerEvent(Event event) {
+  logger.log(LogLevel::INFO, "Triggering event ");
+  instance->stateMachine->handleEvent(event);
 }
 
 void TestManager::setupPins() {
@@ -129,13 +132,19 @@ void TestManager::createISRTasks() {
 
 void TestManager::TestManagerTask(void* pvParameters) {
 
-  uint32_t result
-      = xEventGroupGetBits(instance->stateMachine->TestState_EventGroup);
+  // uint32_t result
+  //     = xEventGroupGetBits(instance->stateMachine->TestState_EventGroup);
   State currentState = instance->stateMachine->getCurrentState();
 
   while (true) {
+    currentState = instance->stateMachine->getCurrentState();
 
-    while (currentState == State::DEVICE_OK) {
+    if (currentState == State::AUTO_MODE) {
+
+      logger.log(LogLevel::INFO, "resuming Test manager task");
+      vTaskDelay(pdMS_TO_TICKS(200));
+    }
+    if (currentState == State::TEST_START) {
       logger.log(LogLevel::INFO, "starting switch test process");
       if (switchTest) {
         switchTest->_cfgTest.testVARating = 1000;
