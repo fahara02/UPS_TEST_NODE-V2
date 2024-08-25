@@ -64,7 +64,8 @@ uint16_t cbHregGet(TRegister* reg, uint16_t val) {
         int switchTestIndex = index / 11;  // 11 registers per test
         int subIndex = index % 11;
         if (switchTestIndex < 5) {  // Ensure index is within bounds
-          SwitchTestData::TestData& test = testData.switchTest[switchTestIndex];
+          SwitchTestData::SingleTest& test
+              = testData.switchTest[switchTestIndex];
           switch (subIndex) {
             case 0:
               val = test.testNo;

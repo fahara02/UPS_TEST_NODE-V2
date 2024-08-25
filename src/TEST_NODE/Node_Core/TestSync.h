@@ -7,142 +7,166 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 
-// Load Level: Bits 0-3
-enum class LoadLevel : uint16_t {
-  LEVEL_25 = 1 << 0,  // 0001
-  LEVEL_50 = 1 << 1,  // 0010
-  LEVEL_75 = 1 << 2,  // 0100
-  LEVEL_100 = 1 << 3  // 1000
+#define TestNo_BIT0 1 << 0;
+#define TestNo_BIT1 1 << 1;
+#define TestNo_BIT2 1 << 2;
+#define TestNo_BIT3 1 << 3;
+#define TestNo (TestNo_BIT3 | TestNo_BIT2 | TestNo_BIT1 | TestNo_BIT0);
+
+enum class TestVariance {
+  SwitchTest_25P,
+  SWitchTest_50P,
+  SwitchTest_75P,
+  SwitchTest_100P,
+  BackUpTimeTest_25P,
+  BackUpTimeTest_50P,
+  BackUpTimeTest_75P,
+  BackUpTimeTest_100P,
+  EffciencyTest_25P,
+  EffciencyTest_50P,
+  EffciencyTest_75P,
+  EffciencyTest_100P,
+  WaveformTest,
+  TuningTest,
 };
 
-// Test Status Manager: Bits 4-7
-enum class TestStatusManager : uint16_t {
-  NOT_IN_QUEUE = 1 << 4,  // 0001 0000
-  PENDING = 1 << 5,       // 0010 0000
-  RETEST = 1 << 6,        // 0100 0000
-  DONE = 1 << 7           // 1000 0000
-};
+// // Load Level: Bits 0-3
+// enum class LoadLevel : uint16_t {
+//   LEVEL_25,
+//   LEVEL_50,
+//   LEVEL_75,
+//   LEVEL_100,
+// };
 
-// Test Status Tester: Bits 8-11
-enum class TestStatusTester : uint16_t {
-  NOT_STARTED = 1 << 8,  // 0001 0000 0000
-  RUNNING = 1 << 9,      // 0010 0000 0000
-  SUCCESS = 1 << 10,     // 0100 0000 0000
-  FAILED = 1 << 11       // 1000 0000 0000
-};
+// // Test Status Manager: Bits 4-7
+// enum class TestStatusManager : uint16_t {
+//   NOT_IN_QUEUE = 1 << 0,
+//   PENDING = 1 << 1,
+//   RETEST = 1 << 2,
+//   DONE = 1 << 3
+// };
 
-struct RequiredTest {
-  TestType testName;
-  LoadLevel level;
-};
+// // Test Status Tester: Bits 8-11
+// enum class TestStatusTester : uint16_t {
+//   NOT_STARTED = 1 << 0,
+//   RUNNING = 1 << 1,
+//   SUCCESS = 1 << 2,
+//   FAILED = 1 << 3
+// };
 
-class TestSync {
-public:
-  // Get the instance of the singleton
-  static TestSync& getInstance() {
-    static TestSync instance;
-    return instance;
-  }
-  void addTest(RequiredTest tests[], size_t numTests) {
+// struct RequiredTest {
+//   TestType testName;
+//   LoadLevel level;
+// };
 
-    for (size_t i = 0; i < numTests; ++i) {
-      // Set event bits for the test in TestSync
-      setEventBits(tests[i].testName, tests[i].level,
-                   TestStatusManager::PENDING, TestStatusTester::NOT_STARTED);
-    }
-  }
-  void getPendingTest(RequiredTest tests[], size_t& numTests) {
+// class TestSync {
+// public:
+//   // Get the instance of the singleton
+//   static TestSync& getInstance() {
+//     static TestSync instance;
+//     return instance;
+//   }
+//   void addTest(RequiredTest tests[], size_t numTests) {
 
-    size_t testIndex = 0;
+//     for (size_t i = 0; i < numTests; ++i) {
+//       // Set event bits for the test in TestSync
+//       setEventBits(tests[i].testName, tests[i].level,
+//                    TestStatusManager::PENDING,
+//                    TestStatusTester::NOT_STARTED);
+//     }
+//   }
+//   void getPendingTest(RequiredTest tests[], size_t& numTests) {
 
-    for (int i = 0; i < TestSync::NUM_TEST_TYPES; ++i) {
-      EventBits_t bits = getEventBits(static_cast<TestType>(i));
+//     size_t testIndex = 0;
 
-      if (bits & static_cast<uint16_t>(TestStatusManager::PENDING)) {
+//     for (int i = 0; i < TestSync::NUM_TEST_TYPES; ++i) {
+//       EventBits_t bits = getEventBits(static_cast<TestType>(i));
 
-        for (int j = 0; j <= 3; ++j) {
-          if (bits & (1 << j)) {
-            tests[testIndex].testName = static_cast<TestType>(i);
-            tests[testIndex].level = static_cast<LoadLevel>(1 << j);
-            testIndex++;
-          }
-        }
-      }
-    }
+//       if (bits & static_cast<uint16_t>(TestStatusManager::PENDING)) {
 
-    numTests = testIndex;
-  }
+//         for (int j = 0; j <= 3; ++j) {
+//           if (bits & (1 << j)) {
+//             tests[testIndex].testName = static_cast<TestType>(i);
+//             tests[testIndex].level = static_cast<LoadLevel>(1 << j);
+//             testIndex++;
+//           }
+//         }
+//       }
+//     }
 
-  void setEventBits(TestType testType, LoadLevel loadLevel,
-                    TestStatusManager managerStatus,
-                    TestStatusTester testerStatus) {
-    // Enter critical section
-    portENTER_CRITICAL(&mux_);
+//     numTests = testIndex;
+//   }
 
-    // Set the event bits in the appropriate event group
-    xEventGroupSetBits(eventGroups_[static_cast<uint8_t>(testType)],
-                       static_cast<uint16_t>(loadLevel)
-                           | static_cast<uint16_t>(managerStatus)
-                           | static_cast<uint16_t>(testerStatus));
+//   void setEventBits(TestType testType, LoadLevel loadLevel,
+//                     TestStatusManager managerStatus,
+//                     TestStatusTester testerStatus) {
+//     // Enter critical section
+//     portENTER_CRITICAL(&mux_);
 
-    // Exit critical section
-    portEXIT_CRITICAL(&mux_);
-  }
+//     // Set the event bits in the appropriate event group
+//     xEventGroupSetBits(eventGroups_[static_cast<uint8_t>(testType)],
+//                        static_cast<uint16_t>(loadLevel)
+//                            | static_cast<uint16_t>(managerStatus)
+//                            | static_cast<uint16_t>(testerStatus));
 
-  // Method to clear event bits
-  void clearEventBits(TestType testType, LoadLevel loadLevel,
-                      TestStatusManager managerStatus,
-                      TestStatusTester testerStatus) {
-    // Enter critical section
-    portENTER_CRITICAL(&mux_);
+//     // Exit critical section
+//     portEXIT_CRITICAL(&mux_);
+//   }
 
-    // Clear the event bits in the appropriate event group
-    xEventGroupClearBits(eventGroups_[static_cast<uint8_t>(testType)],
-                         static_cast<uint16_t>(loadLevel)
-                             | static_cast<uint16_t>(managerStatus)
-                             | static_cast<uint16_t>(testerStatus));
+//   // Method to clear event bits
+//   void clearEventBits(TestType testType, LoadLevel loadLevel,
+//                       TestStatusManager managerStatus,
+//                       TestStatusTester testerStatus) {
+//     // Enter critical section
+//     portENTER_CRITICAL(&mux_);
 
-    // Exit critical section
-    portEXIT_CRITICAL(&mux_);
-  }
-  EventBits_t getEventBits(TestType testType) {
-    // Enter critical section
-    portENTER_CRITICAL(&mux_);
+//     // Clear the event bits in the appropriate event group
+//     xEventGroupClearBits(eventGroups_[static_cast<uint8_t>(testType)],
+//                          static_cast<uint16_t>(loadLevel)
+//                              | static_cast<uint16_t>(managerStatus)
+//                              | static_cast<uint16_t>(testerStatus));
 
-    // Get the current event bits from the appropriate event group
-    EventBits_t bits
-        = xEventGroupGetBits(eventGroups_[static_cast<uint8_t>(testType)]);
+//     // Exit critical section
+//     portEXIT_CRITICAL(&mux_);
+//   }
+//   EventBits_t getEventBits(TestType testType) {
+//     // Enter critical section
+//     portENTER_CRITICAL(&mux_);
 
-    // Exit critical section
-    portEXIT_CRITICAL(&mux_);
+//     // Get the current event bits from the appropriate event group
+//     EventBits_t bits
+//         = xEventGroupGetBits(eventGroups_[static_cast<uint8_t>(testType)]);
 
-    return bits;
-  }
+//     // Exit critical section
+//     portEXIT_CRITICAL(&mux_);
 
-private:
-  TestSync() {
+//     return bits;
+//   }
 
-    for (int i = 0; i < NUM_TEST_TYPES; ++i) {
-      eventGroups_[i] = xEventGroupCreate();
-      if (eventGroups_[i] == NULL) {
-      }
-    }
-  }
+// private:
+//   TestSync() {
 
-  ~TestSync() {
+//     for (int i = 0; i < NUM_TEST_TYPES; ++i) {
+//       eventGroups_[i] = xEventGroupCreate();
+//       if (eventGroups_[i] == NULL) {
+//       }
+//     }
+//   }
 
-    for (int i = 0; i < NUM_TEST_TYPES; ++i) {
-      if (eventGroups_[i] != NULL) {
-        vEventGroupDelete(eventGroups_[i]);
-      }
-    }
-  }
+//   ~TestSync() {
 
-  static constexpr int NUM_TEST_TYPES = 6;  // Number of test types
-  EventGroupHandle_t eventGroups_[NUM_TEST_TYPES];
-  portMUX_TYPE mux_ = portMUX_INITIALIZER_UNLOCKED;
+//     for (int i = 0; i < NUM_TEST_TYPES; ++i) {
+//       if (eventGroups_[i] != NULL) {
+//         vEventGroupDelete(eventGroups_[i]);
+//       }
+//     }
+//   }
 
-  TestSync(const TestSync&) = delete;
-  TestSync& operator=(const TestSync&) = delete;
-};
+//   static constexpr int NUM_TEST_TYPES = 6;  // Number of test types
+//   EventGroupHandle_t eventGroups_[NUM_TEST_TYPES];
+//   portMUX_TYPE mux_ = portMUX_INITIALIZER_UNLOCKED;
+
+//   TestSync(const TestSync&) = delete;
+//   TestSync& operator=(const TestSync&) = delete;
+// };
 #endif  // TEST_SYNC_H

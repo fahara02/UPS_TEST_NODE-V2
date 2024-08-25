@@ -5,13 +5,11 @@
 #include "Settings.h"
 #include "StateMachine.h"
 #include "TestData.h"
-
 #include "UPSTestBase.h"
 
 #include "UPSTest.h"
 
 #include "SwitchTest.h"
-#include "TestReq.h"
 #include "UPSError.h"
 #include "UPSTesterSetup.h"
 
@@ -20,6 +18,8 @@ extern void IRAM_ATTR keyISR2(void* pvParameters);
 extern void IRAM_ATTR keyISR3(void* pvParameters);
 
 using namespace Node_Core;
+class SwitchTest;
+extern SwitchTest* switchTest;
 
 static TaskHandle_t TestManagerTaskHandle = NULL;
 extern TaskHandle_t switchTestTaskHandle;
@@ -33,32 +33,50 @@ const uint16_t MAX_TESTS = 6;
 
 using namespace Node_Core;
 
-enum class TestStatus {
-  TEST_PENDING,
-  TEST_RUNNING,
-  TEST_COMPLETED,
-  TEST_FAILED
+enum class TestManagerStatus : EventBits_t {
+  NOT_IN_QUEUE = 1 << 0,
+  PENDING = 1 << 1,
+  RETEST = 1 << 2,
+  DONE = 1 << 3
+};
+
+//
+enum class TestOperatorStatus : EventBits_t {
+  NOT_STARTED = 1 << 4,
+  RUNNING = 1 << 5,
+  SUCCESS = 1 << 6,
+  FAILED = 1 << 7
+};
+
+struct TestStatus {
+  TestManagerStatus managerStatus;
+  TestOperatorStatus operatorStatus;
+  TestStatus()
+      : managerStatus(TestManagerStatus::PENDING),
+        operatorStatus(TestOperatorStatus::NOT_STARTED) {}
+};
+// for outside use of  the class
+struct RequiredTest {
+  int TestNo;  // Unique test number
+  TestType testtype;
+  LoadPercentage loadlevel;
+  TestStatus testStatus;
 };
 
 template <typename T, typename U, TestType testype>
 class UPSTest;
 
-class SwitchTest;
-static SwitchTest* switchTest = nullptr;
-
-template <typename T, typename U, TestType testype>
+template <typename T, typename U>
 struct UPSTestRun {
-  UPSTest<T, U, testype>* test;  // Pointer to the specific UPS test
-  TestStatus status;             // Enum to track the status of the
-  U data;  // Data related to the test (U is the data type)
+  T* testinstance;  // Pointer to the test instance
+  RequiredTest testRequired;
+  U testData;
 };
 
 class TestManager {
 public:
   static TestManager* getInstance();
   static void deleteInstance();
-  UPSTestRun<SwitchTest, SwitchTestData, TestType::SwitchTest>
-      testsSwitch[MAX_TESTS];
 
   void init();
 
@@ -77,12 +95,19 @@ private:
   TestManager();
   ~TestManager();
   static TestManager* instance;
+
+  /* external class instances as private member and will be initialise in
+   testmanager construction or in init phase */
+  StateMachine* stateMachine = nullptr;
+
+  UPSTestRun<SwitchTest, SwitchTestData> testSW[MAX_TESTS];
+
   bool _initialized = false;
   bool _setupUpdated = false;
   bool _addedTestbatch = false;
-  uint8_t numTests;
+  uint8_t numSwitchTests = 0;
+  uint8_t numBackupTimeTests = 0;
 
-  StateMachine* stateMachine = nullptr;
   State _currentstate;
   SetupSpec _cfgSpec;
   SetupTest _cfgTest;
@@ -95,7 +120,7 @@ private:
   void createManagerTasks();
   void createISRTasks();
 
-  void pauseallTestTask();
+  void pauseAllTest();
 
   TestManager(const TestManager&) = delete;
   TestManager& operator=(const TestManager&) = delete;

@@ -4,7 +4,8 @@
 
 using namespace Node_Core;
 extern Logger& logger;
-extern TestSync& UPSTestSync;
+
+// extern TestSync& UPSTestSync;
 
 extern volatile bool mains_triggered;
 extern volatile bool ups_triggered;
@@ -49,13 +50,13 @@ void TestManager::init() {
   setupPins();
   createISRTasks();
   initializeTestInstances();
-  pauseallTestTask();
+  pauseAllTest();
   createManagerTasks();
 
   _initialized = true;  // Mark as initialized
 }
 
-void TestManager::pauseallTestTask() {
+void TestManager::pauseAllTest() {
   vTaskSuspend(switchTestTaskHandle);
   logger.log(LogLevel::WARNING, "SwitchTest task is paused");
 }
@@ -138,18 +139,11 @@ void TestManager::TestManagerTask(void* pvParameters) {
 
   while (true) {
     currentState = instance->stateMachine->getCurrentState();
+    logger.log(LogLevel::INFO, "Resuming Test Manger task");
 
     if (currentState == State::DEVICE_READY) {
 
-      logger.log(LogLevel::INFO, "resuming Test manager task");
-      int testcount = 0;
-      RequiredTest pendingTest[testcount] = {};
-      testcount = UPSTestSync.getPendingTests(pendingTest, 10);
-      logger.log(LogLevel::INFO, "Pending test number is:", testcount);
-      for (int i = 0; i < testcount; i++) {
-        logger.log(LogLevel::INFO, "Pending test %d is:%s", i,
-                   testTypeToString(pendingTest[i].testName));
-      };
+      logger.log(LogLevel::INFO, "Device is ready. Logging pending tests...");
 
       vTaskDelay(pdMS_TO_TICKS(200));
     }
@@ -227,13 +221,7 @@ void TestManager::onUPSPowerGainTask(void* pvParameters) {
 void TestManager::onUPSPowerLossTask(void* pvParameters) { vTaskDelete(NULL); }
 
 void TestManager::initializeTestInstances() {
-  // Initialize SwitchTest
-  switchTest = SwitchTest::getInstance();
+  switchTest->getInstance();
 
-  testsSwitch[0].test = switchTest;
-  testsSwitch[0].status = TestStatus::TEST_PENDING;
-  testsSwitch[0].data = testsSwitch[0].test->data();
-  switchTest->init();
-
-  numTests = MAX_TESTS;  // Set the number of tests
+  // Set the number of tests
 }

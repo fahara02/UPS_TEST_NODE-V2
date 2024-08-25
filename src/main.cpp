@@ -4,9 +4,6 @@
 #include "ModbusManager.h"
 #include "SwitchTest.h"
 #include "TestManager.h"
-#include "TestReq.h"
-
-#include "TestReq.h"
 #include "UPSTest.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -20,7 +17,6 @@ using namespace Node_Core;
 
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
-TestSync& UPSTestSync = TestSync::getInstance();
 
 volatile unsigned long lastMainsTriggerTime = 0;
 volatile unsigned long lastUPSTriggerTime = 0;
@@ -48,8 +44,10 @@ TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
 // Define the SwitchTest instance
 
 UPSTesterSetup* TesterSetup = nullptr;
-
 TestManager* Manager = nullptr;
+
+class SwitchTest;
+SwitchTest* switchTest = nullptr;
 // Task handles
 
 SemaphoreHandle_t xSemaphore;
@@ -99,9 +97,9 @@ void IRAM_ATTR keyISR3(void* pvParameters) {
 void modbusRTUTask(void* pvParameters) {
 
   while (true) {
-    logger.log(LogLevel::INFO, "Resuming modbus task");
+    // logger.log(LogLevel::INFO, "Resuming modbus task");
     mb.task();
-    vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
+    vTaskDelay(pdMS_TO_TICKS(200));  // Task delay
   }
   vTaskDelete(NULL);
 }
@@ -125,15 +123,6 @@ void setup() {
   mainLoss = xSemaphoreCreateBinary();
   upsGain = xSemaphoreCreateBinary();
   upsLoss = xSemaphoreCreateBinary();
-  RequiredTest AllTest[3] = {};
-
-  AllTest[0].testName = TestType::SwitchTest;
-  AllTest[1].testName = TestType::BackupTimeTest;
-  AllTest[2].testName = TestType::SwitchTest;
-  AllTest[0].level = LoadLevel::LEVEL_25;
-  AllTest[1].level = LoadLevel::LEVEL_50;
-  AllTest[2].level = LoadLevel::LEVEL_75;
-  UPSTestSync.addTests(AllTest, 3);
 
   // UPSTestSync.testBitEncoding();
 
@@ -143,6 +132,7 @@ void setup() {
   if (Manager) {
     Manager->init();
     logger.log(LogLevel::INFO, "Testmanager  initialised........");
+
     logger.log(LogLevel::INFO, "Artificially getting to AUTO MODE");
     Manager->triggerEvent(Event::SELF_CHECK_OK);
     vTaskDelay(pdTICKS_TO_MS(100));
@@ -156,6 +146,10 @@ void setup() {
     // logger.log(LogLevel::INFO, "Triggering input output ready
     // event........"); Manager->triggerEvent(Event::INPUT_OUTPUT_READY);
     // vTaskDelay(pdTICKS_TO_MS(100));
+  }
+
+  else {
+    logger.log(LogLevel::ERROR, "Cant create manager instance");
   }
 }
 void loop() {

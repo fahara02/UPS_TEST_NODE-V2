@@ -37,10 +37,12 @@ static const char* testTypeToString(TestType type) {
       return "UnknownTest";
   }
 }
-
+enum class TestDataType {
+  SwitchTestData,
+  BackUpTimeTestData,
+};
 struct SwitchTestData {
-
-  struct TestData {
+  struct SingleTest {
     uint8_t testNo;
     unsigned long testTimestamp;
     unsigned long switchtime;
@@ -49,5 +51,17 @@ struct SwitchTestData {
     LoadPercentage load_percentage : 7;  // Adjusted to cover all possible
     bool valid_data : 1;
   } switchTest[5];
+};
+
+struct BackUpTimeTestData {
+  struct SingleTest {
+    uint8_t testNo;
+    unsigned long testTimestamp;
+    unsigned long backuptime;
+    unsigned long starttime;
+    unsigned long endtime;
+    LoadPercentage load_percentage : 7;  // Adjusted to cover all possible
+    bool valid_data : 1;
+  } backupTest[5];
 };
 #endif

@@ -2,9 +2,11 @@
 #define MODBUS_MANAGER_H
 #include "HardwareConfig.h"
 #include "ModbusRTU.h"
+
 #include "SwitchTest.h"
 
 extern ModbusRTU mb;
+class TestManager;
 extern SwitchTest* switchTest;
 
 extern const uint16_t NUM_COILS;
