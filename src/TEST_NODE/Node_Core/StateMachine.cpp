@@ -42,12 +42,8 @@ void StateMachine::updateStateEventGroup(State state, bool set_bits) {
   EventBits_t bits = static_cast<EventBits_t>(state);
 
   if (set_bits) {
-    logger.log(LogLevel::INFO, "setting event bits for  %s",
-               stateToString(state));
     xEventGroupSetBits(TestState_EventGroup, bits);
   } else {
-    logger.log(LogLevel::INFO, "clearing event bits for  %s",
-               stateToString(state));
     xEventGroupClearBits(TestState_EventGroup, bits);
   }
 }

@@ -100,17 +100,6 @@ void modbusRTUTask(void* pvParameters) {
   while (true) {
     logger.log(LogLevel::INFO, "Resuming modbus task");
     mb.task();
-    // if (Manager && TestManagerTaskHandle != NULL) {
-    //   eTaskState state = eTaskGetState(TestManagerTaskHandle);
-    //   logger.log(LogLevel::INFO, "manager task state is: %s",
-    //              etaskStatetoString(state));
-
-    // } else if (!Manager) {
-    //   logger.log(LogLevel::ERROR, "manager instance not created");
-    // } else if (TestManagerTaskHandle == NULL) {
-    //   logger.log(LogLevel::ERROR, "manager task handle still null");
-    // }
-
     vTaskDelay(pdMS_TO_TICKS(500));  // Task delay
   }
   vTaskDelete(NULL);
@@ -133,8 +122,6 @@ void setup() {
   mainLoss = xSemaphoreCreateBinary();
   upsGain = xSemaphoreCreateBinary();
   upsLoss = xSemaphoreCreateBinary();
-  // logger.log(LogLevel::INFO, "getting SwitchtestInstance  instance");
-  // switchTest = SwitchTest::getInstance();
 
   logger.log(LogLevel::INFO, "getting TesterSetup  instance");
   TesterSetup = UPSTesterSetup::getInstance();
@@ -149,6 +136,7 @@ void setup() {
 
   if (Manager) {
     logger.log(LogLevel::SUCCESS, "Manager instance created!");
+    Manager->init();
 
   } else {
     logger.log(LogLevel::ERROR, "Manager instance creation failed");
@@ -171,7 +159,7 @@ void setup() {
     vTaskDelay(pdTICKS_TO_MS(100));
     Manager->triggerEvent(Event::LOAD_BANK_CHECKED);
     vTaskDelay(pdTICKS_TO_MS(100));
-    Manager->init();
+
     xTaskCreatePinnedToCore(modbusRTUTask, "ModbusRTUTask", 10000, NULL, 1,
                             &modbusRTUTaskHandle, 0);
 

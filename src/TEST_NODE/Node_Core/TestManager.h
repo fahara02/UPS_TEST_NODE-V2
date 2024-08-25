@@ -82,7 +82,7 @@ struct UPSTestRun {
 
 struct managerTaskParam {
   SetupTaskParams taskparam;
-  Event event;
+  Event event = Event::NONE;
 };
 
 class TestManager {
@@ -92,6 +92,7 @@ public:
 
   void init();
   void addTests(RequiredTest testList[], int numTest);
+
   void runTests();
   void manageTests();
   void terminateTest();
@@ -135,6 +136,12 @@ private:
   void createManagerTasks();
 
   void pauseAllTest();
+
+  // helper functions switchTest
+  bool isTestPendingAndNotStarted(
+      const UPSTestRun<SwitchTest, SwitchTestData>& test);
+  void logPendingSwitchTest(const UPSTestRun<SwitchTest, SwitchTestData>& test);
+  void configureSwitchTest(LoadPercentage load);
 
   TestManager(const TestManager&) = delete;
   TestManager& operator=(const TestManager&) = delete;
