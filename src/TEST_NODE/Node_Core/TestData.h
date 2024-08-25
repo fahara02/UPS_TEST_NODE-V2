@@ -55,10 +55,8 @@ static const char* loadPercentageToString(LoadPercentage load) {
   }
 }
 
-enum class TestDataType {
-  SwitchTestData,
-  BackUpTimeTestData,
-};
+
+
 struct SwitchTestData {
   struct SingleTest {
     uint8_t testNo;

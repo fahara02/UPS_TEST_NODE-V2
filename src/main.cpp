@@ -37,6 +37,8 @@ TaskHandle_t inputvoltageTestTaskHandle = NULL;
 TaskHandle_t waveformTestTaskHandle = NULL;
 TaskHandle_t tunepwmTestTaskHandle = NULL;
 
+TaskHandle_t TestManagerTaskHandle = NULL;
+
 TaskHandle_t ISR_MAINS_POWER_LOSS = NULL;
 TaskHandle_t ISR_UPS_POWER_GAIN = NULL;
 TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
@@ -96,9 +98,20 @@ void IRAM_ATTR keyISR3(void* pvParameters) {
 void modbusRTUTask(void* pvParameters) {
 
   while (true) {
-    // logger.log(LogLevel::INFO, "Resuming modbus task");
+    logger.log(LogLevel::INFO, "Resuming modbus task");
     mb.task();
-    vTaskDelay(pdMS_TO_TICKS(200));  // Task delay
+    // if (Manager && TestManagerTaskHandle != NULL) {
+    //   eTaskState state = eTaskGetState(TestManagerTaskHandle);
+    //   logger.log(LogLevel::INFO, "manager task state is: %s",
+    //              etaskStatetoString(state));
+
+    // } else if (!Manager) {
+    //   logger.log(LogLevel::ERROR, "manager instance not created");
+    // } else if (TestManagerTaskHandle == NULL) {
+    //   logger.log(LogLevel::ERROR, "manager task handle still null");
+    // }
+
+    vTaskDelay(pdMS_TO_TICKS(500));  // Task delay
   }
   vTaskDelete(NULL);
 }
@@ -114,8 +127,6 @@ void setup() {
   mb.begin(&Serial2);
   mb.slave(1);
   logger.log(LogLevel::INFO, "modbus slave configured");
-  xTaskCreatePinnedToCore(modbusRTUTask, "ModbusRTUTask", 10000, NULL, 1,
-                          &modbusRTUTaskHandle, 0);
 
   logger.log(LogLevel::INFO, "creating semaphores..");
 
@@ -138,8 +149,7 @@ void setup() {
 
   if (Manager) {
     logger.log(LogLevel::SUCCESS, "Manager instance created!");
-    Manager->init();
-    logger.log(LogLevel::INFO, "Testmanager  initialised........");
+
   } else {
     logger.log(LogLevel::ERROR, "Manager instance creation failed");
   }
@@ -151,7 +161,9 @@ void setup() {
         {2, TestType::SwitchTest, LoadPercentage::LOAD_75P, TestStatus()},
 
     };
-    Manager->addTests(testlist, 2);
+    logger.log(LogLevel::INFO, "adding Tests");
+    Manager->addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
+    logger.log(LogLevel::INFO, "changing states");
 
     Manager->triggerEvent(Event::SELF_CHECK_OK);
     vTaskDelay(pdTICKS_TO_MS(100));
@@ -159,6 +171,10 @@ void setup() {
     vTaskDelay(pdTICKS_TO_MS(100));
     Manager->triggerEvent(Event::LOAD_BANK_CHECKED);
     vTaskDelay(pdTICKS_TO_MS(100));
+    Manager->init();
+    xTaskCreatePinnedToCore(modbusRTUTask, "ModbusRTUTask", 10000, NULL, 1,
+                            &modbusRTUTaskHandle, 0);
+
   }
 
   else {

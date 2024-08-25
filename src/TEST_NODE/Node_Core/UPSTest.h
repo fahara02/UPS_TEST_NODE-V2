@@ -37,19 +37,10 @@ public:
 
   // implement by derived class
   virtual TestResult run(uint16_t testVARating, unsigned long testDuration) = 0;
-  TaskHandle_t* createmainTask();
-  TaskHandle_t* createmainTask(void (T::*MainTestTask)(void*),
-                               const char* taskName);
 
 protected:
   UPSTest();  // Protected constructor
   virtual ~UPSTest() = default;
-  void (T::*testFunctions[6])(void*);
-  struct TaskParams {
-    T* instance;
-    void (T::*taskFunc)(void*);
-    SetupTaskParams setupParams;
-  };
 
   // utility functions
   void setTestDuration(unsigned long duration);
@@ -95,7 +86,7 @@ protected:
 
   // that needs derived implementation
   virtual void initTestdataImpl() = 0;
-  virtual void MainTestTask(void* pvParameters) = 0;
+
   virtual void startTestCapture() = 0;
   virtual void stopTestCapture() = 0;
 
@@ -171,7 +162,6 @@ template <typename T, typename U, TestType testype>
 void UPSTest<T, U, testype>::init() {
   initTestdataImpl();
   forceUpdate();
-  createmainTask();
 }
 
 template <typename T, typename U, TestType testype>
@@ -217,75 +207,6 @@ TaskHandle_t* UPSTest<T, U, testype>::getTaskhandle() {
       Serial.println("Unknown test type!");
       return nullptr;
   }
-  return taskHandle;
-}
-template <typename T, typename U, TestType testype>
-TaskHandle_t* UPSTest<T, U, testype>::createmainTask() {
-  const char* taskName
-      = testTypeToString(T::test_type);  // Assume this function is defined
-  return createmainTask(testFunctions[0], taskName);
-}
-
-template <typename T, typename U, TestType testype>
-TaskHandle_t* UPSTest<T, U, testype>::createmainTask(
-    void (T::*MainTestTask)(void*), const char* taskName) {
-  TaskHandle_t* taskHandle = getTaskhandle();
-
-  if (taskHandle == nullptr) {
-    Serial.println("Error: Task handle is null.");
-    return nullptr;
-  }
-
-  auto taskFunction = [](void* param) {
-    TaskParams* taskParams = static_cast<TaskParams*>(param);
-    if (taskParams && taskParams->taskFunc) {
-      // Call the member function on the instance
-      (taskParams->instance->*taskParams->taskFunc)(param);
-    } else {
-      Serial.println("Error: TaskParams or task function is null.");
-    }
-
-    delete taskParams;  // Clean up the parameter structure
-  };
-
-  TaskParams* params = new (std::nothrow)
-      TaskParams{static_cast<T*>(this), MainTestTask, _cfgTaskParam};
-  if (params == nullptr) {
-    Serial.println("Error: Memory allocation for TaskParams failed.");
-    return nullptr;
-  }
-
-  if (MainTestTask == nullptr) {
-    Serial.println("Error: MainTestTask function pointer is null.");
-    delete params;  // Clean up
-    return nullptr;
-  }
-
-  // Debug prints
-  Serial.println("Creating task...");
-  Serial.print("taskparam varating: ");
-  Serial.println(params->setupParams.task_TestVARating);
-  Serial.print("taskparam duration: ");
-  Serial.println(params->setupParams.task_testDuration_ms);
-  Serial.print("task stack: ");
-  Serial.println(_cfgTask.mainTest_taskStack);
-  Serial.print("task priority: ");
-  Serial.println(_cfgTask.mainTest_taskIdlePriority);
-  Serial.print("task core: ");
-  Serial.println(_cfgTask.mainTest_taskCore);
-
-  BaseType_t result = xTaskCreatePinnedToCore(
-      taskFunction, taskName, _cfgTask.mainTest_taskStack,
-      params,  // Pass TaskParams
-      _cfgTask.mainTest_taskIdlePriority, taskHandle,
-      _cfgTask.mainTest_taskCore);
-
-  if (result != pdPASS) {
-    Serial.println("Task creation failed!");
-    delete params;  // Clean up if task creation fails
-    return nullptr;
-  }
-
   return taskHandle;
 }
 

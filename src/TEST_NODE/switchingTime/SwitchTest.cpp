@@ -17,7 +17,7 @@ SwitchTest::~SwitchTest() {
 SwitchTest* SwitchTest::getInstance() {
   if (instance == nullptr) {
     instance = new SwitchTest();
-    instance->testFunctions[0] = &SwitchTest::MainTestTask;
+    // instance->testFunctions[0] = &SwitchTest::MainTestTask;
   }
   return instance;
 }
@@ -45,17 +45,27 @@ void SwitchTest::initTestdataImpl() {
 void SwitchTest::MainTestTask(void* pvParameters) {
   if (instance) {
     while (true) {
-      // TaskParams* params = (TaskParams*)pvParameters;
-      logger.log(LogLevel::TEST,
-                 "Switchtask VA rating is: ", _cfgTest.testVARating);
-      logger.log(LogLevel::TEST,
-                 "Switchtask duration is: ", _cfgTest.testDuration_ms);
+      logger.log(LogLevel::INFO,
+                 "resuming switchTest task, checking run test Flag");
+      SetupTaskParams* taskParam = (SetupTaskParams*)pvParameters;
 
-      instance->run(_cfgTest.testVARating, _cfgTest.testDuration_ms);
-      logger.log(LogLevel::WARNING, "Hihg Water mark ",
-                 uxTaskGetStackHighWaterMark(NULL));
+      if (true) {
 
-      vTaskDelay(pdMS_TO_TICKS(100));  // Delay to prevent tight loop
+        // TaskParams* params = (TaskParams*)pvParameters;
+        logger.log(LogLevel::TEST,
+                   "Switchtask VA rating is: ", taskParam->task_TestVARating);
+        logger.log(LogLevel::TEST,
+                   "Switchtask duration is: ", taskParam->task_testDuration_ms);
+
+        instance->run(taskParam->task_TestVARating,
+                      taskParam->task_testDuration_ms);
+        logger.log(LogLevel::WARNING, "Hihg Water mark ",
+                   uxTaskGetStackHighWaterMark(NULL));
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+      }
+
+      vTaskDelay(pdMS_TO_TICKS(200));  // Delay to prevent tight loop
     }
   }
   vTaskDelete(NULL);

@@ -15,7 +15,25 @@ enum class LogLevel {
   TEST,
   INTR,
 };
+static const char* etaskStatetoString(eTaskState state) {
 
+  switch (state) {
+    case eTaskState::eBlocked:
+      return "Blocked";
+    case eTaskState::eDeleted:
+      return "Deleted";
+    case eTaskState::eInvalid:
+      return "Invalid";
+    case eTaskState::eReady:
+      return "Ready";
+    case eTaskState::eRunning:
+      return "Running";
+    case eTaskState::eSuspended:
+      return "Suspended";
+    default:
+      return "Unknown";
+  }
+}
 class Logger {
 public:
   // Get the singleton instance
@@ -32,9 +50,14 @@ public:
   }
 
   String formatLogLevel(LogLevel level) {
+    static bool toggleColor = false;
+
     switch (level) {
       case LogLevel::INFO:
-        return "\033[34m[INFO] ";  // Blue text
+        toggleColor = !toggleColor;
+        return toggleColor ? "\033[34m[INFO] "
+                           : "\033[38;5;94m[INFO] ";  // Alternate between Blue
+                                                      // and Brown text
       case LogLevel::WARNING:
         return "\033[33m[WARNING] ";  // Yellow text
       case LogLevel::ERROR:
@@ -60,10 +83,12 @@ public:
 
     String output = formatLogLevel(level);
     output += buffer;
-    output += "\033[0m";  // Reset color
+    output += "\033[0m";
 
     Serial.println(output);
-    // httpPostLog(output);
+  }
+  void log(LogLevel level, eTaskState state) {
+    log(level, etaskStatetoString(state));
   }
   void log(LogLevel level, int number) { log(level, "%d", number); }
 

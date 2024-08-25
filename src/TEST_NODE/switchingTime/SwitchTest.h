@@ -12,12 +12,13 @@ public:
 
   TestResult run(uint16_t testVARating = 4000,
                  unsigned long testduration = 10000) override;
-  void MainTestTask(void* pvParameters) override;
+  static void MainTestTask(void* pvParameters);
 
 private:
   friend class TestManager;
   ~SwitchTest() override;
   static SwitchTest* instance;  // Static pointer to hold the instance
+  bool runTask = false;
 
   SwitchTestData _data;
 

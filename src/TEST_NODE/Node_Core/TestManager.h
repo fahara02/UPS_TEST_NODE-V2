@@ -21,13 +21,20 @@ using namespace Node_Core;
 class SwitchTest;
 extern SwitchTest* switchTest;
 
-static TaskHandle_t TestManagerTaskHandle = NULL;
+extern TaskHandle_t TestManagerTaskHandle;
 extern TaskHandle_t switchTestTaskHandle;
 extern TaskHandle_t backupTimeTestTaskHandle;
 extern TaskHandle_t efficiencyTestTaskHandle;
 extern TaskHandle_t inputvoltageTestTaskHandle;
 extern TaskHandle_t waveformTestTaskHandle;
 extern TaskHandle_t tunepwmTestTaskHandle;
+extern TaskHandle_t ISR_MAINS_POWER_LOSS;
+extern TaskHandle_t ISR_UPS_POWER_GAIN;
+extern TaskHandle_t ISR_UPS_POWER_LOSS;
+
+extern SemaphoreHandle_t mainLoss;
+extern SemaphoreHandle_t upsLoss;
+extern SemaphoreHandle_t upsGain;
 
 const uint16_t MAX_TESTS = 6;
 
@@ -73,6 +80,11 @@ struct UPSTestRun {
   U testData;
 };
 
+struct managerTaskParam {
+  SetupTaskParams taskparam;
+  Event event;
+};
+
 class TestManager {
 public:
   static TestManager* getInstance();
@@ -103,6 +115,7 @@ private:
   UPSTestRun<SwitchTest, SwitchTestData> testsSW[MAX_TESTS];
 
   bool _initialized = false;
+  bool _newEventTrigger = false;
   bool _setupUpdated = false;
   bool _addedSwitchTest = false;
   uint8_t _numSwitchTest = 0;
@@ -117,8 +130,9 @@ private:
 
   void setupPins();
   void configureInterrupts();
-  void createManagerTasks();
   void createISRTasks();
+  void createTestTasks();
+  void createManagerTasks();
 
   void pauseAllTest();
 

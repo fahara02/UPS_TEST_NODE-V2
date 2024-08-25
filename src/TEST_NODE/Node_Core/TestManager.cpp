@@ -9,17 +9,11 @@ extern Logger& logger;
 
 extern volatile bool mains_triggered;
 extern volatile bool ups_triggered;
-extern TaskHandle_t ISR_MAINS_POWER_LOSS;
-extern TaskHandle_t ISR_UPS_POWER_GAIN;
-extern TaskHandle_t ISR_UPS_POWER_LOSS;
-
-extern SemaphoreHandle_t mainLoss;
-extern SemaphoreHandle_t upsLoss;
-extern SemaphoreHandle_t upsGain;
 
 TestManager* TestManager::instance = nullptr;
 
-TestManager::TestManager() : _initialized(false), _setupUpdated(false) {
+TestManager::TestManager()
+    : _initialized(false), _newEventTrigger(false), _setupUpdated(false) {
 
   stateMachine = StateMachine::getInstance();
   if (stateMachine) {
@@ -49,6 +43,8 @@ void TestManager::init() {
   setupPins();
   createISRTasks();
   initializeTestInstances();
+  createTestTasks();
+
   pauseAllTest();
   createManagerTasks();
 
@@ -62,6 +58,13 @@ void TestManager::addTests(RequiredTest testList[], int numTest) {
     return;
   }
   for (int i = 0; i < numTest; ++i) {
+
+    logger.log(LogLevel::INFO, "Test No: ", testList[i].TestNo);
+    logger.log(LogLevel::INFO, "Test Type:%s ",
+               testTypeToString(testList[i].testtype));
+    logger.log(LogLevel::INFO, "Load Level:%s ",
+               loadPercentageToString(testList[i].loadlevel));
+
     if (testList[i].testtype == TestType::SwitchTest) {
 
       testsSW[_numSwitchTest].testinstance = switchTest;
@@ -79,11 +82,18 @@ void TestManager::addTests(RequiredTest testList[], int numTest) {
 }
 
 void TestManager::pauseAllTest() {
-  vTaskSuspend(switchTestTaskHandle);
-  logger.log(LogLevel::WARNING, "SwitchTest task is paused");
+  if (switchTest && switchTestTaskHandle != NULL) {
+
+    logger.log(LogLevel::WARNING, "Pausing Switch test task");
+    vTaskSuspend(switchTestTaskHandle);
+    logger.log(LogLevel::WARNING, "after pausing");
+    eTaskState state = eTaskGetState(switchTestTaskHandle);
+    logger.log(LogLevel::INFO, "SwitchTest task state: %s",
+               etaskStatetoString(state));
+  }
 }
 void TestManager::triggerEvent(Event event) {
-  logger.log(LogLevel::INFO, "Triggering event from manager ");
+
   instance->stateMachine->handleEvent(event);
 }
 
@@ -129,9 +139,14 @@ void TestManager::configureInterrupts() {
   gpio_isr_handler_add(upsshutdownPin, keyISR3, NULL);
 }
 void TestManager::createManagerTasks() {
-  xTaskCreatePinnedToCore(TestManagerTask, "MainsTestManager",
-                          _cfgTask.mainTest_taskStack, &_cfgTaskParam, 3,
-                          &TestManagerTaskHandle, _cfgTask.mainsISR_taskCore);
+  logger.log(LogLevel::WARNING, "inside manager createtask function ");
+
+  xTaskCreatePinnedToCore(TestManagerTask, "MainsTestManager", 12000, NULL, 2,
+                          &TestManagerTaskHandle, 0);
+
+  eTaskState state = eTaskGetState(TestManagerTaskHandle);
+  logger.log(LogLevel::INFO, "manager task state is: %s",
+             etaskStatetoString(state));
 }
 void TestManager::createISRTasks() {
 
@@ -152,35 +167,63 @@ void TestManager::createISRTasks() {
 
   logger.log(LogLevel::SUCCESS, "All ISR task Created");
 }
+void TestManager::createTestTasks() {
+  if (switchTest) {
+    SetupTaskParams taskParam;
+    taskParam.task_TestVARating = _cfgTaskParam.task_TestVARating;
+    taskParam.task_testDuration_ms = _cfgTaskParam.task_testDuration_ms;
+    logger.log(LogLevel::INFO, "Creating Switchtest task ");
+
+    xTaskCreatePinnedToCore(switchTest->MainTestTask, "MainsTestManager",
+                            _cfgTask.mainTest_taskStack, &taskParam,
+                            _cfgTask.mainTest_taskIdlePriority,
+                            &switchTestTaskHandle, _cfgTask.mainTest_taskStack);
+
+    eTaskState state = eTaskGetState(switchTestTaskHandle);
+    logger.log(LogLevel::INFO, "SwitchTest task state: %s",
+               etaskStatetoString(state));
+  }
+}
 
 void TestManager::TestManagerTask(void* pvParameters) {
 
+  // managerTaskParam* taskparam = (managerTaskParam*)pvParameters;
+
   State currentState = instance->stateMachine->getCurrentState();
+
   logger.log(LogLevel::INFO, "Resuming Test Manger task");
   while (true) {
+
     currentState = instance->stateMachine->getCurrentState();
     LogLevel logLevel = LogLevel::INFO;
 
     if (currentState == State::DEVICE_READY) {
-
       logger.log(LogLevel::INFO, "Device is ready. Logging pending tests...");
 
-      for (int i = 0; i < MAX_TESTS; ++i) {
-        // Check if the test is pending and not yet started
-        if (instance->testsSW[i].testRequired.testStatus.managerStatus
-                == TestManagerStatus::PENDING
-            && instance->testsSW[i].testRequired.testStatus.operatorStatus
-                   == TestOperatorStatus::NOT_STARTED) {
+      eTaskState state = eTaskGetState(switchTestTaskHandle);
+      logger.log(LogLevel::INFO, "SwitchTest task state: %s",
+                 etaskStatetoString(state));
+
+      int numswTest = instance->_numSwitchTest;
+      for (int i = 0; i < numswTest; ++i) {
+        TestManagerStatus managerStatus
+            = instance->testsSW[i].testRequired.testStatus.managerStatus;
+        TestOperatorStatus operatorStatus
+            = instance->testsSW[i].testRequired.testStatus.operatorStatus;
+        if (managerStatus == TestManagerStatus::PENDING
+            && operatorStatus == TestOperatorStatus::NOT_STARTED) {
+
           LoadPercentage load = instance->testsSW[i].testRequired.loadlevel;
+          TestType type = instance->testsSW[i].testRequired.testtype;
+
           // Log the pending test information
-          logger.log(logLevel, "Pending SwitchTest detected. Load level ",
+          logger.log(logLevel, "Pending Test Load level:%s ",
                      loadPercentageToString(load));
+          logger.log(logLevel, "Pending Test name:%s ", testTypeToString(type));
 
           instance->testsSW[i].testRequired.testStatus.operatorStatus
               = TestOperatorStatus::RUNNING;
-
-          // Log the change in status
-          logger.log(logLevel, "SwitchTest is now running.");
+          logger.log(logLevel, "SwitchTest list is updated now.");
         }
       }
 
@@ -207,7 +250,7 @@ void TestManager::TestManagerTask(void* pvParameters) {
         }
       }
 
-      vTaskDelay(pdMS_TO_TICKS(2000));
+      vTaskDelay(pdMS_TO_TICKS(200));
     }
     vTaskDelay(pdMS_TO_TICKS(100));
   }
@@ -263,12 +306,6 @@ void TestManager::initializeTestInstances() {
 
   switchTest = SwitchTest::getInstance();
   if (switchTest) {
-
     switchTest->init();
-    logger.log(LogLevel::SUCCESS,
-               "Switchtest instance created and initialised");
-  } else {
-
-    logger.log(LogLevel::ERROR, "Switchtest instance creation failed");
   }
 }
