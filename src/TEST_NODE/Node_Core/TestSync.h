@@ -7,25 +7,28 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 
-enum class LoadLevel : uint8_t {
-  LEVEL_25,  // 0
-  LEVEL_50,  // 1
-  LEVEL_75,  // 2
-  LEVEL_100  // 3
+// Load Level: Bits 0-3
+enum class LoadLevel : uint16_t {
+  LEVEL_25 = 1 << 0,  // 0001
+  LEVEL_50 = 1 << 1,  // 0010
+  LEVEL_75 = 1 << 2,  // 0100
+  LEVEL_100 = 1 << 3  // 1000
 };
 
-enum class TestStatusManager {
-  NOT_IN_QUEUE = 0b00,
-  PENDING = 0b01,
-  RETEST = 0b10,
-  DONE = 0b11
+// Test Status Manager: Bits 4-7
+enum class TestStatusManager : uint16_t {
+  NOT_IN_QUEUE = 1 << 4,  // 0001 0000
+  PENDING = 1 << 5,       // 0010 0000
+  RETEST = 1 << 6,        // 0100 0000
+  DONE = 1 << 7           // 1000 0000
 };
 
-enum class TestStatusTester {
-  NOT_STARTED = 0b00,
-  RUNNING = 0b01,
-  SUCCESS = 0b10,
-  FAILED = 0b11
+// Test Status Tester: Bits 8-11
+enum class TestStatusTester : uint16_t {
+  NOT_STARTED = 1 << 8,  // 0001 0000 0000
+  RUNNING = 1 << 9,      // 0010 0000 0000
+  SUCCESS = 1 << 10,     // 0100 0000 0000
+  FAILED = 1 << 11       // 1000 0000 0000
 };
 
 struct RequiredTest {
@@ -33,279 +36,113 @@ struct RequiredTest {
   LoadLevel level;
 };
 
-using namespace Node_Core;
-extern Logger& logger;
-
 class TestSync {
 public:
+  // Get the instance of the singleton
   static TestSync& getInstance() {
     static TestSync instance;
     return instance;
   }
-
-  void testBitEncoding() {
-    EventBits_t testBits = encodeEventBits(
-        0, TestType::SwitchTest, LoadLevel::LEVEL_25,
-        TestStatusManager::PENDING, TestStatusTester::NOT_STARTED);
-    EventBits_t shiftedBits = testBits << (0 * 9);
-    logger.log(LogLevel::WARNING, "Test bits: %d", testBits);
-    logger.logBinary(LogLevel::WARNING, shiftedBits);
-  }
-
-  void addTests(RequiredTest testList[], size_t numTests) {
-    logger.log(LogLevel::WARNING, "Starting addTests...");
-    logger.log(LogLevel::WARNING, "Number of tests to add: ", numTests);
-
-    if (numTests > MAX_TESTS) {
-      numTests = MAX_TESTS;
-    }
-
-    resetTests();
+  void addTest(RequiredTest tests[], size_t numTests) {
 
     for (size_t i = 0; i < numTests; ++i) {
-      logger.log(LogLevel::WARNING, "Adding test %d", i);
-      logger.log(LogLevel::WARNING,
-                 "Test type: ", static_cast<int>(testList[i].testName));
-      logger.log(LogLevel::WARNING,
-                 "Load level: ", static_cast<int>(testList[i].level));
-
-      int groupIndex = i / TESTS_PER_GROUP;
-      int bitIndexWithinGroup = i % TESTS_PER_GROUP;
-      if (groupIndex >= EVENT_GROUP_COUNT) {
-        logger.log(LogLevel::WARNING, "Group index exceeded, breaking...");
-        break;
-      }
-
-      // Encode the bits
-      EventBits_t eventBits = encodeEventBits(
-          bitIndexWithinGroup, testList[i].testName, testList[i].level,
-          TestStatusManager::PENDING, TestStatusTester::NOT_STARTED);
-
-      // Shift the bits to the correct position within the event group
-      EventBits_t shiftedBits = eventBits << (bitIndexWithinGroup * 9);
-
-      logger.logBinary(LogLevel::WARNING, shiftedBits);
-
-      xEventGroupSetBits(eventGroups[groupIndex], shiftedBits);
+      // Set event bits for the test in TestSync
+      setEventBits(tests[i].testName, tests[i].level,
+                   TestStatusManager::PENDING, TestStatusTester::NOT_STARTED);
     }
-
-    logger.log(LogLevel::WARNING, "Finished adding tests.");
   }
+  void getPendingTest(RequiredTest tests[], size_t& numTests) {
 
-  // update test for any side
-  void updateTest(int testIndex, TestType testType, LoadLevel loadLevel,
-                  TestStatusManager managerStatus,
-                  TestStatusTester testerStatus) {
-    int groupIndex = testIndex / TESTS_PER_GROUP;
-    // int bitIndex = testIndex % TESTS_PER_GROUP;
+    size_t testIndex = 0;
 
-    if (groupIndex >= EVENT_GROUP_COUNT)
-      return;
+    for (int i = 0; i < TestSync::NUM_TEST_TYPES; ++i) {
+      EventBits_t bits = getEventBits(static_cast<TestType>(i));
 
-    EventBits_t testMask = encodeEventBits(testIndex, testType, loadLevel,
-                                           TestStatusManager::NOT_IN_QUEUE,
-                                           TestStatusTester::NOT_STARTED);
-    xEventGroupClearBits(eventGroups[groupIndex], testMask);
+      if (bits & static_cast<uint16_t>(TestStatusManager::PENDING)) {
 
-    EventBits_t newEventBits = encodeEventBits(testIndex, testType, loadLevel,
-                                               managerStatus, testerStatus);
-    xEventGroupSetBits(eventGroups[groupIndex], newEventBits);
-  }
-  // update test by manager
-  void updateTest(int testIndex, TestType testType, LoadLevel loadLevel,
-                  TestStatusManager managerStatus) {
-    int groupIndex = testIndex / TESTS_PER_GROUP;
-    // int bitIndex = testIndex % TESTS_PER_GROUP;
-
-    if (groupIndex >= EVENT_GROUP_COUNT)
-      return;
-
-    EventBits_t currentBits = xEventGroupGetBits(eventGroups[groupIndex]);
-    TestStatusTester currentTesterStatus
-        = decodeTesterStatus(currentBits, testIndex);
-
-    EventBits_t testMask
-        = encodeEventBits(testIndex, testType, loadLevel,
-                          TestStatusManager::NOT_IN_QUEUE, currentTesterStatus);
-    xEventGroupClearBits(eventGroups[groupIndex], testMask);
-
-    EventBits_t newEventBits = encodeEventBits(
-        testIndex, testType, loadLevel, managerStatus, currentTesterStatus);
-    xEventGroupSetBits(eventGroups[groupIndex], newEventBits);
-  }
-  // update test by tester
-  void updateTest(int testIndex, TestType testType, LoadLevel loadLevel,
-                  TestStatusTester testerStatus) {
-    int groupIndex = testIndex / TESTS_PER_GROUP;
-    //  int bitIndex = testIndex % TESTS_PER_GROUP;
-
-    if (groupIndex >= EVENT_GROUP_COUNT)
-      return;
-
-    EventBits_t currentBits = xEventGroupGetBits(eventGroups[groupIndex]);
-    TestStatusManager currentManagerStatus
-        = decodeManagerStatus(currentBits, testIndex);
-
-    EventBits_t testMask
-        = encodeEventBits(testIndex, testType, loadLevel, currentManagerStatus,
-                          TestStatusTester::NOT_STARTED);
-    xEventGroupClearBits(eventGroups[groupIndex], testMask);
-
-    EventBits_t newEventBits = encodeEventBits(
-        testIndex, testType, loadLevel, currentManagerStatus, testerStatus);
-    xEventGroupSetBits(eventGroups[groupIndex], newEventBits);
-  }
-
-  TestType getNextTest() {
-    for (int groupIndex = 0; groupIndex < EVENT_GROUP_COUNT; ++groupIndex) {
-      EventBits_t eventBits = xEventGroupGetBits(eventGroups[groupIndex]);
-
-      for (int testIndex = 0; testIndex < TESTS_PER_GROUP; ++testIndex) {
-        int bitOffset = testIndex * 9;  // Each test occupies 9 bits
-        EventBits_t statusMask = 0b11
-                                 << (bitOffset + 2);  // Extract TestStatus bits
-        EventBits_t pendingStatus
-            = static_cast<EventBits_t>(TestStatusManager::PENDING)
-              << (bitOffset + 2);
-
-        if ((eventBits & statusMask) == pendingStatus) {
-          EventBits_t typeMask = 0b11
-                                 << (bitOffset + 6);  // Extract TestType bits
-          return static_cast<TestType>((eventBits & typeMask)
-                                       >> (bitOffset + 6));
-        }
-      }
-    }
-    return TestType::SwitchTest;  // Default if no pending tests found
-  }
-
-  LoadLevel getLoadLevel(int testIndex) {
-    int groupIndex = testIndex / TESTS_PER_GROUP;
-    int bitIndex = testIndex % TESTS_PER_GROUP;
-
-    if (groupIndex >= EVENT_GROUP_COUNT)
-      return LoadLevel::LEVEL_25;
-
-    EventBits_t eventBits = xEventGroupGetBits(eventGroups[groupIndex]);
-    return static_cast<LoadLevel>((eventBits >> (bitIndex * 9 + 4)) & 0b11);
-  }
-
-  int getPendingTests(RequiredTest pendingTests[]) {
-    size_t count = 0;
-
-    for (int groupIndex = 0; groupIndex < EVENT_GROUP_COUNT; ++groupIndex) {
-      EventBits_t eventBits = xEventGroupGetBits(eventGroups[groupIndex]);
-
-      for (int testIndex = 0; testIndex < TESTS_PER_GROUP; ++testIndex) {
-        int bitOffset = testIndex * 9;
-        EventBits_t statusMask = 0b11 << (bitOffset + 2);
-        EventBits_t pendingStatus
-            = static_cast<EventBits_t>(TestStatusManager::PENDING)
-              << (bitOffset + 2);
-
-        if ((eventBits & statusMask) == pendingStatus) {
-          if (count >= MAX_TESTS) {
-            return count;  // Stop if we've reached the maximum number of tests
+        for (int j = 0; j <= 3; ++j) {
+          if (bits & (1 << j)) {
+            tests[testIndex].testName = static_cast<TestType>(i);
+            tests[testIndex].level = static_cast<LoadLevel>(1 << j);
+            testIndex++;
           }
-
-          EventBits_t levelMask = 0b11 << (bitOffset + 4);
-          EventBits_t typeMask = 0b11 << (bitOffset + 6);
-
-          pendingTests[count].testName = static_cast<TestType>(
-              (eventBits & typeMask) >> (bitOffset + 6));
-          pendingTests[count].level = static_cast<LoadLevel>(
-              (eventBits & levelMask) >> (bitOffset + 4));
-          ++count;
-        }
-      }
-    }
-    return count;
-  }
-
-  int getPendingTestNumber() {
-    int pendingTestCount = 0;
-
-    for (int groupIndex = 0; groupIndex < EVENT_GROUP_COUNT; ++groupIndex) {
-      EventBits_t eventBits = xEventGroupGetBits(eventGroups[groupIndex]);
-
-      for (int testIndex = 0; testIndex < TESTS_PER_GROUP; ++testIndex) {
-        EventBits_t mask = 0b11 << (testIndex * 9 + 2);
-        EventBits_t pendingStatus
-            = static_cast<EventBits_t>(TestStatusManager::PENDING)
-              << (testIndex * 9 + 2);
-
-        if ((eventBits & mask) == pendingStatus) {
-          ++pendingTestCount;
         }
       }
     }
 
-    return pendingTestCount;
+    numTests = testIndex;
   }
 
-  TestType getTestType(const RequiredTest pendingTests[], size_t testIndex) {
-    if (testIndex >= MAX_TESTS) {
-      return TestType::SwitchTest;
-    }
-    return pendingTests[testIndex].testName;
+  void setEventBits(TestType testType, LoadLevel loadLevel,
+                    TestStatusManager managerStatus,
+                    TestStatusTester testerStatus) {
+    // Enter critical section
+    portENTER_CRITICAL(&mux_);
+
+    // Set the event bits in the appropriate event group
+    xEventGroupSetBits(eventGroups_[static_cast<uint8_t>(testType)],
+                       static_cast<uint16_t>(loadLevel)
+                           | static_cast<uint16_t>(managerStatus)
+                           | static_cast<uint16_t>(testerStatus));
+
+    // Exit critical section
+    portEXIT_CRITICAL(&mux_);
   }
 
-  LoadLevel getLoadLevel(const RequiredTest pendingTests[], size_t testIndex) {
-    if (testIndex >= MAX_TESTS) {
-      return LoadLevel::LEVEL_25;
-    }
-    return pendingTests[testIndex].level;
-  }
+  // Method to clear event bits
+  void clearEventBits(TestType testType, LoadLevel loadLevel,
+                      TestStatusManager managerStatus,
+                      TestStatusTester testerStatus) {
+    // Enter critical section
+    portENTER_CRITICAL(&mux_);
 
-  void resetTests() {
-    for (int groupIndex = 0; groupIndex < EVENT_GROUP_COUNT; ++groupIndex) {
-      xEventGroupClearBits(eventGroups[groupIndex], TEST_BITS_MASK);
-    }
+    // Clear the event bits in the appropriate event group
+    xEventGroupClearBits(eventGroups_[static_cast<uint8_t>(testType)],
+                         static_cast<uint16_t>(loadLevel)
+                             | static_cast<uint16_t>(managerStatus)
+                             | static_cast<uint16_t>(testerStatus));
+
+    // Exit critical section
+    portEXIT_CRITICAL(&mux_);
+  }
+  EventBits_t getEventBits(TestType testType) {
+    // Enter critical section
+    portENTER_CRITICAL(&mux_);
+
+    // Get the current event bits from the appropriate event group
+    EventBits_t bits
+        = xEventGroupGetBits(eventGroups_[static_cast<uint8_t>(testType)]);
+
+    // Exit critical section
+    portEXIT_CRITICAL(&mux_);
+
+    return bits;
   }
 
 private:
-  static constexpr int MAX_TESTS = 10;
-  static constexpr int TESTS_PER_GROUP = 2;
-  static constexpr int EVENT_GROUP_COUNT
-      = (MAX_TESTS + TESTS_PER_GROUP - 1) / TESTS_PER_GROUP;
-  static constexpr EventBits_t TEST_BITS_MASK = 0x3FFFF;
-
-  EventGroupHandle_t eventGroups[EVENT_GROUP_COUNT];
-
   TestSync() {
-    for (int i = 0; i < EVENT_GROUP_COUNT; ++i) {
-      eventGroups[i] = xEventGroupCreate();
+
+    for (int i = 0; i < NUM_TEST_TYPES; ++i) {
+      eventGroups_[i] = xEventGroupCreate();
+      if (eventGroups_[i] == NULL) {
+      }
     }
   }
 
-  EventBits_t encodeEventBits(int localgroup_testIndex, TestType testType,
-                              LoadLevel loadLevel,
-                              TestStatusManager managerStatus,
-                              TestStatusTester testerStatus) {
+  ~TestSync() {
 
-    if (localgroup_testIndex > 1) {
-      localgroup_testIndex = 1;
+    for (int i = 0; i < NUM_TEST_TYPES; ++i) {
+      if (eventGroups_[i] != NULL) {
+        vEventGroupDelete(eventGroups_[i]);
+      }
     }
-    // Encoding each field with appropriate bit positions
-    EventBits_t eventBits
-        = (static_cast<EventBits_t>(testType) << 6)         // TestType
-          | (static_cast<EventBits_t>(loadLevel) << 4)      // LoadLevel
-          | (static_cast<EventBits_t>(managerStatus) << 2)  // ManagerStatus
-          | static_cast<EventBits_t>(testerStatus);         // TesterStatus
-    return eventBits << (localgroup_testIndex * 9);
   }
 
-  TestStatusManager decodeManagerStatus(EventBits_t eventBits, int testIndex) {
-    int bitIndex = testIndex % TESTS_PER_GROUP;
-    return static_cast<TestStatusManager>((eventBits >> (bitIndex * 9 + 2))
-                                          & 0b11);
-  }
+  static constexpr int NUM_TEST_TYPES = 6;  // Number of test types
+  EventGroupHandle_t eventGroups_[NUM_TEST_TYPES];
+  portMUX_TYPE mux_ = portMUX_INITIALIZER_UNLOCKED;
 
-  TestStatusTester decodeTesterStatus(EventBits_t eventBits, int testIndex) {
-    int bitIndex = testIndex % TESTS_PER_GROUP;
-    return static_cast<TestStatusTester>((eventBits >> (bitIndex * 9 + 6))
-                                         & 0b11);
-  }
+  TestSync(const TestSync&) = delete;
+  TestSync& operator=(const TestSync&) = delete;
 };
-
 #endif  // TEST_SYNC_H

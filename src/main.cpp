@@ -6,6 +6,7 @@
 #include "TestManager.h"
 #include "TestReq.h"
 
+#include "TestReq.h"
 #include "UPSTest.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -98,12 +99,8 @@ void IRAM_ATTR keyISR3(void* pvParameters) {
 void modbusRTUTask(void* pvParameters) {
 
   while (true) {
-    // Serial.print("Resuming modbus task... ");
+    logger.log(LogLevel::INFO, "Resuming modbus task");
     mb.task();
-    // Serial.print("Modbus Stack High Water Mark: ");
-    // Serial.println(uxTaskGetStackHighWaterMark(NULL));  // Monitor stack
-    // usage
-
     vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
   }
   vTaskDelete(NULL);
@@ -128,14 +125,15 @@ void setup() {
   mainLoss = xSemaphoreCreateBinary();
   upsGain = xSemaphoreCreateBinary();
   upsLoss = xSemaphoreCreateBinary();
+  RequiredTest AllTest[3] = {};
 
-  // AllTest[0].testName = TestType::SwitchTest;
-  // AllTest[1].testName = TestType::SwitchTest;
-  // AllTest[2].testName = TestType::SwitchTest;
-  // AllTest[0].level = LoadLevel::LEVEL_25;
-  // AllTest[1].level = LoadLevel::LEVEL_50;
-  // AllTest[2].level = LoadLevel::LEVEL_75;
-  // UPSTestSync.addTests(AllTest, 3);
+  AllTest[0].testName = TestType::SwitchTest;
+  AllTest[1].testName = TestType::BackupTimeTest;
+  AllTest[2].testName = TestType::SwitchTest;
+  AllTest[0].level = LoadLevel::LEVEL_25;
+  AllTest[1].level = LoadLevel::LEVEL_50;
+  AllTest[2].level = LoadLevel::LEVEL_75;
+  UPSTestSync.addTests(AllTest, 3);
 
   // UPSTestSync.testBitEncoding();
 
@@ -148,12 +146,10 @@ void setup() {
     logger.log(LogLevel::INFO, "Artificially getting to AUTO MODE");
     Manager->triggerEvent(Event::SELF_CHECK_OK);
     vTaskDelay(pdTICKS_TO_MS(100));
-    Manager->triggerEvent(Event::USER_PAUSED);
+    Manager->triggerEvent(Event::SETTING_LOADED);
     vTaskDelay(pdTICKS_TO_MS(100));
-    Manager->triggerEvent(Event::SYSTEM_FAULT);
+    Manager->triggerEvent(Event::LOAD_BANK_CHECKED);
     vTaskDelay(pdTICKS_TO_MS(100));
-    // Manager->triggerEvent(Event::LOAD_BANK_CHECKED);
-    // vTaskDelay(pdTICKS_TO_MS(100));
     // logger.log(LogLevel::INFO, "Triggering Auto test cmd event........");
     // Manager->triggerEvent(Event::AUTO_TEST_CMD);
     // vTaskDelay(pdTICKS_TO_MS(100));

@@ -12,7 +12,13 @@ enum class TestType : uint8_t {
   WaveformTest,      // 5
   TunePWMTest        // 6
 };
-
+enum LoadPercentage {
+  LOAD_0P = 0,
+  LOAD_25P = 25,
+  LOAD_50P = 50,
+  LOAD_75P = 75,
+  LOAD_100P = 100
+};
 static const char* testTypeToString(TestType type) {
   switch (type) {
     case TestType::SwitchTest:
@@ -31,13 +37,7 @@ static const char* testTypeToString(TestType type) {
       return "UnknownTest";
   }
 }
-enum LoadPercentage {
-  LOAD_0P = 0,
-  LOAD_25P = 25,
-  LOAD_50P = 50,
-  LOAD_75P = 75,
-  LOAD_100P = 100
-};
+
 struct SwitchTestData {
 
   struct TestData {

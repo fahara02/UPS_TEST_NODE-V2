@@ -1,23 +1,31 @@
 #ifndef TEST_REQ_H
 #define TEST_REQ_H
+#include "Logger.h"
 #include "TestData.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
+// using namespace Node_Core;
+// extern Logger &logger;
 
-// enum class LoadLevel { LEVEL_25 = 0, LEVEL_50, LEVEL_75, LEVEL_100 };
+// enum class LoadLevel {
+//   LEVEL_25 = 1 << 0,
+//   LEVEL_50 = 1 << 1,
+//   LEVEL_75 = 1 << 2,
+//   LEVEL_100 = 1 << 3
+// };
 
 // enum class TestStatusManager {
-//   NOT_IN_QUEUE = 0b00,
-//   PENDING = 0b01,
-//   RETEST = 0b10,
-//   DONE = 0b11
+//   NOT_IN_QUEUE = 1 << 0,
+//   PENDING = 1 << 1,
+//   RETEST = 1 << 2,
+//   DONE = 1 << 3
 // };
 
 // enum class TestStatusTester {
-//   NOT_STARTED = 0b00,
-//   RUNNING = 0b01,
-//   SUCCESS = 0b10,
-//   FAILED = 0b11
+//   NOT_STARTED = 1 << 0,
+//   RUNNING = 1 << 1,
+//   SUCCESS = 1 << 2,
+//   FAILED = 1 << 3
 // };
 // struct RequiredTest {
 //   TestType testName;
@@ -31,6 +39,8 @@
 //     return instance;
 //   }
 //   void addTests(RequiredTest testList[], size_t count) {
+//     logger.log(LogLevel::WARNING, "Starting addTests...");
+//     logger.log(LogLevel::WARNING, "Number of tests to add: ", count);
 //     // Ensure we don't exceed the bit limit
 //     if (count > 2) {
 //       count = 2;  // Limit to 2 tests to avoid exceeding 18 bits
@@ -38,11 +48,20 @@
 //     resetTests();  // Clear previous tests
 
 //     for (size_t i = 0; i < count; ++i) {
+
+//       logger.log(LogLevel::WARNING, "Adding test:", i);
+//       logger.log(LogLevel::WARNING,
+//                  "Test type: ", static_cast<int>(testList[i].testName));
+//       logger.log(LogLevel::WARNING,
+//                  "Load level: ", static_cast<int>(testList[i].level));
+
 //       int testIndex = i;
 //       int bitShift = testIndex * 9;
 //       if (bitShift + 9 > 18) {
 //         break;  // Stop if adding this test would exceed the 18-bit limit
 //       }
+//       logger.log(LogLevel::INFO, "bitshift inside add test:");
+//       logger.logBinary(LogLevel::WARNING, bitShift);
 //       updateTest(testIndex, testList[i].testName, testList[i].level,
 //                  TestStatusManager::PENDING);
 //     }
@@ -64,6 +83,8 @@
 //     EventBits_t newEventBits = encodeEventBits(testIndex, testType,
 //     loadLevel,
 //                                                managerStatus, testerStatus);
+//     logger.log(LogLevel::INFO, "final event bits:");
+//     logger.logBinary(LogLevel::WARNING, newEventBits);
 //     xEventGroupSetBits(eventGroup, newEventBits);
 //   }
 //   // Update test status from the manager side
@@ -126,7 +147,6 @@
 //       }
 //     }
 //     return TestType::SwitchTest;  // Default return if no PENDING test is
-//     found
 //   }
 
 //   // Get the load level for a specific test type
@@ -147,8 +167,7 @@
 //       if ((testBits & 0b11)
 //           == static_cast<EventBits_t>(TestStatusManager::PENDING)) {
 //         if (count >= maxTests) {
-//           break;  // Exit if we've reached the maximum number of tests to
-//           return
+//           break;
 //         }
 
 //         pendingTests[count].testName
@@ -156,6 +175,7 @@
 //         pendingTests[count].level
 //             = static_cast<LoadLevel>((testBits >> 4) & 0b11);
 //         ++count;
+//         return count;
 //       }
 //     }
 

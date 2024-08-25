@@ -60,7 +60,7 @@ void TestManager::pauseallTestTask() {
   logger.log(LogLevel::WARNING, "SwitchTest task is paused");
 }
 void TestManager::triggerEvent(Event event) {
-  logger.log(LogLevel::INFO, "Triggering event ");
+  logger.log(LogLevel::INFO, "Triggering event from manager ");
   instance->stateMachine->handleEvent(event);
 }
 
@@ -139,9 +139,18 @@ void TestManager::TestManagerTask(void* pvParameters) {
   while (true) {
     currentState = instance->stateMachine->getCurrentState();
 
-    if (currentState == State::AUTO_MODE) {
+    if (currentState == State::DEVICE_READY) {
 
       logger.log(LogLevel::INFO, "resuming Test manager task");
+      int testcount = 0;
+      RequiredTest pendingTest[testcount] = {};
+      testcount = UPSTestSync.getPendingTests(pendingTest, 10);
+      logger.log(LogLevel::INFO, "Pending test number is:", testcount);
+      for (int i = 0; i < testcount; i++) {
+        logger.log(LogLevel::INFO, "Pending test %d is:%s", i,
+                   testTypeToString(pendingTest[i].testName));
+      };
+
       vTaskDelay(pdMS_TO_TICKS(200));
     }
     if (currentState == State::TEST_START) {

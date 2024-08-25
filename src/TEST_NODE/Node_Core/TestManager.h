@@ -11,7 +11,7 @@
 #include "UPSTest.h"
 
 #include "SwitchTest.h"
-#include "TestSync.h"
+#include "TestReq.h"
 #include "UPSError.h"
 #include "UPSTesterSetup.h"
 
