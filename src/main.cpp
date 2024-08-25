@@ -43,6 +43,9 @@ TaskHandle_t ISR_MAINS_POWER_LOSS = NULL;
 TaskHandle_t ISR_UPS_POWER_GAIN = NULL;
 TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
 
+QueueHandle_t TestManageQueue = NULL;
+static const uint8_t messageQueueLength = 10;
+
 // Define the SwitchTest instance
 
 UPSTesterSetup* TesterSetup = nullptr;
@@ -122,6 +125,8 @@ void setup() {
   mainLoss = xSemaphoreCreateBinary();
   upsGain = xSemaphoreCreateBinary();
   upsLoss = xSemaphoreCreateBinary();
+  logger.log(LogLevel::INFO, "creating queue");
+  TestManageQueue = xQueueCreate(messageQueueLength, sizeof(SetupTaskParams));
 
   logger.log(LogLevel::INFO, "getting TesterSetup  instance");
   TesterSetup = UPSTesterSetup::getInstance();

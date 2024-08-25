@@ -1,5 +1,5 @@
 #include "SwitchTest.h"
-
+extern QueueHandle_t TestManageQueue;
 using namespace Node_Core;
 // Initialize static members
 SwitchTest* SwitchTest::instance = nullptr;
@@ -44,17 +44,19 @@ void SwitchTest::initTestdataImpl() {
 // Function for SwitchTest task
 void SwitchTest::MainTestTask(void* pvParameters) {
 
+  SetupTaskParams taskParam;
+
   while (true) {
     logger.log(LogLevel::INFO, "resuming switchTest task");
-    SetupTaskParams* taskParam = (SetupTaskParams*)pvParameters;
+    xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 
     logger.log(LogLevel::TEST,
-               "Switchtask VA rating is: ", taskParam->task_TestVARating);
+               "Switchtask VA rating is: ", taskParam.task_TestVARating);
     logger.log(LogLevel::TEST,
-               "Switchtask duration is: ", taskParam->task_testDuration_ms);
+               "Switchtask duration is: ", taskParam.task_testDuration_ms);
     if (instance->_runTest) {
-      instance->run(taskParam->task_TestVARating,
-                    taskParam->task_testDuration_ms);
+      instance->run(taskParam.task_TestVARating,
+                    taskParam.task_testDuration_ms);
     }
 
     logger.log(LogLevel::WARNING, "Hihg Water mark ",

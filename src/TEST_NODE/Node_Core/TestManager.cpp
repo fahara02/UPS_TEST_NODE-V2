@@ -13,20 +13,14 @@ extern volatile bool ups_triggered;
 TestManager* TestManager::instance = nullptr;
 
 TestManager::TestManager()
-    : _initialized(false),
-      _newEventTrigger(false),
-      _setupUpdated(false),
-      _cfgSpec(TesterSetup->specSetup()),
-      _cfgTest(TesterSetup->testSetup()),
-      _cfgTask(TesterSetup->taskSetup()),
-      _cfgTaskParam(TesterSetup->paramSetup()),
-      _cfgHardware(TesterSetup->hardwareSetup()) {
+    : _initialized(false), _newEventTrigger(false), _setupUpdated(false) {
 
   stateMachine = StateMachine::getInstance();
   if (stateMachine) {
     logger.log(LogLevel::SUCCESS, "State machine is on!");
     _currentstate = stateMachine->getCurrentState();
   }
+  instance->UpdateSettings();
 }
 
 TestManager::~TestManager() {}
@@ -56,6 +50,16 @@ void TestManager::init() {
   pauseAllTest();
 
   _initialized = true;  // Mark as initialized
+}
+
+void TestManager::UpdateSettings() {
+  if (TesterSetup) {
+    _cfgSpec = TesterSetup->specSetup();
+    _cfgTest = TesterSetup->testSetup();
+    _cfgTask = TesterSetup->taskSetup();
+    _cfgTaskParam = TesterSetup->paramSetup();
+    _cfgHardware = TesterSetup->hardwareSetup();
+  };
 }
 
 void TestManager::addTests(RequiredTest testList[], int numTest) {
@@ -168,14 +172,13 @@ void TestManager::createISRTasks() {
 }
 void TestManager::createTestTasks() {
   if (switchTest) {
-    SetupTaskParams taskParam;
-    taskParam.task_TestVARating = switchTest->_cfgTaskParam.task_TestVARating;
-    taskParam.task_testDuration_ms
-        = switchTest->_cfgTaskParam.task_testDuration_ms;
+
     logger.log(LogLevel::INFO, "Creating Switchtest task ");
 
+    xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
+
     xTaskCreatePinnedToCore(switchTest->MainTestTask, "MainsTestManager", 12000,
-                            &taskParam, _cfgTask.mainTest_taskIdlePriority,
+                            NULL, _cfgTask.mainTest_taskIdlePriority,
                             &switchTestTaskHandle, 0);
 
     eTaskState state = eTaskGetState(switchTestTaskHandle);
@@ -218,8 +221,8 @@ void TestManager::TestManagerTask(void* pvParameters) {
           LoadPercentage load = instance->testsSW[i].testRequired.loadlevel;
 
           instance->configureSwitchTest(load);
+          vTaskDelay(pdMS_TO_TICKS(200));
 
-          // Get the current state of the SwitchTest task
           eTaskState estate = eTaskGetState(switchTestTaskHandle);
           logger.log(LogLevel::INFO, "SwitchTest task state: %s",
                      etaskStatetoString(estate));
@@ -233,26 +236,7 @@ void TestManager::TestManagerTask(void* pvParameters) {
 
             switchTest->_runTest = true;
 
-            // Wait briefly to allow the task to transition
             vTaskDelay(pdMS_TO_TICKS(100));
-            estate = eTaskGetState(switchTestTaskHandle);
-            logger.log(LogLevel::INFO, "SwitchTest task state after resume: %s",
-                       etaskStatetoString(estate));
-
-            // Verify the task has resumed and is running
-            if (estate == eRunning) {
-              logger.log(LogLevel::INFO, "SwitchTest task is now running.");
-              instance->testsSW[i].testRequired.testStatus.operatorStatus
-                  = TestOperatorStatus::RUNNING;
-            } else {
-              logger.log(LogLevel::ERROR,
-                         "Failed to resume SwitchTest task. Current state: %s",
-                         etaskStatetoString(estate));
-            }
-          } else {
-            logger.log(LogLevel::WARNING,
-                       "SwitchTest task is not suspended; current state: %s",
-                       etaskStatetoString(estate));
           }
         }
       }
@@ -327,23 +311,23 @@ bool TestManager::isTestPendingAndNotStarted(
 void TestManager::configureSwitchTest(LoadPercentage load) {
   switch (load) {
     case LoadPercentage::LOAD_25P:
-      switchTest->_cfgTest.testVARating = 1000;
-      switchTest->_cfgTest.testDuration_ms = 5000;
+      _cfgTaskParam.task_TestVARating = _cfgTest.testVARating * 25 / 100;
+      xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
       logger.log(LogLevel::INFO, "Setup switch test at 25 percent load");
       break;
     case LoadPercentage::LOAD_50P:
-      switchTest->_cfgTest.testVARating = 2000;
-      switchTest->_cfgTest.testDuration_ms = 5000;
+      _cfgTaskParam.task_TestVARating = _cfgTest.testVARating * 50 / 100;
+      xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
       logger.log(LogLevel::INFO, "Setup switch test at 50 percent load");
       break;
     case LoadPercentage::LOAD_75P:
-      switchTest->_cfgTest.testVARating = 3000;
-      switchTest->_cfgTest.testDuration_ms = 5000;
+      _cfgTaskParam.task_TestVARating = _cfgTest.testVARating * 75 / 100;
+      xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
       logger.log(LogLevel::INFO, "Setup switch test at 75 percent load");
       break;
     case LoadPercentage::LOAD_100P:
-      switchTest->_cfgTest.testVARating = 4000;
-      switchTest->_cfgTest.testDuration_ms = 5000;
+      _cfgTaskParam.task_TestVARating = _cfgTest.testVARating;
+      xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
       logger.log(LogLevel::INFO, "Setup switch test at 100 percent load");
       break;
     // Add more cases as needed for other load levels

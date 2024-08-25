@@ -36,6 +36,9 @@ extern SemaphoreHandle_t mainLoss;
 extern SemaphoreHandle_t upsLoss;
 extern SemaphoreHandle_t upsGain;
 
+extern QueueHandle_t TestManageQueue;
+
+
 const uint16_t MAX_TESTS = 6;
 
 using namespace Node_Core;
@@ -103,6 +106,7 @@ public:
   static void onUPSPowerGainTask(void* pvParameters);
   static void onUPSPowerLossTask(void* pvParameters);
   void initializeTestInstances();
+  void UpdateSettings();
 
 private:
   TestManager();
