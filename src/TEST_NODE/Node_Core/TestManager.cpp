@@ -19,8 +19,7 @@ extern SemaphoreHandle_t upsGain;
 
 TestManager* TestManager::instance = nullptr;
 
-TestManager::TestManager()
-    : _initialized(false), _setupUpdated(false), _addedTestbatch(false) {
+TestManager::TestManager() : _initialized(false), _setupUpdated(false) {
 
   stateMachine = StateMachine::getInstance();
   if (stateMachine) {
@@ -54,6 +53,29 @@ void TestManager::init() {
   createManagerTasks();
 
   _initialized = true;  // Mark as initialized
+}
+
+void TestManager::addTests(RequiredTest testList[], int numTest) {
+
+  if (numTest > MAX_TESTS) {
+    logger.log(LogLevel::ERROR, "Maximum Test Limit exeeded", MAX_TESTS);
+    return;
+  }
+  for (int i = 0; i < numTest; ++i) {
+    if (testList[i].testtype == TestType::SwitchTest) {
+
+      testsSW[_numSwitchTest].testinstance = switchTest;
+      testsSW[_numSwitchTest].testRequired = testList[i];
+      testsSW[_numSwitchTest].testData = SwitchTestData();
+      logger.log(LogLevel::SUCCESS, "Added test",
+                 testTypeToString(testList[i].testtype));
+
+      _addedSwitchTest = true;
+      _numSwitchTest++;
+    } else {
+      logger.log(LogLevel::WARNING, "Other Test still not available");
+    }
+  }
 }
 
 void TestManager::pauseAllTest() {
@@ -102,8 +124,6 @@ void TestManager::configureInterrupts() {
   gpio_set_intr_type(upspowerupPin, GPIO_INTR_POSEDGE);
   gpio_set_intr_type(upsshutdownPin, GPIO_INTR_NEGEDGE);
 
-  // Add other cases as needed
-
   gpio_isr_handler_add(mainpowerPin, keyISR1, NULL);
   gpio_isr_handler_add(upspowerupPin, keyISR2, NULL);
   gpio_isr_handler_add(upsshutdownPin, keyISR3, NULL);
@@ -129,21 +149,40 @@ void TestManager::createISRTasks() {
                           _cfgTask.upsISR_taskStack, NULL,
                           _cfgTask.upsISR_taskIdlePriority, &ISR_UPS_POWER_LOSS,
                           _cfgTask.upsISR_taskCore);
+
+  logger.log(LogLevel::SUCCESS, "All ISR task Created");
 }
 
 void TestManager::TestManagerTask(void* pvParameters) {
 
-  // uint32_t result
-  //     = xEventGroupGetBits(instance->stateMachine->TestState_EventGroup);
   State currentState = instance->stateMachine->getCurrentState();
-
+  logger.log(LogLevel::INFO, "Resuming Test Manger task");
   while (true) {
     currentState = instance->stateMachine->getCurrentState();
-    logger.log(LogLevel::INFO, "Resuming Test Manger task");
+    LogLevel logLevel = LogLevel::INFO;
 
     if (currentState == State::DEVICE_READY) {
 
       logger.log(LogLevel::INFO, "Device is ready. Logging pending tests...");
+
+      for (int i = 0; i < MAX_TESTS; ++i) {
+        // Check if the test is pending and not yet started
+        if (instance->testsSW[i].testRequired.testStatus.managerStatus
+                == TestManagerStatus::PENDING
+            && instance->testsSW[i].testRequired.testStatus.operatorStatus
+                   == TestOperatorStatus::NOT_STARTED) {
+          LoadPercentage load = instance->testsSW[i].testRequired.loadlevel;
+          // Log the pending test information
+          logger.log(logLevel, "Pending SwitchTest detected. Load level ",
+                     loadPercentageToString(load));
+
+          instance->testsSW[i].testRequired.testStatus.operatorStatus
+              = TestOperatorStatus::RUNNING;
+
+          // Log the change in status
+          logger.log(logLevel, "SwitchTest is now running.");
+        }
+      }
 
       vTaskDelay(pdMS_TO_TICKS(200));
     }
@@ -221,7 +260,15 @@ void TestManager::onUPSPowerGainTask(void* pvParameters) {
 void TestManager::onUPSPowerLossTask(void* pvParameters) { vTaskDelete(NULL); }
 
 void TestManager::initializeTestInstances() {
-  switchTest->getInstance();
 
-  // Set the number of tests
+  switchTest = SwitchTest::getInstance();
+  if (switchTest) {
+
+    switchTest->init();
+    logger.log(LogLevel::SUCCESS,
+               "Switchtest instance created and initialised");
+  } else {
+
+    logger.log(LogLevel::ERROR, "Switchtest instance creation failed");
+  }
 }

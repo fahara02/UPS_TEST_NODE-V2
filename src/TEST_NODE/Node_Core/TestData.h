@@ -37,6 +37,24 @@ static const char* testTypeToString(TestType type) {
       return "UnknownTest";
   }
 }
+
+static const char* loadPercentageToString(LoadPercentage load) {
+  switch (load) {
+    case LOAD_0P:
+      return "0%";
+    case LOAD_25P:
+      return "25%";
+    case LOAD_50P:
+      return "50%";
+    case LOAD_75P:
+      return "75%";
+    case LOAD_100P:
+      return "100%";
+    default:
+      return "Unknown";
+  }
+}
+
 enum class TestDataType {
   SwitchTestData,
   BackUpTimeTestData,

@@ -79,7 +79,7 @@ public:
   static void deleteInstance();
 
   void init();
-
+  void addTests(RequiredTest testList[], int numTest);
   void runTests();
   void manageTests();
   void terminateTest();
@@ -100,13 +100,13 @@ private:
    testmanager construction or in init phase */
   StateMachine* stateMachine = nullptr;
 
-  UPSTestRun<SwitchTest, SwitchTestData> testSW[MAX_TESTS];
+  UPSTestRun<SwitchTest, SwitchTestData> testsSW[MAX_TESTS];
 
   bool _initialized = false;
   bool _setupUpdated = false;
-  bool _addedTestbatch = false;
-  uint8_t numSwitchTests = 0;
-  uint8_t numBackupTimeTests = 0;
+  bool _addedSwitchTest = false;
+  uint8_t _numSwitchTest = 0;
+  uint8_t _numBackupTimeTest = 0;
 
   State _currentstate;
   SetupSpec _cfgSpec;

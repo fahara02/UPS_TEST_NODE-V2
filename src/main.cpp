@@ -62,7 +62,6 @@ void IRAM_ATTR keyISR1(void* pvParameters) {
   if (currentTime - lastMainsTriggerTime > debounceDelay) {
     BaseType_t urgentTask = pdFALSE;
     lastMainsTriggerTime = currentTime;
-    // xTaskResumeFromISR(ISR_MAINS_POWER_LOSS);
     xSemaphoreGiveFromISR(mainLoss, &urgentTask);
     if (urgentTask) {
       vPortEvaluateYieldFromISR(urgentTask);
@@ -123,29 +122,43 @@ void setup() {
   mainLoss = xSemaphoreCreateBinary();
   upsGain = xSemaphoreCreateBinary();
   upsLoss = xSemaphoreCreateBinary();
+  // logger.log(LogLevel::INFO, "getting SwitchtestInstance  instance");
+  // switchTest = SwitchTest::getInstance();
 
-  // UPSTestSync.testBitEncoding();
-
+  logger.log(LogLevel::INFO, "getting TesterSetup  instance");
   TesterSetup = UPSTesterSetup::getInstance();
+
+  if (TesterSetup) {
+    logger.log(LogLevel::SUCCESS, "TesterSetup instance created!");
+  } else {
+    logger.log(LogLevel::ERROR, "TesterSetup instance creation failed");
+  }
+  logger.log(LogLevel::INFO, "getting manager instance");
   Manager = TestManager::getInstance();
 
   if (Manager) {
+    logger.log(LogLevel::SUCCESS, "Manager instance created!");
     Manager->init();
     logger.log(LogLevel::INFO, "Testmanager  initialised........");
+  } else {
+    logger.log(LogLevel::ERROR, "Manager instance creation failed");
+  }
 
-    logger.log(LogLevel::INFO, "Artificially getting to AUTO MODE");
+  if (Manager) {
+
+    RequiredTest testlist[] = {
+        {1, TestType::SwitchTest, LoadPercentage::LOAD_50P, TestStatus()},
+        {2, TestType::SwitchTest, LoadPercentage::LOAD_75P, TestStatus()},
+
+    };
+    Manager->addTests(testlist, 2);
+
     Manager->triggerEvent(Event::SELF_CHECK_OK);
     vTaskDelay(pdTICKS_TO_MS(100));
     Manager->triggerEvent(Event::SETTING_LOADED);
     vTaskDelay(pdTICKS_TO_MS(100));
     Manager->triggerEvent(Event::LOAD_BANK_CHECKED);
     vTaskDelay(pdTICKS_TO_MS(100));
-    // logger.log(LogLevel::INFO, "Triggering Auto test cmd event........");
-    // Manager->triggerEvent(Event::AUTO_TEST_CMD);
-    // vTaskDelay(pdTICKS_TO_MS(100));
-    // logger.log(LogLevel::INFO, "Triggering input output ready
-    // event........"); Manager->triggerEvent(Event::INPUT_OUTPUT_READY);
-    // vTaskDelay(pdTICKS_TO_MS(100));
   }
 
   else {
