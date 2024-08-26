@@ -8,9 +8,6 @@
 
 #include "UPSError.h"
 #include "UPSTesterSetup.h"
-#include "SwitchTest.h"
-
-class SwitchTest;
 
 extern void IRAM_ATTR keyISR1(void* pvParameters);
 extern void IRAM_ATTR keyISR2(void* pvParameters);
@@ -18,7 +15,6 @@ extern void IRAM_ATTR keyISR3(void* pvParameters);
 
 using namespace Node_Core;
 
-extern SwitchTest* switchTest;
 // class BackupTest;
 // extern BackupTest* backupTest;
 

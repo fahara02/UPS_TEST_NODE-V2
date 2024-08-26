@@ -5,7 +5,7 @@
 #include "HardwareConfig.h"
 #include "Logger.h"
 #include "TestData.h"
-#include "TestManager.h"
+
 #include "UPSTesterSetup.h"
 
 using namespace Node_Core;
@@ -13,13 +13,18 @@ extern Logger& logger;
 
 extern UPSTesterSetup* TesterSetup;
 
-template<typename T>
+template<class T>
 class UPSTest
 {
   public:
+	static T* getInstance();
+	static void deleteInstance();
 	// Pure virtual function to be implemented by derived classes
 	virtual void init() = 0;
 	virtual TestResult run(uint16_t testVARating, unsigned long testDuration) = 0;
+	virtual void startTestCapture() = 0;
+	virtual void stopTestCapture() = 0;
+	virtual bool processTestImpl() = 0;
 
   protected:
 	UPSTest(); // Protected constructor
@@ -34,9 +39,6 @@ class UPSTest
 	void processTest(T& test);
 
 	// Pure virtual functions to be implemented by derived classes
-	virtual void startTestCapture() = 0;
-	virtual void stopTestCapture() = 0;
-	virtual bool processTestImpl() = 0;
 
   private:
 	static T* instance;
@@ -54,6 +56,26 @@ template<typename T>
 UPSTest<T>::UPSTest()
 {
 	// Constructor logic if needed
+}
+
+template<typename T>
+T* UPSTest<T>::getInstance()
+{
+	if(instance == nullptr)
+	{
+		instance = new T();
+	}
+	return instance;
+}
+
+template<typename T>
+void UPSTest<T>::deleteInstance()
+{
+	if(instance != nullptr)
+	{
+		delete instance;
+		instance = nullptr;
+	}
 }
 
 template<typename T>

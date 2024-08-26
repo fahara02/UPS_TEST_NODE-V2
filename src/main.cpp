@@ -11,15 +11,14 @@
 #include "ModbusManager.h"
 #include "TestSync.h"
 #include "TestManager.h"
-
+#include "UPSTest.h"
 #include "SwitchTest.h"
+#include "BackupTest.h"
 
 using namespace Node_Core;
 
-class SwitchTest;
-SwitchTest* switchTest = nullptr;
-// class BackupTest;
-// BackupTest* backupTest = nullptr;
+SwitchTest* switchTest = UPSTest<SwitchTest>::getInstance();
+BackupTest* backupTest = UPSTest<BackupTest>::getInstance();
 
 // Global Logger Instance
 Logger& logger = Logger::getInstance();

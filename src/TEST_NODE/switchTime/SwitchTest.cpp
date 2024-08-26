@@ -1,4 +1,5 @@
 #include "SwitchTest.h"
+#include "TestManager.h"
 
 extern TestManager* Manager;
 extern QueueHandle_t TestManageQueue;
@@ -6,35 +7,17 @@ extern EventGroupHandle_t eventGroupTest;
 extern TaskHandle_t switchTestTaskHandle;
 
 using namespace Node_Core;
+extern SwitchTest* switchTest;
 // Static member initialization
-SwitchTest* SwitchTest::instanceSW = nullptr;
+// template<>
+// SwitchTest* UPSTest<SwitchTest>::instance = nullptr;
+
 SwitchTest::~SwitchTest()
 {
-	if(instanceSW)
+	if(switchTestTaskHandle != NULL)
 	{
-		if(switchTestTaskHandle != NULL)
-		{
-			vTaskDelete(switchTestTaskHandle);
-			switchTestTaskHandle = NULL;
-		}
-	}
-	instanceSW = nullptr;
-}
-
-SwitchTest* SwitchTest::getSWInstance()
-{
-	if(instanceSW == nullptr)
-	{
-		instanceSW = new SwitchTest();
-	}
-	return instanceSW;
-}
-
-void SwitchTest::deleteSWInstance()
-{
-	if(instanceSW != nullptr)
-	{
-		delete instanceSW;
+		vTaskDelete(switchTestTaskHandle);
+		switchTestTaskHandle = NULL;
 	}
 }
 
@@ -79,7 +62,7 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 			logger.log(LogLevel::TEST, "Switchtask VA rating is: ", taskParam.task_TestVARating);
 			logger.log(LogLevel::TEST, "Switchtask duration is: ", taskParam.task_testDuration_ms);
 
-			instanceSW->run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
+			switchTest->run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
 
 			logger.log(LogLevel::WARNING, "Hihg Water mark ", uxTaskGetStackHighWaterMark(NULL));
 		}

@@ -1,7 +1,10 @@
 #include "TestManager.h"
+#include "SwitchTest.h"
 #include "Logger.h"
 #include "TestData.h"
 #include "TestSync.h"
+
+extern SwitchTest* switchTest;
 
 using namespace Node_Core;
 extern Logger& logger;
@@ -383,7 +386,6 @@ void TestManager::onUPSPowerLossTask(void* pvParameters)
 
 void TestManager::initializeTestInstances()
 {
-	switchTest = SwitchTest::getSWInstance();
 	if(switchTest)
 	{
 		switchTest->init();
