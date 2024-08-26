@@ -2,6 +2,7 @@
 #define SWITCH_TEST_H
 #include "TestData.h"
 #include "UPSTest.h"
+#include "TestManager.h"
 using namespace Node_Core;
 
 class SwitchTest : public UPSTest<SwitchTest>
@@ -36,7 +37,7 @@ class SwitchTest : public UPSTest<SwitchTest>
 
   protected:
   private:
-	// friend class TestManager;
+	friend class TestManager;
 
 	// static SwitchTest* instanceSW; // Static pointer to hold the instance
 	SwitchTestData _data_SW;

@@ -1,4 +1,3 @@
-#include "TestManager.h"
 #include "SwitchTest.h"
 #include "Logger.h"
 #include "TestData.h"
