@@ -31,6 +31,7 @@ public:
     logger.log(LogLevel::SUCCESS, "for test %s cleared Eventbit to->",
                testTypeToString(test));
     logger.logBinary(LogLevel::WARNING, test_eventbits);
+    vTaskDelay(pdMS_TO_TICKS(50));
   };
 
 private:

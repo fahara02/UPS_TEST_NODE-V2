@@ -55,15 +55,21 @@ void SwitchTest::MainTestTask(void* pvParameters) {
     logger.log(LogLevel::INFO, "resuming switchTest task");
     xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 
-    logger.log(LogLevel::TEST,
-               "Switchtask VA rating is: ", taskParam.task_TestVARating);
-    logger.log(LogLevel::TEST,
-               "Switchtask duration is: ", taskParam.task_testDuration_ms);
+    EventBits_t sw_eventbits = static_cast<EventBits_t>(TestType::SwitchTest);
 
-    instance->run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
+    int result = xEventGroupGetBits(eventGroupTest);
+    if ((result & sw_eventbits) != 0) {
+      logger.log(LogLevel::TEST,
+                 "Switchtask VA rating is: ", taskParam.task_TestVARating);
+      logger.log(LogLevel::TEST,
+                 "Switchtask duration is: ", taskParam.task_testDuration_ms);
 
-    logger.log(LogLevel::WARNING, "Hihg Water mark ",
-               uxTaskGetStackHighWaterMark(NULL));
+      instance->run(taskParam.task_TestVARating,
+                    taskParam.task_testDuration_ms);
+
+      logger.log(LogLevel::WARNING, "Hihg Water mark ",
+                 uxTaskGetStackHighWaterMark(NULL));
+    }
 
     vTaskDelay(pdMS_TO_TICKS(200));  // Delay to prevent tight loop
   }

@@ -20,7 +20,7 @@ enum class SettingType {
 };
 
 struct SetupSpec {
-  uint16_t Rating_va = 1000;
+  uint16_t Rating_va = 2000;
   uint16_t RatedVoltage_volt = 230;
   uint16_t RatedCurrent_amp = 6;
   uint16_t MinInputVoltage_volt = 180;

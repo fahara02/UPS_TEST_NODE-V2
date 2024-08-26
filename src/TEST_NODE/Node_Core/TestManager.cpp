@@ -232,6 +232,23 @@ void TestManager::TestManagerTask(void* pvParameters) {
           SyncTest.startTest(TestType::SwitchTest);
           vTaskPrioritySet(switchTestTaskHandle,
                            instance->_cfgTask.mainTest_taskIdlePriority + 2);
+
+          if (switchTest->_dataCaptureOk) {
+            logger.log(LogLevel::SUCCESS,
+                       "Successfull data capture , updating status");
+
+            instance->testsSW[i].testRequired.testStatus.managerStatus
+                = TestManagerStatus::DONE;
+            instance->testsSW[i].testRequired.testStatus.operatorStatus
+                = TestOperatorStatus::SUCCESS;
+
+            logger.log(LogLevel::WARNING, "Pausing SwitchTest task");
+
+            SyncTest.stopTest(TestType::SwitchTest);
+            eTaskState estate = eTaskGetState(switchTestTaskHandle);
+            logger.log(LogLevel::INFO, "SwitchTest task state: %s",
+                       etaskStatetoString(estate));
+          }
           vTaskDelay(pdMS_TO_TICKS(instance->_cfgTaskParam.task_testDuration_ms
                                    + 100));
         }
@@ -259,7 +276,6 @@ void TestManager::onMainsPowerLossTask(void* pvParameters) {
       logger.log(LogLevel::INFO, "mains task High Water Mark:",
                  uxTaskGetStackHighWaterMark(NULL));
       vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
-      vTaskSuspend(NULL);
     }
   }
   vTaskDelete(NULL);
@@ -280,7 +296,6 @@ void TestManager::onUPSPowerGainTask(void* pvParameters) {
                  "UPS High Water Mark:", uxTaskGetStackHighWaterMark(NULL));
 
       vTaskDelay(pdMS_TO_TICKS(100));  // Task delay
-      vTaskSuspend(NULL);
     }
   }
   vTaskDelete(NULL);
