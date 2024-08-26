@@ -33,7 +33,7 @@ struct SetupSpec {
 struct SetupTest {
   const char* TestStandard = "IEC 62040-3";
   TestMode mode = TestMode::AUTO;
-  uint16_t testVARating = 1000;
+  uint16_t testVARating = 3000;
   uint16_t inputVoltage_volt = 220;
   unsigned long testDuration_ms = 600000UL;
   unsigned long min_valid_switch_time_ms = 1UL;
@@ -59,9 +59,11 @@ struct SetupTask {
 };
 
 struct SetupTaskParams {
+
   bool flag_mains_power_loss = false;
   bool flag_ups_power_gain = false;
   bool flag_ups_power_loss = false;
+  uint16_t test_No = 0;
   uint16_t task_TestVARating = 1000;
   unsigned long task_testDuration_ms = 10000UL;
   unsigned long lastsetting_updated = 0UL;

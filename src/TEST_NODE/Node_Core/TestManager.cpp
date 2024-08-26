@@ -223,7 +223,7 @@ void TestManager::TestManagerTask(void* pvParameters) {
           LoadPercentage load = instance->testsSW[i].testRequired.loadlevel;
 
           instance->configureSwitchTest(load);
-          vTaskDelay(pdMS_TO_TICKS(200));
+          // vTaskDelay(pdMS_TO_TICKS(200));
 
           eTaskState estate = eTaskGetState(switchTestTaskHandle);
           logger.log(LogLevel::INFO, "SwitchTest task state: %s",
@@ -320,33 +320,43 @@ bool TestManager::isTestPendingAndNotStarted(
 }
 
 void TestManager::configureSwitchTest(LoadPercentage load) {
+  SetupTaskParams task_Param;
+  task_Param = TesterSetup->paramSetup();
   switch (load) {
+    case LoadPercentage::LOAD_0P:
+
+      task_Param.task_TestVARating = 0;
+      logger.log(LogLevel::INFO, "Setup switch test for Noload");
+      break;
     case LoadPercentage::LOAD_25P:
-      _cfgTaskParam.task_TestVARating = _cfgTest.testVARating * 25 / 100;
-      xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
+
+      task_Param.task_TestVARating = _cfgTest.testVARating * 25 / 100;
       logger.log(LogLevel::INFO, "Setup switch test at 25 percent load");
       break;
     case LoadPercentage::LOAD_50P:
-      _cfgTaskParam.task_TestVARating = _cfgTest.testVARating * 50 / 100;
-      xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
+
+      task_Param.task_TestVARating = _cfgTest.testVARating * 50 / 100;
       logger.log(LogLevel::INFO, "Setup switch test at 50 percent load");
       break;
     case LoadPercentage::LOAD_75P:
-      _cfgTaskParam.task_TestVARating = _cfgTest.testVARating * 75 / 100;
-      xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
+
+      task_Param.task_TestVARating = _cfgTest.testVARating * 75 / 100;
       logger.log(LogLevel::INFO, "Setup switch test at 75 percent load");
       break;
     case LoadPercentage::LOAD_100P:
-      _cfgTaskParam.task_TestVARating = _cfgTest.testVARating;
-      xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
+
+      task_Param.task_TestVARating = _cfgTest.testVARating;
       logger.log(LogLevel::INFO, "Setup switch test at 100 percent load");
       break;
-    // Add more cases as needed for other load levels
     default:
       logger.log(LogLevel::ERROR, "Unknown load percentage");
       break;
   }
+
+  // Send the task parameters to the queue
+  xQueueSend(TestManageQueue, &task_Param, 100);
 }
+
 void TestManager::logPendingSwitchTest(
     const UPSTestRun<SwitchTest, SwitchTestData>& test) {
   LoadPercentage load = test.testRequired.loadlevel;

@@ -117,6 +117,7 @@ void setup() {
   logger.init();
   logger.log(LogLevel::INFO, "Serial started........");
 
+  SyncTest.init();
   modbusRTU_Init();
   Serial2.begin(9600, SERIAL_8N1);
   mb.begin(&Serial2);

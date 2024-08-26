@@ -48,17 +48,18 @@ void SwitchTest::initTestdataImpl() {
 void SwitchTest::MainTestTask(void* pvParameters) {
 
   SetupTaskParams taskParam;
+  xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 
   while (xEventGroupWaitBits(eventGroupTest,
                              static_cast<EventBits_t>(TestType::SwitchTest),
                              pdFALSE, pdTRUE, portMAX_DELAY)) {
     logger.log(LogLevel::INFO, "resuming switchTest task");
-    xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 
     EventBits_t sw_eventbits = static_cast<EventBits_t>(TestType::SwitchTest);
-
     int result = xEventGroupGetBits(eventGroupTest);
+
     if ((result & sw_eventbits) != 0) {
+      xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
       logger.log(LogLevel::TEST,
                  "Switchtask VA rating is: ", taskParam.task_TestVARating);
       logger.log(LogLevel::TEST,
@@ -144,6 +145,10 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
   // Main loop running until the total test duration expires
   while (millis() - testStartTime < _testDuration) {
     logger.log(LogLevel::TEST, "Test ongoing...");
+
+    unsigned long elapsedTime = millis() - testStartTime;
+    unsigned long remainingTime = _testDuration - elapsedTime;
+    logger.log(LogLevel::INFO, "remaining time ms:", remainingTime);
 
     if (!_testinProgress) {
       simulatePowerCut();
