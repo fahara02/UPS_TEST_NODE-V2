@@ -125,12 +125,6 @@ private:
              dataCapturedFlag.store(false);  // Reset the flag
            },
            []() { return true; }},
-          {State::CURRENT_TEST_CHECK, Event::TEST_TIME_END,
-           State::CURRENT_TEST_CHECK,
-           []() {
-             // No state change, but handle the event
-           },
-           []() { return true; }},
           {State::TEST_IN_PROGRESS, Event::DATA_CAPTURED,
            State::CURRENT_TEST_CHECK,
            [this]() {
@@ -139,6 +133,14 @@ private:
              updateStateEventGroup(State::CURRENT_TEST_CHECK, true);
            },
            []() { return true; }},
+
+          {State::CURRENT_TEST_CHECK, Event::TEST_TIME_END,
+           State::CURRENT_TEST_CHECK,
+           []() {
+             // No state change, but handle the event
+           },
+           []() { return true; }},
+
           {State::ALL_TEST_DONE, Event::TEST_FAILED, State::RECOVER_DATA,
            [this]() { handleError(); }, []() { return true; }},
           {State::ADDENDUM_TEST_DATA, Event::JSON_READY, State::TRANSPORT_DATA,

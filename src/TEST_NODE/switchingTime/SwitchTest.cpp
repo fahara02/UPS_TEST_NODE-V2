@@ -148,7 +148,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
     logger.log(LogLevel::WARNING,
                "Triggering Test ongoing event from switch test");
     Manager->triggerEvent(Event::TEST_ONGOING);
-    vTaskDelay(pdTICKS_TO_MS(50));
+    vTaskDelay(pdTICKS_TO_MS(100));
   }
 
   // Main loop running until the total test duration expires
@@ -175,12 +175,13 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
     logger.log(LogLevel::TEST, "Test cycle ended. Power restored.");
     _testinProgress = false;
     _triggerTestEndEvent = true;
+    _triggerTestOngoingEvent = false;
     logger.log(LogLevel::WARNING, "Cycle ended for single switch test");
     Manager->triggerEvent(Event::TEST_TIME_END);
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 
-  vTaskDelay(pdMS_TO_TICKS(100));  // Small delay before processing
+  vTaskDelay(pdMS_TO_TICKS(200));  // Small delay before processing
 
   if (_dataCaptureOk) {
     logger.log(LogLevel::TEST, "Processing time captured");
@@ -189,7 +190,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
       logger.log(LogLevel::SUCCESS,
                  "Triggering DATA Captured event from switch test");
       Manager->triggerEvent(Event::DATA_CAPTURED);
-      vTaskDelay(pdMS_TO_TICKS(50));
+      vTaskDelay(pdMS_TO_TICKS(100));
     }
 
     if (processTestImpl()) {
@@ -200,25 +201,30 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
                    "Triggering VAlid Data  event from switch test");
         sendEndSignal();
         Manager->triggerEvent(Event::VALID_DATA);
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(100));
       }
 
       logger.log(LogLevel::TEST,
                  "Switching Time: ", _data.switchTest[_currentTest].switchtime);
 
-      logger.log(LogLevel::SUCCESS, "Test completed successfully");
+      logger.log(LogLevel::SUCCESS, "Current SwitchTest finished!");
+      vTaskDelay(pdMS_TO_TICKS(1000));
       return TEST_SUCCESSFUL;
     } else {
       logger.log(LogLevel::ERROR, "Invalid timing data");
       Manager->triggerEvent(Event::TEST_FAILED);
+      vTaskDelay(pdMS_TO_TICKS(1000));
       return TEST_FAILED;
     }
   } else {
     logger.log(LogLevel::ERROR, "Data capture failed");
     Manager->triggerEvent(Event::TEST_FAILED);
+    vTaskDelay(pdMS_TO_TICKS(1000));
     return TEST_FAILED;
   }
 
   logger.log(LogLevel::ERROR, "Test failed");
+  Manager->triggerEvent(Event::TEST_FAILED);
+  vTaskDelay(pdMS_TO_TICKS(1000));
   return TEST_FAILED;
 }

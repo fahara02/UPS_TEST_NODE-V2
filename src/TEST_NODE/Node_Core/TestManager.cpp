@@ -288,12 +288,12 @@ void TestManager::TestManagerTask(void* pvParameters) {
         if (currentState == State::DEVICE_READY) {
           instance->logPendingSwitchTest(instance->testsSW[i]);
           instance->triggerEvent(Event::AUTO_TEST_CMD);
-          vTaskDelay(pdMS_TO_TICKS(50));
+          vTaskDelay(pdMS_TO_TICKS(100));
 
         } else if (currentState == State::AUTO_MODE) {
-          vTaskDelay(pdMS_TO_TICKS(50));
+          vTaskDelay(pdMS_TO_TICKS(100));
           instance->triggerEvent(Event::PENDING_TEST_FOUND);
-          vTaskDelay(pdMS_TO_TICKS(50));
+          vTaskDelay(pdMS_TO_TICKS(100));
         }
 
         else if (currentState == State::TEST_START) {
@@ -320,8 +320,7 @@ void TestManager::TestManagerTask(void* pvParameters) {
             logger.log(LogLevel::SUCCESS, "Successful data capture.");
           }
 
-          vTaskDelay(pdMS_TO_TICKS(instance->_cfgTaskParam.task_testDuration_ms
-                                   + 100));
+          vTaskDelay(pdMS_TO_TICKS(100));
         } else if (currentState == State::CURRENT_TEST_CHECK) {
           logger.log(
               LogLevel::INFO,
@@ -333,8 +332,7 @@ void TestManager::TestManagerTask(void* pvParameters) {
             logger.log(LogLevel::SUCCESS, "Successful data capture.");
           }
 
-          vTaskDelay(pdMS_TO_TICKS(instance->_cfgTaskParam.task_testDuration_ms
-                                   + 100));
+          vTaskDelay(pdMS_TO_TICKS(100));
         } else if (currentState == State::CURRENT_TEST_OK) {
           logger.log(LogLevel::INFO,
                      "Test completed successfully. Stopping SwitchTest...");
@@ -345,7 +343,7 @@ void TestManager::TestManagerTask(void* pvParameters) {
               = TestOperatorStatus::SUCCESS;
           logger.log(LogLevel::WARNING, "Triggering SAVE event from manager");
           instance->triggerEvent(Event::SAVE);
-
+          vTaskDelay(pdMS_TO_TICKS(100));
         }
 
         else if (currentState == State::READY_NEXT_TEST) {
@@ -364,7 +362,9 @@ void TestManager::TestManagerTask(void* pvParameters) {
           if (pendingTestFound) {
             logger.log(LogLevel::INFO,
                        "Pending test found. Preparing to start next test...");
+
             instance->triggerEvent(Event::PENDING_TEST_FOUND);
+            vTaskDelay(pdMS_TO_TICKS(200));
           } else {
             logger.log(LogLevel::INFO, "No more pending tests.");
           }
