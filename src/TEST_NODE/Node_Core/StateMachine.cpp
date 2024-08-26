@@ -40,7 +40,9 @@ void StateMachine::deleteInstance() {
 }
 
 void StateMachine::setState(State new_state) {
+
   current_state.store(new_state);
+
   // Take the mutex to ensure exclusive access
   // if (xSemaphoreTake(state_mutex, portMAX_DELAY) == pdTRUE) {
   //   // Perform the atomic state update
