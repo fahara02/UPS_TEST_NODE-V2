@@ -12,9 +12,6 @@
 using namespace Node_Core;
 extern Logger& logger;
 
-extern volatile bool mains_triggered;
-extern volatile bool ups_triggered;
-
 using namespace Node_Core;
 extern UPSTesterSetup* TesterSetup;
 extern TaskHandle_t switchTestTaskHandle;

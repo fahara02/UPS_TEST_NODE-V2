@@ -7,6 +7,7 @@
 
 using namespace Node_Core;
 extern Logger& logger;
+extern xSemaphoreHandle state_mutex;
 namespace Node_Core {
 StateMachine* StateMachine::instance = nullptr;
 
@@ -18,6 +19,10 @@ StateMachine::StateMachine()
 
   TestState_EventGroup = xEventGroupCreate();
   SystemEvents_EventGroup = xEventGroupCreate();
+  // state_mutex = xSemaphoreCreateMutex();
+  // if (state_mutex == NULL) {
+  //   logger.log(LogLevel::ERROR, "State mutex creation failed!");
+  // }
 }
 
 StateMachine::~StateMachine() {}
@@ -34,9 +39,33 @@ void StateMachine::deleteInstance() {
   instance = nullptr;
 }
 
-void StateMachine::setState(State new_state) { current_state.store(new_state); }
+void StateMachine::setState(State new_state) {
+  current_state.store(new_state);
+  // Take the mutex to ensure exclusive access
+  // if (xSemaphoreTake(state_mutex, portMAX_DELAY) == pdTRUE) {
+  //   // Perform the atomic state update
+  //   current_state.store(new_state);
+  //   xSemaphoreGive(state_mutex);
+  // } else {
+  //   // Handle error: Failed to take mutex
+  //   // For example, use a watchdog or error log
+  // }
+}
 
-State StateMachine::getCurrentState() const { return current_state; }
+State StateMachine::getCurrentState() const {
+  State state;
+  state = current_state.load();
+  // Take the mutex to ensure exclusive access
+  // if (xSemaphoreTake(state_mutex, portMAX_DELAY) == pdTRUE) {
+  //   // Read the atomic state
+  //   state = current_state.load();
+  //   xSemaphoreGive(state_mutex);
+  // } else {
+  //   // Handle error: Failed to take mutex
+  //   state = State::DEVICE_ON;  // or some default state
+  // }
+  return state;
+}
 
 void StateMachine::updateStateEventGroup(State state, bool set_bits) {
   EventBits_t bits = static_cast<EventBits_t>(state);

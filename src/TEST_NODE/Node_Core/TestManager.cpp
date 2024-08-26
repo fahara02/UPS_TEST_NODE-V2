@@ -6,11 +6,7 @@
 using namespace Node_Core;
 extern Logger& logger;
 extern TestSync& SyncTest;
-
-// extern TestSync& UPSTestSync;
-
-extern volatile bool mains_triggered;
-extern volatile bool ups_triggered;
+// extern SemaphoreHandle_t state_mutex;
 
 TestManager* TestManager::instance = nullptr;
 
@@ -102,8 +98,14 @@ void TestManager::pauseAllTest() {
   }
 }
 void TestManager::triggerEvent(Event event) {
-
   instance->stateMachine->handleEvent(event);
+  // if (xSemaphoreTake(state_mutex, portMAX_DELAY) == pdTRUE) {
+  //   // Process the event safely
+  //   instance->stateMachine->handleEvent(event);
+  //   xSemaphoreGive(state_mutex);
+  // } else {
+  //   // Handle error: Failed to take mutex
+  // }
 }
 
 void TestManager::setupPins() {
@@ -385,7 +387,6 @@ void TestManager::onMainsPowerLossTask(void* pvParameters) {
         switchTest->_dataCaptureRunning = true;
         switchTest->startTestCapture();
         logger.log(LogLevel::INTR, "mains Powerloss triggered...");
-        mains_triggered = false;
       }
 
       logger.log(LogLevel::INFO, "mains task High Water Mark:",
@@ -405,7 +406,6 @@ void TestManager::onUPSPowerGainTask(void* pvParameters) {
       if (switchTest) {
         switchTest->stopTestCapture();
         logger.log(LogLevel::INTR, "UPS Powerloss triggered...");
-        ups_triggered = false;
       }
       logger.log(LogLevel::INFO,
                  "UPS High Water Mark:", uxTaskGetStackHighWaterMark(NULL));

@@ -2,8 +2,6 @@
 #define STATE_MACHINE_H_
 
 #include "StateDefines.h"
-
-// #include "freertos/event_groups.h"
 #include <array>
 #include <atomic>
 #include <cstddef>
@@ -104,12 +102,13 @@ private:
               Event::NONE>(),  // Added
           Row<State::TEST_IN_PROGRESS, Event::TEST_TIME_END,
               State::CURRENT_TEST_CHECK, Event::NONE>(),
+          Row<State::CURRENT_TEST_CHECK, Event::TEST_TIME_END,
+              State::CURRENT_TEST_CHECK, Event::NONE>(),
           Row<State::TEST_IN_PROGRESS, Event::DATA_CAPTURED,
               State::CURRENT_TEST_CHECK, Event::NONE>(),
           Row<State::CURRENT_TEST_CHECK, Event::VALID_DATA,
               State::CURRENT_TEST_OK, Event::NONE>(),
-          Row<State::CURRENT_TEST_CHECK, Event::TEST_TIME_END,
-              State::CURRENT_TEST_CHECK, Event::NONE>(),
+
           Row<State::TEST_IN_PROGRESS, Event::TEST_FAILED, State::RETEST,
               Event::NONE>(),  // Added
           Row<State::CURRENT_TEST_CHECK, Event::TEST_FAILED, State::RETEST,

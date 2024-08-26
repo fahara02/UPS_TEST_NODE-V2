@@ -22,14 +22,14 @@ TestSync& SyncTest = TestSync::getInstance();
 
 volatile unsigned long lastMainsTriggerTime = 0;
 volatile unsigned long lastUPSTriggerTime = 0;
-volatile bool mains_triggered = false;
-volatile bool ups_triggered = false;
 volatile bool check_ups_shutdown = false;
 const unsigned long debounceDelay = 100;
 
 SemaphoreHandle_t mainLoss = NULL;
 SemaphoreHandle_t upsLoss = NULL;
 SemaphoreHandle_t upsGain = NULL;
+
+xSemaphoreHandle state_mutex = NULL;
 
 TaskHandle_t modbusRTUTaskHandle = NULL;
 TaskHandle_t switchTestTaskHandle = NULL;
@@ -68,11 +68,11 @@ ModbusRTU mb;
 void IRAM_ATTR keyISR1(void* pvParameters) {
   unsigned long currentTime = millis();
   if (currentTime - lastMainsTriggerTime > debounceDelay) {
-    BaseType_t urgentTask = pdFALSE;
+    BaseType_t higherPriorityTaskWoken = pdFALSE;
     lastMainsTriggerTime = currentTime;
-    xSemaphoreGiveFromISR(mainLoss, &urgentTask);
-    if (urgentTask) {
-      vPortEvaluateYieldFromISR(urgentTask);
+    if (xSemaphoreGiveFromISR(mainLoss, &higherPriorityTaskWoken) != pdTRUE) {
+
+      xTaskResumeFromISR(ISR_MAINS_POWER_LOSS);
     }
   }
 }
@@ -112,10 +112,20 @@ void modbusRTUTask(void* pvParameters) {
 }
 
 void setup() {
+  mainLoss = xSemaphoreCreateBinary();
+  upsGain = xSemaphoreCreateBinary();
+  upsLoss = xSemaphoreCreateBinary();
 
   // Initialize Serial for debugging
   logger.init();
   logger.log(LogLevel::INFO, "Serial started........");
+
+  if (mainLoss == NULL || upsGain == NULL || upsLoss == NULL) {
+    logger.log(LogLevel::ERROR, "Failed to create one or more ISR semaphores");
+    // Handle error
+  } else {
+    logger.log(LogLevel::SUCCESS, "Successfully created ISR semaphores");
+  }
 
   SyncTest.init();
   modbusRTU_Init();
@@ -126,9 +136,6 @@ void setup() {
 
   logger.log(LogLevel::INFO, "creating semaphores..");
 
-  mainLoss = xSemaphoreCreateBinary();
-  upsGain = xSemaphoreCreateBinary();
-  upsLoss = xSemaphoreCreateBinary();
   logger.log(LogLevel::INFO, "creating queue");
   TestManageQueue = xQueueCreate(messageQueueLength, sizeof(SetupTaskParams));
 
