@@ -19,6 +19,11 @@ private:
   ~SwitchTest() override;
   static SwitchTest* instance;  // Static pointer to hold the instance
   bool runTask = false;
+  bool _triggerTestOngoingEvent = false;
+  bool _triggerTestEndEvent = false;
+  bool _triggerDataCaptureEvent = false;
+  bool _triggerValidDataEvent = false;
+  bool _triggerDataSaveEvent = false;
 
   SwitchTestData _data;
 

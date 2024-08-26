@@ -1,5 +1,5 @@
 #include "SwitchTest.h"
-
+extern TestManager* Manager;
 extern QueueHandle_t TestManageQueue;
 extern EventGroupHandle_t eventGroupTest;
 
@@ -141,6 +141,15 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
   _testinProgress = false;
 
   logger.log(LogLevel::INFO, "Starting Switching Test");
+  if (!_triggerTestOngoingEvent) {
+    _triggerTestEndEvent = false;
+    _triggerValidDataEvent = false;
+    _triggerTestOngoingEvent = true;
+    logger.log(LogLevel::WARNING,
+               "Triggering Test ongoing event from switch test");
+    Manager->triggerEvent(Event::TEST_ONGOING);
+    vTaskDelay(pdTICKS_TO_MS(50));
+  }
 
   // Main loop running until the total test duration expires
   while (millis() - testStartTime < _testDuration) {
@@ -151,9 +160,10 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
     logger.log(LogLevel::INFO, "remaining time ms:", remainingTime);
 
     if (!_testinProgress) {
+      logger.log(LogLevel::WARNING, "Simulating Power cut");
       simulatePowerCut();
       _testinProgress = true;
-      logger.log(LogLevel::INFO, "Power cut simulated");
+      vTaskDelay(pdMS_TO_TICKS(50));
     }
 
     vTaskDelay(pdMS_TO_TICKS(100));  // Delay to avoid busy-waiting
@@ -162,17 +172,37 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
   // After the main test duration has expired
   if (_testinProgress) {
     simulatePowerRestore();
-    _testinProgress = false;
     logger.log(LogLevel::TEST, "Test cycle ended. Power restored.");
+    _testinProgress = false;
+    _triggerTestEndEvent = true;
+    logger.log(LogLevel::WARNING, "Cycle ended for single switch test");
+    Manager->triggerEvent(Event::TEST_TIME_END);
+    vTaskDelay(pdMS_TO_TICKS(50));
   }
 
   vTaskDelay(pdMS_TO_TICKS(100));  // Small delay before processing
 
   if (_dataCaptureOk) {
     logger.log(LogLevel::TEST, "Processing time captured");
+    if (!_triggerDataCaptureEvent) {
+      _triggerDataCaptureEvent = true;
+      logger.log(LogLevel::SUCCESS,
+                 "Triggering DATA Captured event from switch test");
+      Manager->triggerEvent(Event::DATA_CAPTURED);
+      vTaskDelay(pdMS_TO_TICKS(50));
+    }
 
     if (processTestImpl()) {
-      sendEndSignal();
+      if (!_triggerValidDataEvent) {
+        _triggerDataCaptureEvent = false;
+        _triggerValidDataEvent = true;
+        logger.log(LogLevel::SUCCESS,
+                   "Triggering VAlid Data  event from switch test");
+        sendEndSignal();
+        Manager->triggerEvent(Event::VALID_DATA);
+        vTaskDelay(pdMS_TO_TICKS(50));
+      }
+
       logger.log(LogLevel::TEST,
                  "Switching Time: ", _data.switchTest[_currentTest].switchtime);
 
@@ -180,10 +210,12 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration) {
       return TEST_SUCCESSFUL;
     } else {
       logger.log(LogLevel::ERROR, "Invalid timing data");
+      Manager->triggerEvent(Event::TEST_FAILED);
       return TEST_FAILED;
     }
   } else {
     logger.log(LogLevel::ERROR, "Data capture failed");
+    Manager->triggerEvent(Event::TEST_FAILED);
     return TEST_FAILED;
   }
 

@@ -100,10 +100,7 @@ void StateMachine::handleEvent(Event event) {
     handleError();
     return;
   }
-  if (event == Event::REPORT_SEND) {
-    handleReport();
-    return;
-  }
+
   // Manually search for the transition
   for (const auto& transition : transition_table) {
     if (transition.current_state == current_state

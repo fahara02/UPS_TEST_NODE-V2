@@ -17,48 +17,60 @@ enum class State : StateBits {
   AUTO_MODE = 1 << 5,
   TEST_START = 1 << 6,
   TEST_IN_PROGRESS = 1 << 7,
-  CURRENT_TEST_OK = 1 << 8,
-  READY_NEXT_TEST = 1 << 9,
-  RETEST = 1 << 10,
-  SYSTEM_PAUSED = 1 << 11,
-  ALL_TEST_DONE = 1 << 12,
-  START_FROM_SAVE = 1 << 13,
-  RECOVER_DATA = 1 << 14,
-  ADDENDUM_TEST_DATA = 1 << 15,
-  FAILED_TEST = 1 << 16,
-  TRANSPORT_DATA = 1 << 17,
-  SYSTEM_TUNING = 1 << 18,
-  FAULT = 1 << 19,
-  // MANUAL_NEXT_TEST = 1 << 20,
-  REPORT_AVAILABLE = 1 << 20,
-  // NEW_TEST = 1 << 22,
-  // LOG_ERROR = 1 << 23,
+  CURRENT_TEST_CHECK = 1 << 8,
+  CURRENT_TEST_OK = 1 << 9,  // Added CURRENT_TEST_OK
+  READY_NEXT_TEST = 1 << 10,
+  RETEST = 1 << 11,
+  SYSTEM_PAUSED = 1 << 12,
+  ALL_TEST_DONE = 1 << 13,
+  START_FROM_SAVE = 1 << 14,
+  RECOVER_DATA = 1 << 15,
+  ADDENDUM_TEST_DATA = 1 << 16,
+  FAILED_TEST = 1 << 17,
+  TRANSPORT_DATA = 1 << 18,
+  SYSTEM_TUNING = 1 << 19,
+  FAULT = 1 << 20,
+  REPORT_AVAILABLE = 1 << 21,  // Adjusted bit position
+  // MANUAL_NEXT_TEST = 1 << 22,
+  // NEW_TEST = 1 << 23,
+  // LOG_ERROR = 1 << 24,
 };
 
 enum class Event : EventBits_t {
+  // System Events
   NONE = 1 << 0,
   ERROR = 1 << 1,
-  SELF_CHECK_OK = 1 << 2,
-  LOAD_BANK_CHECKED = 1 << 3,
-  USER_TUNE = 1 << 4,
-  NETWORK_DISCONNECTED = 1 << 5,
+  SYSTEM_FAULT = 1 << 2,
+  FAULT_CLEARED = 1 << 3,
+  NETWORK_DISCONNECTED = 1 << 4,
+  RESTART = 1 << 5,
+
+  // Test Initialization Events
   SETTING_LOADED = 1 << 6,
-  MANUAL_OVERRIDE = 1 << 7,
-  AUTO_TEST_CMD = 1 << 8,
-  INPUT_OUTPUT_READY = 1 << 9,
-  DATA_CAPTURED = 1 << 10,
-  VALID_DATA = 1 << 11,
-  SAVE = 1 << 12,
-  TEST_LIST_EMPTY = 1 << 13,
-  JSON_READY = 1 << 14,
-  MANUAL_DATA_ENTRY = 1 << 15,
-  TEST_FAILED = 1 << 16,
-  RETEST = 1 << 17,
-  SYSTEM_FAULT = 1 << 18,
-  FAULT_CLEARED = 1 << 19,
-  USER_PAUSED = 1 << 20,
-  REPORT_SEND = 1 << 21,
-  RESTART = 1 << 22,
+  SELF_CHECK_OK = 1 << 7,
+  LOAD_BANK_CHECKED = 1 << 8,
+  AUTO_TEST_CMD = 1 << 9,
+  PENDING_TEST_FOUND = 1 << 10,
+
+  // Test Execution Events
+  TEST_ONGOING = 1 << 11,
+  TEST_TIME_END = 1 << 12,  // Newly added event
+  DATA_CAPTURED = 1 << 13,  // Newly added event
+  VALID_DATA = 1 << 14,
+  TEST_FAILED = 1 << 15,
+  RETEST = 1 << 16,
+  TEST_LIST_EMPTY = 1 << 17,
+
+  // User Interaction Events
+  USER_TUNE = 1 << 18,
+  MANUAL_OVERRIDE = 1 << 19,
+  MANUAL_DATA_ENTRY = 1 << 20,
+  USER_PAUSED = 1 << 21,
+  USER_RESUME = 1 << 22,
+
+  // Data Handling Events
+  SAVE = 1 << 23,
+  JSON_READY = 1 << 24,
 };
 
 static const char* stateToString(State state) {
@@ -118,52 +130,66 @@ static const char* stateToString(State state) {
 
 static const char* eventToString(Event event) {
   switch (event) {
+    // System Events
     case Event::NONE:
       return "NONE";
     case Event::ERROR:
       return "ERROR";
-    case Event::SELF_CHECK_OK:
-      return "SELF_CHECK_OK";
-    case Event::LOAD_BANK_CHECKED:
-      return "LOAD_BANK_CHECKED";
-    case Event::USER_TUNE:
-      return "USER_TUNE";
-    case Event::NETWORK_DISCONNECTED:
-      return "NETWORK_DISCONNECTED";
-    case Event::SETTING_LOADED:
-      return "SETTING_LOADED";
-    case Event::MANUAL_OVERRIDE:
-      return "MANUAL_OVERRIDE";
-    case Event::AUTO_TEST_CMD:
-      return "AUTO_TEST_CMD";
-    case Event::INPUT_OUTPUT_READY:
-      return "INPUT_OUTPUT_READY";
-    case Event::DATA_CAPTURED:
-      return "DATA_CAPTURED";
-    case Event::VALID_DATA:
-      return "VALID_DATA";
-    case Event::SAVE:
-      return "SAVE";
-    case Event::TEST_LIST_EMPTY:
-      return "TEST_LIST_EMPTY";
-    case Event::JSON_READY:
-      return "JSON_READY";
-    case Event::MANUAL_DATA_ENTRY:
-      return "MANUAL_DATA_ENTRY";
-    case Event::TEST_FAILED:
-      return "TEST_FAILED";
-    case Event::RETEST:
-      return "RETEST";
     case Event::SYSTEM_FAULT:
       return "SYSTEM_FAULT";
     case Event::FAULT_CLEARED:
       return "FAULT_CLEARED";
-    case Event::USER_PAUSED:
-      return "USER_PAUSED";
-    case Event::REPORT_SEND:
-      return "REPORT_SEND";
+    case Event::NETWORK_DISCONNECTED:
+      return "NETWORK_DISCONNECTED";
     case Event::RESTART:
       return "RESTART";
+
+    // Test Initialization Events
+    case Event::SETTING_LOADED:
+      return "SETTING_LOADED";
+    case Event::SELF_CHECK_OK:
+      return "SELF_CHECK_OK";
+    case Event::LOAD_BANK_CHECKED:
+      return "LOAD_BANK_CHECKED";
+    case Event::AUTO_TEST_CMD:
+      return "AUTO_TEST_CMD";
+    case Event::PENDING_TEST_FOUND:
+      return "PENDING_TEST_FOUND";
+
+    // Test Execution Events
+    case Event::TEST_ONGOING:
+      return "TEST_ONGOING";
+    case Event::TEST_TIME_END:
+      return "TEST_TIME_END";  // Newly added event
+    case Event::DATA_CAPTURED:
+      return "DATA_CAPTURED";
+    case Event::VALID_DATA:
+      return "VALID_DATA";
+    case Event::TEST_FAILED:
+      return "TEST_FAILED";
+    case Event::RETEST:
+      return "RETEST";
+    case Event::TEST_LIST_EMPTY:
+      return "TEST_LIST_EMPTY";
+
+    // User Interaction Events
+    case Event::USER_TUNE:
+      return "USER_TUNE";
+    case Event::MANUAL_OVERRIDE:
+      return "MANUAL_OVERRIDE";
+    case Event::MANUAL_DATA_ENTRY:
+      return "MANUAL_DATA_ENTRY";
+    case Event::USER_PAUSED:
+      return "USER_PAUSED";
+    case Event::USER_RESUME:
+      return "USER_RESUME";
+
+    // Data Handling Events
+    case Event::SAVE:
+      return "SAVE";
+    case Event::JSON_READY:
+      return "JSON_READY";
+
     default:
       return "UNKNOWN_EVENT";
   }

@@ -74,7 +74,7 @@ private:
   void handleError();
 
   // Define the transition table with 28 transitions
-  const std::array<Transition, 28> transition_table
+  const std::array<Transition, 32> transition_table
       = StateMachine::TransitionTable(
 
           // Mode Selection 5
@@ -96,21 +96,30 @@ private:
               State::DEVICE_OK, Event::NONE>(),
 
           // Switching Test Sequence 8+5=13
-          Row<State::AUTO_MODE, Event::INPUT_OUTPUT_READY, State::TEST_START,
+          Row<State::AUTO_MODE, Event::PENDING_TEST_FOUND, State::TEST_START,
               Event::NONE>(),
-          Row<State::TEST_START, Event::DATA_CAPTURED, State::TEST_IN_PROGRESS,
+          Row<State::TEST_START, Event::TEST_ONGOING, State::TEST_IN_PROGRESS,
               Event::NONE>(),
           Row<State::TEST_START, Event::TEST_FAILED, State::RETEST,
               Event::NONE>(),  // Added
-          Row<State::TEST_IN_PROGRESS, Event::VALID_DATA,
+          Row<State::TEST_IN_PROGRESS, Event::TEST_TIME_END,
+              State::CURRENT_TEST_CHECK, Event::NONE>(),
+          Row<State::TEST_IN_PROGRESS, Event::DATA_CAPTURED,
+              State::CURRENT_TEST_CHECK, Event::NONE>(),
+          Row<State::CURRENT_TEST_CHECK, Event::VALID_DATA,
               State::CURRENT_TEST_OK, Event::NONE>(),
+          Row<State::CURRENT_TEST_CHECK, Event::TEST_TIME_END,
+              State::CURRENT_TEST_CHECK, Event::NONE>(),
           Row<State::TEST_IN_PROGRESS, Event::TEST_FAILED, State::RETEST,
+              Event::NONE>(),  // Added
+          Row<State::CURRENT_TEST_CHECK, Event::TEST_FAILED, State::RETEST,
               Event::NONE>(),  // Added
           Row<State::CURRENT_TEST_OK, Event::SAVE, State::READY_NEXT_TEST,
               Event::NONE>(),
-          Row<State::READY_NEXT_TEST, Event::INPUT_OUTPUT_READY,
+
+          Row<State::READY_NEXT_TEST, Event::PENDING_TEST_FOUND,
               State::TEST_START, Event::NONE>(),
-          Row<State::CURRENT_TEST_OK, Event::TEST_LIST_EMPTY,
+          Row<State::READY_NEXT_TEST, Event::TEST_LIST_EMPTY,
               State::ALL_TEST_DONE, Event::NONE>(),
           Row<State::CURRENT_TEST_OK, Event::TEST_FAILED, State::RECOVER_DATA,
               Event::NONE>(),
@@ -122,7 +131,7 @@ private:
               Event::NONE>(),
           Row<State::ALL_TEST_DONE, Event::TEST_FAILED, State::RECOVER_DATA,
               Event::NONE>(),
-          Row<State::START_FROM_SAVE, Event::INPUT_OUTPUT_READY,
+          Row<State::START_FROM_SAVE, Event::PENDING_TEST_FOUND,
               State::TEST_START, Event::NONE>(),
           Row<State::ALL_TEST_DONE, Event::MANUAL_DATA_ENTRY,
               State::ADDENDUM_TEST_DATA, Event::NONE>(),

@@ -188,77 +188,192 @@ void TestManager::createTestTasks() {
                etaskStatetoString(state));
   }
 }
+// void TestManager::TestManagerTask(void* pvParameters) {
+//   State currentState = instance->stateMachine->getCurrentState();
+//   logger.log(LogLevel::INFO, "Resuming Test Manager task");
+
+//   while (true) {
+//     currentState = instance->stateMachine->getCurrentState();
+
+//     if (currentState == State::DEVICE_READY) {
+//       logger.log(LogLevel::INFO, "Device is ready. Checking pending
+//       tests...");
+
+//       for (int i = 0; i < instance->_numSwitchTest; ++i) {
+//         if (instance->isTestPendingAndNotStarted(instance->testsSW[i])) {
+//           instance->logPendingSwitchTest(instance->testsSW[i]);
+
+//           // Trigger AUTO_TEST_CMD and INPUT_OUTPUT_READY sequentially
+//           instance->triggerEvent(Event::AUTO_TEST_CMD);
+//           vTaskDelay(pdMS_TO_TICKS(100));
+//           instance->triggerEvent(Event::INPUT_OUTPUT_READY);
+//         }
+//       }
+//     }
+
+//     if (currentState == State::TEST_START) {
+
+//       logger.log(LogLevel::INFO, "Manager Task under test start phase");
+
+//       eTaskState estate = eTaskGetState(switchTestTaskHandle);
+//       logger.log(LogLevel::INFO, "SwitchTest task state: %s",
+//                  etaskStatetoString(estate));
+
+//       for (int i = 0; i < instance->_numSwitchTest; ++i) {
+//         if (instance->isTestPendingAndNotStarted(instance->testsSW[i])) {
+//           LoadPercentage load = instance->testsSW[i].testRequired.loadlevel;
+
+//           instance->configureSwitchTest(load);
+//           // vTaskDelay(pdMS_TO_TICKS(200));
+
+//           eTaskState estate = eTaskGetState(switchTestTaskHandle);
+//           logger.log(LogLevel::INFO, "SwitchTest task state: %s",
+//                      etaskStatetoString(estate));
+
+//           SyncTest.startTest(TestType::SwitchTest);
+//           vTaskPrioritySet(switchTestTaskHandle,
+//                            instance->_cfgTask.mainTest_taskIdlePriority + 2);
+
+//           if (switchTest->_dataCaptureOk) {
+//             logger.log(LogLevel::SUCCESS,
+//                        "Successfull data capture , updating status");
+
+//             instance->testsSW[i].testRequired.testStatus.managerStatus
+//                 = TestManagerStatus::DONE;
+//             instance->testsSW[i].testRequired.testStatus.operatorStatus
+//                 = TestOperatorStatus::SUCCESS;
+
+//             logger.log(LogLevel::WARNING, "Pausing SwitchTest task");
+
+//             SyncTest.stopTest(TestType::SwitchTest);
+//             eTaskState estate = eTaskGetState(switchTestTaskHandle);
+//             logger.log(LogLevel::INFO, "SwitchTest task state: %s",
+//                        etaskStatetoString(estate));
+//           }
+//           vTaskDelay(pdMS_TO_TICKS(instance->_cfgTaskParam.task_testDuration_ms
+//                                    + 100));
+//         }
+//       }
+//     }
+//     if (currentState == State::TEST_IN_PROGRESS) {
+//     }
+
+//     if (currentState == State::CURRENT_TEST_OK) {
+//     }
+
+//     if (currentState == State::READY_NEXT_TEST) {
+//     }
+//     vTaskDelay(pdMS_TO_TICKS(100));
+//   }
+
+//   vTaskDelete(NULL);
+// }
+
 void TestManager::TestManagerTask(void* pvParameters) {
-  State currentState = instance->stateMachine->getCurrentState();
   logger.log(LogLevel::INFO, "Resuming Test Manager task");
 
   while (true) {
-    currentState = instance->stateMachine->getCurrentState();
+    State currentState = instance->stateMachine->getCurrentState();
 
     if (currentState == State::DEVICE_READY) {
       logger.log(LogLevel::INFO, "Device is ready. Checking pending tests...");
-
-      for (int i = 0; i < instance->_numSwitchTest; ++i) {
-        if (instance->isTestPendingAndNotStarted(instance->testsSW[i])) {
-          instance->logPendingSwitchTest(instance->testsSW[i]);
-
-          // Trigger AUTO_TEST_CMD and INPUT_OUTPUT_READY sequentially
-          instance->triggerEvent(Event::AUTO_TEST_CMD);
-          vTaskDelay(pdMS_TO_TICKS(100));
-          instance->triggerEvent(Event::INPUT_OUTPUT_READY);
-        }
-      }
     }
 
-    if (currentState == State::TEST_START) {
+    for (int i = 0; i < instance->_numSwitchTest; ++i) {
+      if (instance->isTestPendingAndNotStarted(instance->testsSW[i])) {
+        currentState = instance->stateMachine->getCurrentState();
 
-      logger.log(LogLevel::INFO, "Manager Task under test start phase");
+        if (currentState == State::DEVICE_READY) {
+          instance->logPendingSwitchTest(instance->testsSW[i]);
+          instance->triggerEvent(Event::AUTO_TEST_CMD);
+          vTaskDelay(pdMS_TO_TICKS(50));
 
-      eTaskState estate = eTaskGetState(switchTestTaskHandle);
-      logger.log(LogLevel::INFO, "SwitchTest task state: %s",
-                 etaskStatetoString(estate));
+        } else if (currentState == State::AUTO_MODE) {
+          vTaskDelay(pdMS_TO_TICKS(50));
+          instance->triggerEvent(Event::PENDING_TEST_FOUND);
+          vTaskDelay(pdMS_TO_TICKS(50));
+        }
 
-      for (int i = 0; i < instance->_numSwitchTest; ++i) {
-        if (instance->isTestPendingAndNotStarted(instance->testsSW[i])) {
+        else if (currentState == State::TEST_START) {
+          logger.log(LogLevel::INFO, "Manager Task under test start phase");
+
           LoadPercentage load = instance->testsSW[i].testRequired.loadlevel;
-
           instance->configureSwitchTest(load);
-          // vTaskDelay(pdMS_TO_TICKS(200));
-
           eTaskState estate = eTaskGetState(switchTestTaskHandle);
           logger.log(LogLevel::INFO, "SwitchTest task state: %s",
                      etaskStatetoString(estate));
-
-          SyncTest.startTest(TestType::SwitchTest);
           vTaskPrioritySet(switchTestTaskHandle,
                            instance->_cfgTask.mainTest_taskIdlePriority + 2);
 
+          logger.log(LogLevel::INFO, "Starting SwitchTest...");
+          SyncTest.startTest(TestType::SwitchTest);
+          vTaskDelay(pdMS_TO_TICKS(100));
+        }
+
+        else if (currentState == State::TEST_IN_PROGRESS) {
+
+          logger.log(LogLevel::INFO, "Manager observing running test");
+
           if (switchTest->_dataCaptureOk) {
-            logger.log(LogLevel::SUCCESS,
-                       "Successfull data capture , updating status");
-
-            instance->testsSW[i].testRequired.testStatus.managerStatus
-                = TestManagerStatus::DONE;
-            instance->testsSW[i].testRequired.testStatus.operatorStatus
-                = TestOperatorStatus::SUCCESS;
-
-            logger.log(LogLevel::WARNING, "Pausing SwitchTest task");
-
-            SyncTest.stopTest(TestType::SwitchTest);
-            eTaskState estate = eTaskGetState(switchTestTaskHandle);
-            logger.log(LogLevel::INFO, "SwitchTest task state: %s",
-                       etaskStatetoString(estate));
+            logger.log(LogLevel::SUCCESS, "Successful data capture.");
           }
+
           vTaskDelay(pdMS_TO_TICKS(instance->_cfgTaskParam.task_testDuration_ms
                                    + 100));
+        } else if (currentState == State::CURRENT_TEST_CHECK) {
+          logger.log(
+              LogLevel::INFO,
+              "In check State  checking either test ended or data captured");
+          if (switchTest->_triggerTestEndEvent) {
+            logger.log(LogLevel::INFO, "test Cycle ended ");
+          }
+          if (switchTest->_dataCaptureOk) {
+            logger.log(LogLevel::SUCCESS, "Successful data capture.");
+          }
+
+          vTaskDelay(pdMS_TO_TICKS(instance->_cfgTaskParam.task_testDuration_ms
+                                   + 100));
+        } else if (currentState == State::CURRENT_TEST_OK) {
+          logger.log(LogLevel::INFO,
+                     "Test completed successfully. Stopping SwitchTest...");
+          SyncTest.stopTest(TestType::SwitchTest);
+          instance->testsSW[i].testRequired.testStatus.managerStatus
+              = TestManagerStatus::DONE;
+          instance->testsSW[i].testRequired.testStatus.operatorStatus
+              = TestOperatorStatus::SUCCESS;
+          logger.log(LogLevel::WARNING, "Triggering SAVE event from manager");
+          instance->triggerEvent(Event::SAVE);
+
+        }
+
+        else if (currentState == State::READY_NEXT_TEST) {
+          logger.log(LogLevel::INFO, "Checking for next pending test...");
+
+          bool pendingTestFound = false;
+
+          // Check if there are any more pending tests
+          for (int j = 0; j < instance->_numSwitchTest; ++j) {
+            if (instance->isTestPendingAndNotStarted(instance->testsSW[j])) {
+              pendingTestFound = true;
+              break;
+            }
+          }
+
+          if (pendingTestFound) {
+            logger.log(LogLevel::INFO,
+                       "Pending test found. Preparing to start next test...");
+            instance->triggerEvent(Event::PENDING_TEST_FOUND);
+          } else {
+            logger.log(LogLevel::INFO, "No more pending tests.");
+          }
         }
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(100));  // General delay for task
   }
 
-  vTaskDelete(NULL);
+  vTaskDelete(NULL);  // Delete the task when finished
 }
 
 void TestManager::onMainsPowerLossTask(void* pvParameters) {
