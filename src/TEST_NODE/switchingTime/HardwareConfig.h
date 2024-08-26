@@ -5,9 +5,9 @@
 #define RX_RS485_PIN 16
 #define TX_RS485_PIN 17
 
-#define thermoSO_PIN 19   // VSPI MISO PIN
-#define thermoSCK_PIN 18  // VSPI_CLK
-#define thermoCS_PIN 5    // VSPI CS
+#define thermoSO_PIN 19 // VSPI MISO PIN
+#define thermoSCK_PIN 18 // VSPI_CLK
+#define thermoCS_PIN 5 // VSPI CS
 
 #define SENSE_MAINS_POWER_PIN 23
 #define SENSE_UPS_POWER_PIN 22
@@ -24,11 +24,12 @@
 
 const uint16_t maxVARating = 4000;
 
-struct switchTestConfig {
-  uint8_t max_retest = 3;
-  unsigned long min_valid_switch_time_ms = 0;
-  unsigned long max_valid_switch_time_ms = 10000;
-  unsigned long debounceDelay = 100;
+struct switchTestConfig
+{
+	uint8_t max_retest = 3;
+	unsigned long min_valid_switch_time_ms = 0;
+	unsigned long max_valid_switch_time_ms = 10000;
+	unsigned long debounceDelay = 100;
 };
 
 #endif

@@ -3,462 +3,453 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 
-namespace Node_Core {
+namespace Node_Core
+{
 UPSTesterSetup* UPSTesterSetup::instance = nullptr;
 
-UPSTesterSetup::UPSTesterSetup() {
-  // Initialize LittleFS
-  // if (!LittleFS.begin()) {
-  //   Serial.println("Failed to mount LittleFS");
-  // }
+UPSTesterSetup::UPSTesterSetup()
+{
+	// Initialize LittleFS
+	// if (!LittleFS.begin()) {
+	//   Serial.println("Failed to mount LittleFS");
+	// }
 }
 
-UPSTesterSetup::~UPSTesterSetup() {
-  if (instance == this) {
-    instance = nullptr;
-    // LittleFS.end();
-  };
+UPSTesterSetup::~UPSTesterSetup()
+{
+	if(instance == this)
+	{
+		instance = nullptr;
+		// LittleFS.end();
+	};
 }
 
-UPSTesterSetup* UPSTesterSetup::getInstance() {
-  if (instance == nullptr) {
-    instance = new UPSTesterSetup();
-  }
-  return instance;
+UPSTesterSetup* UPSTesterSetup::getInstance()
+{
+	if(instance == nullptr)
+	{
+		instance = new UPSTesterSetup();
+	}
+	return instance;
 }
 
-void UPSTesterSetup::deleteInstance() {
-  delete instance;
-  instance = nullptr;
+void UPSTesterSetup::deleteInstance()
+{
+	delete instance;
+	instance = nullptr;
 }
 
-void UPSTesterSetup::updateSettings(SettingType settingType,
-                                    const void* newSetting) {
-  bool allsettings_updated = false;
+void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSetting)
+{
+	bool allsettings_updated = false;
 
-  switch (settingType) {
-    case SettingType::SPEC:
-      _spec = *static_cast<const SetupSpec*>(newSetting);
-      _spec.lastsetting_updated = millis();
-      if (_specSetCallback) {
-        _specSetCallback(true, _spec);
-      }
-      break;
+	switch(settingType)
+	{
+		case SettingType::SPEC:
+			_spec = *static_cast<const SetupSpec*>(newSetting);
+			_spec.lastsetting_updated = millis();
+			if(_specSetCallback)
+			{
+				_specSetCallback(true, _spec);
+			}
+			break;
 
-    case SettingType::TEST: {
-      const SetupTest* newTest = static_cast<const SetupTest*>(newSetting);
-      bool modeChanged = (_testSetting.mode != newTest->mode);
-      _testSetting = *newTest;
-      _testSetting.lastsetting_updated = millis();
-      if (_testSetCallback) {
-        _testSetCallback(true, _testSetting);
-      }
-      if (modeChanged && _testModeCallback) {
-        _testModeCallback(_testSetting.mode);
-      }
-    } break;
+		case SettingType::TEST:
+		{
+			const SetupTest* newTest = static_cast<const SetupTest*>(newSetting);
+			bool modeChanged = (_testSetting.mode != newTest->mode);
+			_testSetting = *newTest;
+			_testSetting.lastsetting_updated = millis();
+			if(_testSetCallback)
+			{
+				_testSetCallback(true, _testSetting);
+			}
+			if(modeChanged && _testModeCallback)
+			{
+				_testModeCallback(_testSetting.mode);
+			}
+		}
+		break;
 
-    case SettingType::TASK:
-      _taskSetting = *static_cast<const SetupTask*>(newSetting);
-      _taskSetting.lastsetting_updated = millis();
-      if (_taskSetCallback) {
-        _taskSetCallback(true, _taskSetting);
-      }
-      break;
+		case SettingType::TASK:
+			_taskSetting = *static_cast<const SetupTask*>(newSetting);
+			_taskSetting.lastsetting_updated = millis();
+			if(_taskSetCallback)
+			{
+				_taskSetCallback(true, _taskSetting);
+			}
+			break;
 
-    case SettingType::TASK_PARAMS:
-      _taskParamsSetting = *static_cast<const SetupTaskParams*>(newSetting);
-      _taskParamsSetting.lastsetting_updated = millis();
-      if (_taskParamsSetCallback) {
-        _taskParamsSetCallback(true, _taskParamsSetting);
-      }
-      break;
+		case SettingType::TASK_PARAMS:
+			_taskParamsSetting = *static_cast<const SetupTaskParams*>(newSetting);
+			_taskParamsSetting.lastsetting_updated = millis();
+			if(_taskParamsSetCallback)
+			{
+				_taskParamsSetCallback(true, _taskParamsSetting);
+			}
+			break;
 
-    case SettingType::HARDWARE:
-      _hardwareSetting = *static_cast<const SetupHardware*>(newSetting);
-      _hardwareSetting.lastsetting_updated = millis();
-      if (_hardwareSetCallback) {
-        _hardwareSetCallback(true, _hardwareSetting);
-      }
-      break;
+		case SettingType::HARDWARE:
+			_hardwareSetting = *static_cast<const SetupHardware*>(newSetting);
+			_hardwareSetting.lastsetting_updated = millis();
+			if(_hardwareSetCallback)
+			{
+				_hardwareSetCallback(true, _hardwareSetting);
+			}
+			break;
 
-    case SettingType::NETWORK:
-      _networkSetting = *static_cast<const SetupNetwork*>(newSetting);
-      _networkSetting.lastsetting_updated = millis();
-      if (_commSetCallback) {
-        _commSetCallback(true, _networkSetting);
-      }
-      break;
+		case SettingType::NETWORK:
+			_networkSetting = *static_cast<const SetupNetwork*>(newSetting);
+			_networkSetting.lastsetting_updated = millis();
+			if(_commSetCallback)
+			{
+				_commSetCallback(true, _networkSetting);
+			}
+			break;
 
-    case SettingType::MODBUS:
-      _modbusSetting = *static_cast<const SetupModbus*>(newSetting);
-      _modbusSetting.lastsetting_updated = millis();
-      if (_modbusSetCallback) {
-        _modbusSetCallback(true, _modbusSetting);
-      }
-      break;
+		case SettingType::MODBUS:
+			_modbusSetting = *static_cast<const SetupModbus*>(newSetting);
+			_modbusSetting.lastsetting_updated = millis();
+			if(_modbusSetCallback)
+			{
+				_modbusSetCallback(true, _modbusSetting);
+			}
+			break;
 
-    case SettingType::REPORT:
-      _reportSetting = *static_cast<const SetupReport*>(newSetting);
-      _reportSetting.lastsetting_updated = millis();
-      if (_reportSetCallback) {
-        _reportSetCallback(true, _reportSetting);
-      }
-      break;
+		case SettingType::REPORT:
+			_reportSetting = *static_cast<const SetupReport*>(newSetting);
+			_reportSetting.lastsetting_updated = millis();
+			if(_reportSetCallback)
+			{
+				_reportSetCallback(true, _reportSetting);
+			}
+			break;
 
-    case SettingType::ALL:
-      _allSetting = *static_cast<const SetupUPSTest*>(newSetting);
-      _allSetting.lastsetting_updated = millis();
-      allsettings_updated = true;  // Assume all settings are updated directly
-      break;
+		case SettingType::ALL:
+			_allSetting = *static_cast<const SetupUPSTest*>(newSetting);
+			_allSetting.lastsetting_updated = millis();
+			allsettings_updated = true; // Assume all settings are updated directly
+			break;
 
-    default:
-      Serial.println("Unknown setting type");
-      return;
-  }
+		default:
+			Serial.println("Unknown setting type");
+			return;
+	}
 
-  // Determine if all settings have been updated recently
-  unsigned long currentTime = millis();
-  int updatedSettingsCount = 0;
+	// Determine if all settings have been updated recently
+	unsigned long currentTime = millis();
+	int updatedSettingsCount = 0;
 
-  if (currentTime - _spec.lastsetting_updated <= ONE_DAY_MS)
-    updatedSettingsCount++;
-  if (currentTime - _testSetting.lastsetting_updated <= ONE_DAY_MS)
-    updatedSettingsCount++;
-  if (currentTime - _taskSetting.lastsetting_updated <= ONE_DAY_MS)
-    updatedSettingsCount++;
-  if (currentTime - _taskParamsSetting.lastsetting_updated <= ONE_DAY_MS)
-    updatedSettingsCount++;
-  if (currentTime - _hardwareSetting.lastsetting_updated <= ONE_DAY_MS)
-    updatedSettingsCount++;
-  if (currentTime - _networkSetting.lastsetting_updated <= ONE_DAY_MS)
-    updatedSettingsCount++;
-  if (currentTime - _modbusSetting.lastsetting_updated <= ONE_DAY_MS)
-    updatedSettingsCount++;
-  if (currentTime - _reportSetting.lastsetting_updated <= ONE_DAY_MS)
-    updatedSettingsCount++;
+	if(currentTime - _spec.lastsetting_updated <= ONE_DAY_MS)
+		updatedSettingsCount++;
+	if(currentTime - _testSetting.lastsetting_updated <= ONE_DAY_MS)
+		updatedSettingsCount++;
+	if(currentTime - _taskSetting.lastsetting_updated <= ONE_DAY_MS)
+		updatedSettingsCount++;
+	if(currentTime - _taskParamsSetting.lastsetting_updated <= ONE_DAY_MS)
+		updatedSettingsCount++;
+	if(currentTime - _hardwareSetting.lastsetting_updated <= ONE_DAY_MS)
+		updatedSettingsCount++;
+	if(currentTime - _networkSetting.lastsetting_updated <= ONE_DAY_MS)
+		updatedSettingsCount++;
+	if(currentTime - _modbusSetting.lastsetting_updated <= ONE_DAY_MS)
+		updatedSettingsCount++;
+	if(currentTime - _reportSetting.lastsetting_updated <= ONE_DAY_MS)
+		updatedSettingsCount++;
 
-  // If most settings are updated, consider all settings updated
-  if (updatedSettingsCount >= 6) {
-    allsettings_updated = true;
-    _allSetting.lastsetting_updated = currentTime;
-    updatedSettingsCount = 0;
-  }
-  if (_user_update_call) {
-    allsettings_updated = true;
-    _allSetting.lastsetting_updated = currentTime;
-    _user_update_call = false;
-  }
-  // Trigger the all settings callback if available
-  if (_allSettingCallback) {
-    _allSettingCallback(allsettings_updated, _allSetting);
-  }
+	// If most settings are updated, consider all settings updated
+	if(updatedSettingsCount >= 6)
+	{
+		allsettings_updated = true;
+		_allSetting.lastsetting_updated = currentTime;
+		updatedSettingsCount = 0;
+	}
+	if(_user_update_call)
+	{
+		allsettings_updated = true;
+		_allSetting.lastsetting_updated = currentTime;
+		_user_update_call = false;
+	}
+	// Trigger the all settings callback if available
+	if(_allSettingCallback)
+	{
+		_allSettingCallback(allsettings_updated, _allSetting);
+	}
 
-  serializeSettings("/tester_settings.json");
+	serializeSettings("/tester_settings.json");
 }
 
-void UPSTesterSetup::loadSettings(SettingType settingType,
-                                  const void* newSetting) {
-
-  deserializeSettings("/tester_settings.json");
+void UPSTesterSetup::loadSettings(SettingType settingType, const void* newSetting)
+{
+	deserializeSettings("/tester_settings.json");
 }
 
-void UPSTesterSetup::serializeSettings(const char* filename) {
-  DynamicJsonDocument doc(1024);
+void UPSTesterSetup::serializeSettings(const char* filename)
+{
+	DynamicJsonDocument doc(1024);
 
-  // Fill JSON with current settings
-  doc["spec"]["Rating_va"] = _spec.Rating_va;
-  doc["spec"]["RatedVoltage_volt"] = _spec.RatedVoltage_volt;
-  doc["spec"]["RatedCurrent_amp"] = _spec.RatedCurrent_amp;
-  doc["spec"]["MinInputVoltage_volt"] = _spec.MinInputVoltage_volt;
-  doc["spec"]["MaxInputVoltage_volt"] = _spec.MaxInputVoltage_volt;
-  doc["spec"]["AvgSwitchTime_ms"] = _spec.AvgSwitchTime_ms;
-  doc["spec"]["AvgBackupTime_ms"] = _spec.AvgBackupTime_ms;
+	// Fill JSON with current settings
+	doc["spec"]["Rating_va"] = _spec.Rating_va;
+	doc["spec"]["RatedVoltage_volt"] = _spec.RatedVoltage_volt;
+	doc["spec"]["RatedCurrent_amp"] = _spec.RatedCurrent_amp;
+	doc["spec"]["MinInputVoltage_volt"] = _spec.MinInputVoltage_volt;
+	doc["spec"]["MaxInputVoltage_volt"] = _spec.MaxInputVoltage_volt;
+	doc["spec"]["AvgSwitchTime_ms"] = _spec.AvgSwitchTime_ms;
+	doc["spec"]["AvgBackupTime_ms"] = _spec.AvgBackupTime_ms;
 
-  doc["test"]["TestStandard"] = _testSetting.TestStandard;
-  doc["test"]["mode"] = static_cast<int>(_testSetting.mode);
-  doc["test"]["inputVoltage_volt"] = _testSetting.inputVoltage_volt;
-  doc["test"]["min_valid_switch_time_ms"]
-      = _testSetting.min_valid_switch_time_ms;
-  doc["test"]["max_valid_switch_time_ms"]
-      = _testSetting.max_valid_switch_time_ms;
-  doc["test"]["ToleranceSwitchTime_ms"] = _testSetting.ToleranceSwitchTime_ms;
-  doc["test"]["ToleranceBackUpTime_ms"] = _testSetting.ToleranceBackUpTime_ms;
-  doc["test"]["MaxRetest"] = _testSetting.MaxRetest;
+	doc["test"]["TestStandard"] = _testSetting.TestStandard;
+	doc["test"]["mode"] = static_cast<int>(_testSetting.mode);
+	doc["test"]["inputVoltage_volt"] = _testSetting.inputVoltage_volt;
+	doc["test"]["min_valid_switch_time_ms"] = _testSetting.min_valid_switch_time_ms;
+	doc["test"]["max_valid_switch_time_ms"] = _testSetting.max_valid_switch_time_ms;
+	doc["test"]["ToleranceSwitchTime_ms"] = _testSetting.ToleranceSwitchTime_ms;
+	doc["test"]["ToleranceBackUpTime_ms"] = _testSetting.ToleranceBackUpTime_ms;
+	doc["test"]["MaxRetest"] = _testSetting.MaxRetest;
 
-  doc["task"]["mainTest_taskCore"] = _taskSetting.mainTest_taskCore;
-  doc["task"]["mainsISR_taskCore"] = _taskSetting.mainsISR_taskCore;
-  doc["task"]["upsISR_taskCore"] = _taskSetting.upsISR_taskCore;
-  doc["task"]["mainTest_taskIdlePriority"]
-      = _taskSetting.mainTest_taskIdlePriority;
-  doc["task"]["mainsISR_taskIdlePriority"]
-      = _taskSetting.mainsISR_taskIdlePriority;
-  doc["task"]["upsISR_taskIdlePriority"] = _taskSetting.upsISR_taskIdlePriority;
-  doc["task"]["mainTest_taskStack"] = _taskSetting.mainTest_taskStack;
-  doc["task"]["mainsISR_taskStack"] = _taskSetting.mainsISR_taskStack;
-  doc["task"]["upsISR_taskStack"] = _taskSetting.upsISR_taskStack;
-  doc["task"]["lastsetting_updated"] = _taskSetting.lastsetting_updated;
+	doc["task"]["mainTest_taskCore"] = _taskSetting.mainTest_taskCore;
+	doc["task"]["mainsISR_taskCore"] = _taskSetting.mainsISR_taskCore;
+	doc["task"]["upsISR_taskCore"] = _taskSetting.upsISR_taskCore;
+	doc["task"]["mainTest_taskIdlePriority"] = _taskSetting.mainTest_taskIdlePriority;
+	doc["task"]["mainsISR_taskIdlePriority"] = _taskSetting.mainsISR_taskIdlePriority;
+	doc["task"]["upsISR_taskIdlePriority"] = _taskSetting.upsISR_taskIdlePriority;
+	doc["task"]["mainTest_taskStack"] = _taskSetting.mainTest_taskStack;
+	doc["task"]["mainsISR_taskStack"] = _taskSetting.mainsISR_taskStack;
+	doc["task"]["upsISR_taskStack"] = _taskSetting.upsISR_taskStack;
+	doc["task"]["lastsetting_updated"] = _taskSetting.lastsetting_updated;
 
-  doc["task_params"]["flag_mains_power_loss"]
-      = _taskParamsSetting.flag_mains_power_loss;
-  doc["task_params"]["flag_ups_power_gain"]
-      = _taskParamsSetting.flag_ups_power_gain;
-  doc["task_params"]["task_TestVARating"]
-      = _taskParamsSetting.task_TestVARating;
-  doc["task_params"]["testDuration_ms"]
-      = _taskParamsSetting.task_testDuration_ms;
-  doc["task_params"]["lastsetting_updated"]
-      = _taskParamsSetting.lastsetting_updated;
+	doc["task_params"]["flag_mains_power_loss"] = _taskParamsSetting.flag_mains_power_loss;
+	doc["task_params"]["flag_ups_power_gain"] = _taskParamsSetting.flag_ups_power_gain;
+	doc["task_params"]["task_TestVARating"] = _taskParamsSetting.task_TestVARating;
+	doc["task_params"]["testDuration_ms"] = _taskParamsSetting.task_testDuration_ms;
+	doc["task_params"]["lastsetting_updated"] = _taskParamsSetting.lastsetting_updated;
 
-  doc["hardware"]["pwmchannelNo"] = _hardwareSetting.pwmchannelNo;
-  doc["hardware"]["pwmResolusion_bits"] = _hardwareSetting.pwmResolusion_bits;
-  doc["hardware"]["pwmduty_set"] = _hardwareSetting.pwmduty_set;
-  doc["hardware"]["lastsetting_updated"] = _hardwareSetting.lastsetting_updated;
+	doc["hardware"]["pwmchannelNo"] = _hardwareSetting.pwmchannelNo;
+	doc["hardware"]["pwmResolusion_bits"] = _hardwareSetting.pwmResolusion_bits;
+	doc["hardware"]["pwmduty_set"] = _hardwareSetting.pwmduty_set;
+	doc["hardware"]["lastsetting_updated"] = _hardwareSetting.lastsetting_updated;
 
-  doc["TuningSetting"]["adjust_pwm_25P"] = _TuningSetting.adjust_pwm_25P;
-  doc["TuningSetting"]["adjust_pwm_50P"] = _TuningSetting.adjust_pwm_50P;
-  doc["TuningSetting"]["adjust_pwm_75P"] = _TuningSetting.adjust_pwm_75P;
-  doc["TuningSetting"]["adjust_pwm_100P"] = _TuningSetting.adjust_pwm_100P;
+	doc["TuningSetting"]["adjust_pwm_25P"] = _TuningSetting.adjust_pwm_25P;
+	doc["TuningSetting"]["adjust_pwm_50P"] = _TuningSetting.adjust_pwm_50P;
+	doc["TuningSetting"]["adjust_pwm_75P"] = _TuningSetting.adjust_pwm_75P;
+	doc["TuningSetting"]["adjust_pwm_100P"] = _TuningSetting.adjust_pwm_100P;
 
-  doc["network"]["AP_SSID"] = _networkSetting.AP_SSID;
-  doc["network"]["AP_PASS"] = _networkSetting.AP_PASS;
-  doc["network"]["STA_SSID"] = _networkSetting.STA_SSID;
-  doc["network"]["STA_PASS"] = _networkSetting.STA_PASS;
-  doc["network"]["STA_IP"] = _networkSetting.STA_IP.toString();
-  doc["network"]["STA_GW"] = _networkSetting.STA_GW.toString();
-  doc["network"]["STA_SN"] = _networkSetting.STA_SN.toString();
-  doc["network"]["DHCP"] = _networkSetting.DHCP;
-  doc["network"]["max_retry"] = _networkSetting.max_retry;
-  doc["network"]["reconnectTimeout_ms"] = _networkSetting.reconnectTimeout_ms;
-  doc["network"]["networkTimeout_ms"] = _networkSetting.networkTimeout_ms;
-  doc["network"]["refreshConnectionAfter_ms"]
-      = _networkSetting.refreshConnectionAfter_ms;
-  doc["network"]["lastsetting_updated"] = _networkSetting.lastsetting_updated;
+	doc["network"]["AP_SSID"] = _networkSetting.AP_SSID;
+	doc["network"]["AP_PASS"] = _networkSetting.AP_PASS;
+	doc["network"]["STA_SSID"] = _networkSetting.STA_SSID;
+	doc["network"]["STA_PASS"] = _networkSetting.STA_PASS;
+	doc["network"]["STA_IP"] = _networkSetting.STA_IP.toString();
+	doc["network"]["STA_GW"] = _networkSetting.STA_GW.toString();
+	doc["network"]["STA_SN"] = _networkSetting.STA_SN.toString();
+	doc["network"]["DHCP"] = _networkSetting.DHCP;
+	doc["network"]["max_retry"] = _networkSetting.max_retry;
+	doc["network"]["reconnectTimeout_ms"] = _networkSetting.reconnectTimeout_ms;
+	doc["network"]["networkTimeout_ms"] = _networkSetting.networkTimeout_ms;
+	doc["network"]["refreshConnectionAfter_ms"] = _networkSetting.refreshConnectionAfter_ms;
+	doc["network"]["lastsetting_updated"] = _networkSetting.lastsetting_updated;
 
-  doc["modbus"]["baudrate"] = _modbusSetting.baudrate;
-  doc["modbus"]["parity"] = _modbusSetting.parity;
-  doc["modbus"]["databits"] = _modbusSetting.databits;
-  doc["modbus"]["stopbits"] = _modbusSetting.stopbits;
-  doc["modbus"]["slaveID"] = _modbusSetting.slaveID;
-  doc["modbus"]["lastsetting_updated"] = _modbusSetting.lastsetting_updated;
+	doc["modbus"]["baudrate"] = _modbusSetting.baudrate;
+	doc["modbus"]["parity"] = _modbusSetting.parity;
+	doc["modbus"]["databits"] = _modbusSetting.databits;
+	doc["modbus"]["stopbits"] = _modbusSetting.stopbits;
+	doc["modbus"]["slaveID"] = _modbusSetting.slaveID;
+	doc["modbus"]["lastsetting_updated"] = _modbusSetting.lastsetting_updated;
 
-  doc["report"]["enableReport"] = _reportSetting.enableReport;
-  doc["report"]["ReportFormat"] = _reportSetting.ReportFormat;
-  doc["report"]["clientName"] = _reportSetting.clientName;
-  doc["report"]["brandName"] = _reportSetting.brandName;
-  doc["report"]["serialNumber"] = _reportSetting.serialNumber;
-  doc["report"]["sampleNumber"] = _reportSetting.sampleNumber;
-  doc["report"]["lastsetting_updated"] = _reportSetting.lastsetting_updated;
+	doc["report"]["enableReport"] = _reportSetting.enableReport;
+	doc["report"]["ReportFormat"] = _reportSetting.ReportFormat;
+	doc["report"]["clientName"] = _reportSetting.clientName;
+	doc["report"]["brandName"] = _reportSetting.brandName;
+	doc["report"]["serialNumber"] = _reportSetting.serialNumber;
+	doc["report"]["sampleNumber"] = _reportSetting.sampleNumber;
+	doc["report"]["lastsetting_updated"] = _reportSetting.lastsetting_updated;
 
-  // Open file for writing
-  File file = LittleFS.open(filename, "w");
-  if (!file) {
-    Serial.println("Failed to open file for writing");
-    return;
-  }
+	// Open file for writing
+	File file = LittleFS.open(filename, "w");
+	if(!file)
+	{
+		Serial.println("Failed to open file for writing");
+		return;
+	}
 
-  // Serialize JSON to file
-  serializeJson(doc, file);
-  file.close();
+	// Serialize JSON to file
+	serializeJson(doc, file);
+	file.close();
 }
 
-void UPSTesterSetup::deserializeSettings(const char* filename) {
-  // Open file for reading
-  File file = LittleFS.open(filename, "r");
-  if (!file) {
-    Serial.println("Failed to open file for reading");
-    return;
-  }
+void UPSTesterSetup::deserializeSettings(const char* filename)
+{
+	// Open file for reading
+	File file = LittleFS.open(filename, "r");
+	if(!file)
+	{
+		Serial.println("Failed to open file for reading");
+		return;
+	}
 
-  // Allocate a JSON document with the appropriate capacity
-  DynamicJsonDocument doc(1024);
+	// Allocate a JSON document with the appropriate capacity
+	DynamicJsonDocument doc(1024);
 
-  // Deserialize the JSON from the file
-  DeserializationError error = deserializeJson(doc, file);
-  if (error) {
-    Serial.println("Failed to parse settings file");
-    file.close();
-    return;
-  }
-  file.close();
+	// Deserialize the JSON from the file
+	DeserializationError error = deserializeJson(doc, file);
+	if(error)
+	{
+		Serial.println("Failed to parse settings file");
+		file.close();
+		return;
+	}
+	file.close();
 
-  // Read the JSON into the internal settings structures, retaining existing
-  // values as fallback
-  _spec.Rating_va = doc["spec"]["Rating_va"] | _spec.Rating_va;
-  _spec.RatedVoltage_volt
-      = doc["spec"]["RatedVoltage_volt"] | _spec.RatedVoltage_volt;
-  _spec.RatedCurrent_amp
-      = doc["spec"]["RatedCurrent_amp"] | _spec.RatedCurrent_amp;
-  _spec.MinInputVoltage_volt
-      = doc["spec"]["MinInputVoltage_volt"] | _spec.MinInputVoltage_volt;
-  _spec.MaxInputVoltage_volt
-      = doc["spec"]["MaxInputVoltage_volt"] | _spec.MaxInputVoltage_volt;
-  _spec.AvgSwitchTime_ms
-      = doc["spec"]["AvgSwitchTime_ms"] | _spec.AvgSwitchTime_ms;
-  _spec.AvgBackupTime_ms
-      = doc["spec"]["AvgBackupTime_ms"] | _spec.AvgBackupTime_ms;
+	// Read the JSON into the internal settings structures, retaining existing
+	// values as fallback
+	_spec.Rating_va = doc["spec"]["Rating_va"] | _spec.Rating_va;
+	_spec.RatedVoltage_volt = doc["spec"]["RatedVoltage_volt"] | _spec.RatedVoltage_volt;
+	_spec.RatedCurrent_amp = doc["spec"]["RatedCurrent_amp"] | _spec.RatedCurrent_amp;
+	_spec.MinInputVoltage_volt = doc["spec"]["MinInputVoltage_volt"] | _spec.MinInputVoltage_volt;
+	_spec.MaxInputVoltage_volt = doc["spec"]["MaxInputVoltage_volt"] | _spec.MaxInputVoltage_volt;
+	_spec.AvgSwitchTime_ms = doc["spec"]["AvgSwitchTime_ms"] | _spec.AvgSwitchTime_ms;
+	_spec.AvgBackupTime_ms = doc["spec"]["AvgBackupTime_ms"] | _spec.AvgBackupTime_ms;
 
-  _testSetting.TestStandard
-      = doc["test"]["TestStandard"] | _testSetting.TestStandard;
-  _testSetting.mode = static_cast<TestMode>(
-      doc["test"]["mode"] | static_cast<int>(_testSetting.mode));
-  _testSetting.inputVoltage_volt
-      = doc["test"]["inputVoltage_volt"] | _testSetting.inputVoltage_volt;
-  _testSetting.min_valid_switch_time_ms
-      = doc["test"]["min_valid_switch_time_ms"]
-        | _testSetting.min_valid_switch_time_ms;
-  _testSetting.max_valid_switch_time_ms
-      = doc["test"]["max_valid_switch_time_ms"]
-        | _testSetting.max_valid_switch_time_ms;
-  _testSetting.ToleranceSwitchTime_ms = doc["test"]["ToleranceSwitchTime_ms"]
-                                        | _testSetting.ToleranceSwitchTime_ms;
-  _testSetting.ToleranceBackUpTime_ms = doc["test"]["ToleranceBackUpTime_ms"]
-                                        | _testSetting.ToleranceBackUpTime_ms;
-  _testSetting.MaxRetest = doc["test"]["MaxRetest"] | _testSetting.MaxRetest;
+	_testSetting.TestStandard = doc["test"]["TestStandard"] | _testSetting.TestStandard;
+	_testSetting.mode =
+		static_cast<TestMode>(doc["test"]["mode"] | static_cast<int>(_testSetting.mode));
+	_testSetting.inputVoltage_volt =
+		doc["test"]["inputVoltage_volt"] | _testSetting.inputVoltage_volt;
+	_testSetting.min_valid_switch_time_ms =
+		doc["test"]["min_valid_switch_time_ms"] | _testSetting.min_valid_switch_time_ms;
+	_testSetting.max_valid_switch_time_ms =
+		doc["test"]["max_valid_switch_time_ms"] | _testSetting.max_valid_switch_time_ms;
+	_testSetting.ToleranceSwitchTime_ms =
+		doc["test"]["ToleranceSwitchTime_ms"] | _testSetting.ToleranceSwitchTime_ms;
+	_testSetting.ToleranceBackUpTime_ms =
+		doc["test"]["ToleranceBackUpTime_ms"] | _testSetting.ToleranceBackUpTime_ms;
+	_testSetting.MaxRetest = doc["test"]["MaxRetest"] | _testSetting.MaxRetest;
 
-  _taskSetting.mainTest_taskCore
-      = doc["task"]["mainTest_taskCore"] | _taskSetting.mainTest_taskCore;
-  _taskSetting.mainsISR_taskCore
-      = doc["task"]["mainsISR_taskCore"] | _taskSetting.mainsISR_taskCore;
-  _taskSetting.upsISR_taskCore
-      = doc["task"]["upsISR_taskCore"] | _taskSetting.upsISR_taskCore;
-  _taskSetting.mainTest_taskIdlePriority
-      = doc["task"]["mainTest_taskIdlePriority"]
-        | _taskSetting.mainTest_taskIdlePriority;
-  _taskSetting.mainsISR_taskIdlePriority
-      = doc["task"]["mainsISR_taskIdlePriority"]
-        | _taskSetting.mainsISR_taskIdlePriority;
-  _taskSetting.upsISR_taskIdlePriority = doc["task"]["upsISR_taskIdlePriority"]
-                                         | _taskSetting.upsISR_taskIdlePriority;
-  _taskSetting.mainTest_taskStack
-      = doc["task"]["mainTest_taskStack"] | _taskSetting.mainTest_taskStack;
-  _taskSetting.mainsISR_taskStack
-      = doc["task"]["mainsISR_taskStack"] | _taskSetting.mainsISR_taskStack;
-  _taskSetting.upsISR_taskStack
-      = doc["task"]["upsISR_taskStack"] | _taskSetting.upsISR_taskStack;
-  _taskSetting.lastsetting_updated
-      = doc["task"]["lastsetting_updated"] | _taskSetting.lastsetting_updated;
+	_taskSetting.mainTest_taskCore =
+		doc["task"]["mainTest_taskCore"] | _taskSetting.mainTest_taskCore;
+	_taskSetting.mainsISR_taskCore =
+		doc["task"]["mainsISR_taskCore"] | _taskSetting.mainsISR_taskCore;
+	_taskSetting.upsISR_taskCore = doc["task"]["upsISR_taskCore"] | _taskSetting.upsISR_taskCore;
+	_taskSetting.mainTest_taskIdlePriority =
+		doc["task"]["mainTest_taskIdlePriority"] | _taskSetting.mainTest_taskIdlePriority;
+	_taskSetting.mainsISR_taskIdlePriority =
+		doc["task"]["mainsISR_taskIdlePriority"] | _taskSetting.mainsISR_taskIdlePriority;
+	_taskSetting.upsISR_taskIdlePriority =
+		doc["task"]["upsISR_taskIdlePriority"] | _taskSetting.upsISR_taskIdlePriority;
+	_taskSetting.mainTest_taskStack =
+		doc["task"]["mainTest_taskStack"] | _taskSetting.mainTest_taskStack;
+	_taskSetting.mainsISR_taskStack =
+		doc["task"]["mainsISR_taskStack"] | _taskSetting.mainsISR_taskStack;
+	_taskSetting.upsISR_taskStack = doc["task"]["upsISR_taskStack"] | _taskSetting.upsISR_taskStack;
+	_taskSetting.lastsetting_updated =
+		doc["task"]["lastsetting_updated"] | _taskSetting.lastsetting_updated;
 
-  _taskParamsSetting.flag_mains_power_loss
-      = doc["task_params"]["flag_mains_power_loss"]
-        | _taskParamsSetting.flag_mains_power_loss;
-  _taskParamsSetting.flag_ups_power_gain
-      = doc["task_params"]["flag_ups_power_gain"]
-        | _taskParamsSetting.flag_ups_power_gain;
-  _taskParamsSetting.task_TestVARating = doc["task_params"]["task_TestVARating"]
-                                         | _taskParamsSetting.task_TestVARating;
-  _taskParamsSetting.task_testDuration_ms
-      = doc["task_params"]["task_testDuration_ms"]
-        | _taskParamsSetting.task_testDuration_ms;
-  _taskParamsSetting.lastsetting_updated
-      = doc["task_params"]["lastsetting_updated"]
-        | _taskParamsSetting.lastsetting_updated;
+	_taskParamsSetting.flag_mains_power_loss =
+		doc["task_params"]["flag_mains_power_loss"] | _taskParamsSetting.flag_mains_power_loss;
+	_taskParamsSetting.flag_ups_power_gain =
+		doc["task_params"]["flag_ups_power_gain"] | _taskParamsSetting.flag_ups_power_gain;
+	_taskParamsSetting.task_TestVARating =
+		doc["task_params"]["task_TestVARating"] | _taskParamsSetting.task_TestVARating;
+	_taskParamsSetting.task_testDuration_ms =
+		doc["task_params"]["task_testDuration_ms"] | _taskParamsSetting.task_testDuration_ms;
+	_taskParamsSetting.lastsetting_updated =
+		doc["task_params"]["lastsetting_updated"] | _taskParamsSetting.lastsetting_updated;
 
-  _hardwareSetting.pwmchannelNo
-      = doc["hardware"]["pwmchannelNo"] | _hardwareSetting.pwmchannelNo;
-  _hardwareSetting.pwmResolusion_bits = doc["hardware"]["pwmResolusion_bits"]
-                                        | _hardwareSetting.pwmResolusion_bits;
-  _hardwareSetting.pwmduty_set
-      = doc["hardware"]["pwmduty_set"] | _hardwareSetting.pwmduty_set;
+	_hardwareSetting.pwmchannelNo = doc["hardware"]["pwmchannelNo"] | _hardwareSetting.pwmchannelNo;
+	_hardwareSetting.pwmResolusion_bits =
+		doc["hardware"]["pwmResolusion_bits"] | _hardwareSetting.pwmResolusion_bits;
+	_hardwareSetting.pwmduty_set = doc["hardware"]["pwmduty_set"] | _hardwareSetting.pwmduty_set;
 
-  _hardwareSetting.lastsetting_updated = doc["hardware"]["lastsetting_updated"]
-                                         | _hardwareSetting.lastsetting_updated;
+	_hardwareSetting.lastsetting_updated =
+		doc["hardware"]["lastsetting_updated"] | _hardwareSetting.lastsetting_updated;
 
-  _TuningSetting.adjust_pwm_25P
-      = doc["TuningSetting"]["adjust_pwm_25P"] | _TuningSetting.adjust_pwm_25P;
-  _TuningSetting.adjust_pwm_50P
-      = doc["TuningSetting"]["adjust_pwm_50P"] | _TuningSetting.adjust_pwm_50P;
-  _TuningSetting.adjust_pwm_75P
-      = doc["TuningSetting"]["adjust_pwm_75P"] | _TuningSetting.adjust_pwm_75P;
-  _TuningSetting.adjust_pwm_100P = doc["TuningSetting"]["adjust_pwm_100P"]
-                                   | _TuningSetting.adjust_pwm_100P;
+	_TuningSetting.adjust_pwm_25P =
+		doc["TuningSetting"]["adjust_pwm_25P"] | _TuningSetting.adjust_pwm_25P;
+	_TuningSetting.adjust_pwm_50P =
+		doc["TuningSetting"]["adjust_pwm_50P"] | _TuningSetting.adjust_pwm_50P;
+	_TuningSetting.adjust_pwm_75P =
+		doc["TuningSetting"]["adjust_pwm_75P"] | _TuningSetting.adjust_pwm_75P;
+	_TuningSetting.adjust_pwm_100P =
+		doc["TuningSetting"]["adjust_pwm_100P"] | _TuningSetting.adjust_pwm_100P;
 
-  _networkSetting.AP_SSID = doc["network"]["AP_SSID"] | _networkSetting.AP_SSID;
-  _networkSetting.AP_PASS = doc["network"]["AP_PASS"] | _networkSetting.AP_PASS;
-  _networkSetting.STA_SSID
-      = doc["network"]["STA_SSID"] | _networkSetting.STA_SSID;
-  _networkSetting.STA_PASS
-      = doc["network"]["STA_PASS"] | _networkSetting.STA_PASS;
-  _networkSetting.STA_IP.fromString(doc["network"]["STA_IP"]
-                                    | _networkSetting.STA_IP.toString());
-  _networkSetting.STA_GW.fromString(doc["network"]["STA_GW"]
-                                    | _networkSetting.STA_GW.toString());
-  _networkSetting.STA_SN.fromString(doc["network"]["STA_SN"]
-                                    | _networkSetting.STA_SN.toString());
-  _networkSetting.DHCP = doc["network"]["DHCP"] | _networkSetting.DHCP;
-  _networkSetting.max_retry
-      = doc["network"]["max_retry"] | _networkSetting.max_retry;
-  _networkSetting.reconnectTimeout_ms = doc["network"]["reconnectTimeout_ms"]
-                                        | _networkSetting.reconnectTimeout_ms;
-  _networkSetting.networkTimeout_ms
-      = doc["network"]["networkTimeout_ms"] | _networkSetting.networkTimeout_ms;
-  _networkSetting.refreshConnectionAfter_ms
-      = doc["network"]["refreshConnectionAfter_ms"]
-        | _networkSetting.refreshConnectionAfter_ms;
-  _networkSetting.lastsetting_updated = doc["network"]["lastsetting_updated"]
-                                        | _networkSetting.lastsetting_updated;
+	_networkSetting.AP_SSID = doc["network"]["AP_SSID"] | _networkSetting.AP_SSID;
+	_networkSetting.AP_PASS = doc["network"]["AP_PASS"] | _networkSetting.AP_PASS;
+	_networkSetting.STA_SSID = doc["network"]["STA_SSID"] | _networkSetting.STA_SSID;
+	_networkSetting.STA_PASS = doc["network"]["STA_PASS"] | _networkSetting.STA_PASS;
+	_networkSetting.STA_IP.fromString(doc["network"]["STA_IP"] | _networkSetting.STA_IP.toString());
+	_networkSetting.STA_GW.fromString(doc["network"]["STA_GW"] | _networkSetting.STA_GW.toString());
+	_networkSetting.STA_SN.fromString(doc["network"]["STA_SN"] | _networkSetting.STA_SN.toString());
+	_networkSetting.DHCP = doc["network"]["DHCP"] | _networkSetting.DHCP;
+	_networkSetting.max_retry = doc["network"]["max_retry"] | _networkSetting.max_retry;
+	_networkSetting.reconnectTimeout_ms =
+		doc["network"]["reconnectTimeout_ms"] | _networkSetting.reconnectTimeout_ms;
+	_networkSetting.networkTimeout_ms =
+		doc["network"]["networkTimeout_ms"] | _networkSetting.networkTimeout_ms;
+	_networkSetting.refreshConnectionAfter_ms =
+		doc["network"]["refreshConnectionAfter_ms"] | _networkSetting.refreshConnectionAfter_ms;
+	_networkSetting.lastsetting_updated =
+		doc["network"]["lastsetting_updated"] | _networkSetting.lastsetting_updated;
 
-  _modbusSetting.baudrate = doc["modbus"]["baudrate"] | _modbusSetting.baudrate;
-  _modbusSetting.parity = doc["modbus"]["parity"] | _modbusSetting.parity;
-  _modbusSetting.databits = doc["modbus"]["databits"] | _modbusSetting.databits;
-  _modbusSetting.stopbits = doc["modbus"]["stopbits"] | _modbusSetting.stopbits;
-  _modbusSetting.slaveID = doc["modbus"]["slaveID"] | _modbusSetting.slaveID;
-  _modbusSetting.lastsetting_updated = doc["modbus"]["lastsetting_updated"]
-                                       | _modbusSetting.lastsetting_updated;
+	_modbusSetting.baudrate = doc["modbus"]["baudrate"] | _modbusSetting.baudrate;
+	_modbusSetting.parity = doc["modbus"]["parity"] | _modbusSetting.parity;
+	_modbusSetting.databits = doc["modbus"]["databits"] | _modbusSetting.databits;
+	_modbusSetting.stopbits = doc["modbus"]["stopbits"] | _modbusSetting.stopbits;
+	_modbusSetting.slaveID = doc["modbus"]["slaveID"] | _modbusSetting.slaveID;
+	_modbusSetting.lastsetting_updated =
+		doc["modbus"]["lastsetting_updated"] | _modbusSetting.lastsetting_updated;
 
-  _reportSetting.enableReport
-      = doc["report"]["enableReport"] | _reportSetting.enableReport;
-  _reportSetting.ReportFormat
-      = doc["report"]["ReportFormat"] | _reportSetting.ReportFormat;
-  _reportSetting.clientName
-      = doc["report"]["clientName"] | _reportSetting.clientName;
-  _reportSetting.brandName
-      = doc["report"]["brandName"] | _reportSetting.brandName;
-  _reportSetting.serialNumber
-      = doc["report"]["serialNumber"] | _reportSetting.serialNumber;
-  _reportSetting.sampleNumber
-      = doc["report"]["sampleNumber"] | _reportSetting.sampleNumber;
-  _reportSetting.lastsetting_updated = doc["report"]["lastsetting_updated"]
-                                       | _reportSetting.lastsetting_updated;
+	_reportSetting.enableReport = doc["report"]["enableReport"] | _reportSetting.enableReport;
+	_reportSetting.ReportFormat = doc["report"]["ReportFormat"] | _reportSetting.ReportFormat;
+	_reportSetting.clientName = doc["report"]["clientName"] | _reportSetting.clientName;
+	_reportSetting.brandName = doc["report"]["brandName"] | _reportSetting.brandName;
+	_reportSetting.serialNumber = doc["report"]["serialNumber"] | _reportSetting.serialNumber;
+	_reportSetting.sampleNumber = doc["report"]["sampleNumber"] | _reportSetting.sampleNumber;
+	_reportSetting.lastsetting_updated =
+		doc["report"]["lastsetting_updated"] | _reportSetting.lastsetting_updated;
 }
 
-void UPSTesterSetup::notifyAllSettingsApplied() {
-  if (_allSettingCallback) {
-    _allSettingCallback(
-        true,
-        {_spec, _testSetting, _taskSetting, _taskParamsSetting,
-         _hardwareSetting, _networkSetting, _modbusSetting, _reportSetting});
-  }
+void UPSTesterSetup::notifyAllSettingsApplied()
+{
+	if(_allSettingCallback)
+	{
+		_allSettingCallback(true,
+							{_spec, _testSetting, _taskSetting, _taskParamsSetting,
+							 _hardwareSetting, _networkSetting, _modbusSetting, _reportSetting});
+	}
 }
 
 // Register Callback Methods
-void UPSTesterSetup::registerSpecCallback(OnSetupSpecCallback callback) {
-  _specSetCallback = callback;
+void UPSTesterSetup::registerSpecCallback(OnSetupSpecCallback callback)
+{
+	_specSetCallback = callback;
 }
 
-void UPSTesterSetup::registerTestCallback(OnSetupTestCallback callback) {
-  _testSetCallback = callback;
+void UPSTesterSetup::registerTestCallback(OnSetupTestCallback callback)
+{
+	_testSetCallback = callback;
 }
-void UPSTesterSetup::registerTaskCallback(OnSetupTaskCallback callback) {
-  _taskSetCallback = callback;
+void UPSTesterSetup::registerTaskCallback(OnSetupTaskCallback callback)
+{
+	_taskSetCallback = callback;
 }
-void UPSTesterSetup::registerTaskParamsCallback(
-    OnSetupTaskParamsCallback callback) {
-  _taskParamsSetCallback = callback;
+void UPSTesterSetup::registerTaskParamsCallback(OnSetupTaskParamsCallback callback)
+{
+	_taskParamsSetCallback = callback;
 }
-void UPSTesterSetup::registerNetworkCallback(OnSetupNetworkCallback callback) {
-  _commSetCallback = callback;
+void UPSTesterSetup::registerNetworkCallback(OnSetupNetworkCallback callback)
+{
+	_commSetCallback = callback;
 }
-void UPSTesterSetup::registerModbusCallback(OnSetupModbusCallback callback) {
-  _modbusSetCallback = callback;
+void UPSTesterSetup::registerModbusCallback(OnSetupModbusCallback callback)
+{
+	_modbusSetCallback = callback;
 }
-void UPSTesterSetup::registerHardwareCallback(
-    OnSetupHardwareCallback callback) {
-  _hardwareSetCallback = callback;
+void UPSTesterSetup::registerHardwareCallback(OnSetupHardwareCallback callback)
+{
+	_hardwareSetCallback = callback;
 }
 
-void UPSTesterSetup::registerReportCallback(OnSetupReportCallback callback) {
-  _reportSetCallback = callback;
+void UPSTesterSetup::registerReportCallback(OnSetupReportCallback callback)
+{
+	_reportSetCallback = callback;
 }
 
 // void UPSTesterSetup::loadFactorySettings() {
@@ -577,4 +568,4 @@ void UPSTesterSetup::registerReportCallback(OnSetupReportCallback callback) {
 //   notifyAllSettingsApplied();
 // }
 
-}  // namespace Node_Core
+} // namespace Node_Core

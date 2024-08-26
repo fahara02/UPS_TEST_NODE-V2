@@ -2,10 +2,13 @@
 #define HARDWARE_SETUP_H
 #include "HardwareConfig.h"
 
-namespace NodeTask {
+namespace NodeTask
+{
 
-class IO_SETUP {};
+class IO_SETUP
+{
+};
 
-}  // namespace NodeTask
+} // namespace NodeTask
 
 #endif
