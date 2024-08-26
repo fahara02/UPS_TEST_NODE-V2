@@ -97,33 +97,34 @@ void StateMachine::handleEventbits(EventBits_t event_bits) {
 void StateMachine::handleEvent(Event event) {
   logger.log(LogLevel::INFO, "Handling event %s", eventToString(event));
 
+  State old_state
+      = current_state.load();  // Ensure atomic access to current_state
+
   if (event == Event::SYSTEM_FAULT) {
-    State old_state = instance->getCurrentState();
     _old_state.store(old_state);
     State new_state = State::FAULT;
     setState(new_state);
     updateStateEventGroup(old_state, false);
-    updateStateEventGroup(current_state, true);
+    updateStateEventGroup(new_state, true);
     return;
   }
+
   if (event == Event::USER_PAUSED) {
-    State old_state = instance->getCurrentState();
     _old_state.store(old_state);
     State new_state = State::SYSTEM_PAUSED;
     setState(new_state);
     updateStateEventGroup(old_state, false);
     updateStateEventGroup(new_state, true);
-    logger.log(LogLevel::WARNING, "State now in:%s", stateToString(new_state));
+    logger.log(LogLevel::WARNING, "State now in: %s", stateToString(new_state));
     return;
   }
 
   if (event == Event::USER_TUNE) {
-    State old_state = instance->getCurrentState();
     _old_state.store(old_state);
     State new_state = State::SYSTEM_TUNING;
     setState(new_state);
-    updateStateEventGroup(new_state, true);   // set the current statebit
-    updateStateEventGroup(old_state, false);  // clear the old state  state bit
+    updateStateEventGroup(old_state, false);
+    updateStateEventGroup(new_state, true);
     return;
   }
 
@@ -137,14 +138,31 @@ void StateMachine::handleEvent(Event event) {
     if (transition.current_state == current_state
         && transition.event == event) {
       if (transition.guard()) {  // Check guard condition
-        State old_state = current_state;
         _old_state.store(old_state);
         setState(transition.next_state);  // Transition to the next state
+
+        // Reset the dataCapturedFlag if necessary
+        if (event == Event::TEST_TIME_END) {
+          dataCapturedFlag.store(false);
+        }
+
+        // Update the event group and log after setting the new state
+        updateStateEventGroup(old_state, false);
+        updateStateEventGroup(current_state.load(), true);
+
         logger.log(LogLevel::INFO, "State changed from %s to %s",
                    stateToString(old_state),
                    stateToString(transition.next_state));
 
         transition.action();  // Execute the associated action
+
+        // Additional logging for special cases
+        if (event == Event::TEST_TIME_END
+            && current_state == State::CURRENT_TEST_CHECK) {
+          logger.log(LogLevel::INFO,
+                     "TEST_TIME_END handled in CURRENT_TEST_CHECK");
+        }
+
         return;
       }
     }
@@ -152,7 +170,7 @@ void StateMachine::handleEvent(Event event) {
 
   // No valid transition found
   logger.log(LogLevel::WARNING, "No transition found for event %s in state %s",
-             eventToString(event), stateToString(current_state));
+             eventToString(event), stateToString(current_state.load()));
 }
 
 void StateMachine::handleError() {
