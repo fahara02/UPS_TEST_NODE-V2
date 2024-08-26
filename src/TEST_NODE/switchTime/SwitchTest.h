@@ -23,18 +23,6 @@ class SwitchTest : public UPSTest<SwitchTest>
 	static void SwitchTestTask(void* pvParameters);
 	~SwitchTest() override;
 
-	bool _dataCaptureOk_SW = false;
-	bool _dataCaptureRunning_SW = false;
-	bool _triggerTestOngoingEvent_SW = false;
-	bool _triggerTestEndEvent_SW = false;
-	bool _triggerDataCaptureEvent_SW = false;
-	bool _triggerValidDataEvent_SW = false;
-	bool _triggerDataSaveEvent_SW = false;
-
-	void startTestCapture() override;
-	void stopTestCapture() override;
-	bool processTestImpl() override;
-
   protected:
   private:
 	friend class TestManager;
@@ -54,6 +42,17 @@ class SwitchTest : public UPSTest<SwitchTest>
 
 	bool _initialized_SW;
 	bool _testinProgress_SW = false;
+	bool _dataCaptureOk_SW = false;
+	bool _dataCaptureRunning_SW = false;
+	bool _triggerTestOngoingEvent_SW = false;
+	bool _triggerTestEndEvent_SW = false;
+	bool _triggerDataCaptureEvent_SW = false;
+	bool _triggerValidDataEvent_SW = false;
+	bool _triggerDataSaveEvent_SW = false;
+
+	void startTestCapture() override;
+	void stopTestCapture() override;
+	bool processTestImpl() override;
 
 	bool checkTimerRange(unsigned long switchtime);
 };

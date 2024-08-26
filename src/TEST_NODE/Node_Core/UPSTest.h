@@ -22,9 +22,6 @@ class UPSTest
 	// Pure virtual function to be implemented by derived classes
 	virtual void init() = 0;
 	virtual TestResult run(uint16_t testVARating, unsigned long testDuration) = 0;
-	virtual void startTestCapture() = 0;
-	virtual void stopTestCapture() = 0;
-	virtual bool processTestImpl() = 0;
 
   protected:
 	UPSTest(); // Protected constructor
@@ -39,6 +36,9 @@ class UPSTest
 	void processTest(T& test);
 
 	// Pure virtual functions to be implemented by derived classes
+	virtual void startTestCapture() = 0;
+	virtual void stopTestCapture() = 0;
+	virtual bool processTestImpl() = 0;
 
   private:
 	static T* instance;

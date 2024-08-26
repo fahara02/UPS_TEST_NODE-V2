@@ -3,6 +3,7 @@
 
 #include "TestData.h"
 #include "UPSTest.h"
+#include "TestManager.h"
 
 class BackupTest : public UPSTest<BackupTest>
 {
@@ -24,19 +25,6 @@ class BackupTest : public UPSTest<BackupTest>
 	static void BackupTestTask(void* pvParameters);
 	~BackupTest() override;
 
-	bool _testinProgress_BT = false;
-	bool _dataCaptureRunning_BT = false;
-	bool _dataCaptureOk_BT = false;
-	bool _triggerTestOngoingEvent_BT = false;
-	bool _triggerTestEndEvent_BT = false;
-	bool _triggerDataCaptureEvent_BT = false;
-	bool _triggerValidDataEvent_BT = false;
-	bool _triggerDataSaveEvent_BT = false;
-
-	void startTestCapture() override;
-	void stopTestCapture() override;
-	bool processTestImpl() override;
-
   private:
 	friend class TestManager;
 
@@ -50,8 +38,19 @@ class BackupTest : public UPSTest<BackupTest>
 	uint8_t _currentTest_BT = 0;
 	unsigned long _testDuration_BT = 0;
 	bool _initialized_BT = false;
+	bool _testinProgress_BT = false;
+	bool _dataCaptureRunning_BT = false;
+	bool _dataCaptureOk_BT = false;
+	bool _triggerTestOngoingEvent_BT = false;
+	bool _triggerTestEndEvent_BT = false;
+	bool _triggerDataCaptureEvent_BT = false;
+	bool _triggerValidDataEvent_BT = false;
+	bool _triggerDataSaveEvent_BT = false;
 
 	BackupTestData _data_BT;
+	void startTestCapture() override;
+	void stopTestCapture() override;
+	bool processTestImpl() override;
 
 	bool checkBackupRange(unsigned long backuptime);
 };

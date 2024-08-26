@@ -5,7 +5,6 @@
 #include "Settings.h"
 #include "StateMachine.h"
 #include "TestData.h"
-
 #include "UPSError.h"
 #include "UPSTesterSetup.h"
 
