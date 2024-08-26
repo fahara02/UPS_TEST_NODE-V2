@@ -59,7 +59,10 @@ class UPSTesterSetup
 	{
 		return _reportSetting;
 	};
-
+	SetupTuning tuningSetup()
+	{
+		return _TuningSetting;
+	};
 	void updateSettings(SettingType settingType, const void* newSetting);
 	void loadSettings(SettingType settingType, const void* newSetting);
 	void loadFactorySettings();

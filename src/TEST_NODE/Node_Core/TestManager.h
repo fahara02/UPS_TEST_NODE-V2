@@ -5,38 +5,22 @@
 #include "Settings.h"
 #include "StateMachine.h"
 #include "TestData.h"
-#include "UPSTestBase.h"
 
-#include "UPSTest.h"
-
-#include "SwitchTest.h"
 #include "UPSError.h"
 #include "UPSTesterSetup.h"
+#include "SwitchTest.h"
+
+class SwitchTest;
 
 extern void IRAM_ATTR keyISR1(void* pvParameters);
 extern void IRAM_ATTR keyISR2(void* pvParameters);
 extern void IRAM_ATTR keyISR3(void* pvParameters);
 
 using namespace Node_Core;
-class SwitchTest;
+
 extern SwitchTest* switchTest;
-
-extern TaskHandle_t TestManagerTaskHandle;
-extern TaskHandle_t switchTestTaskHandle;
-extern TaskHandle_t backupTimeTestTaskHandle;
-extern TaskHandle_t efficiencyTestTaskHandle;
-extern TaskHandle_t inputvoltageTestTaskHandle;
-extern TaskHandle_t waveformTestTaskHandle;
-extern TaskHandle_t tunepwmTestTaskHandle;
-extern TaskHandle_t ISR_MAINS_POWER_LOSS;
-extern TaskHandle_t ISR_UPS_POWER_GAIN;
-extern TaskHandle_t ISR_UPS_POWER_LOSS;
-
-extern SemaphoreHandle_t mainLoss;
-extern SemaphoreHandle_t upsLoss;
-extern SemaphoreHandle_t upsGain;
-
-extern QueueHandle_t TestManageQueue;
+// class BackupTest;
+// extern BackupTest* backupTest;
 
 const uint16_t MAX_TESTS = 6;
 
@@ -74,24 +58,28 @@ struct RequiredTest
 	int TestNo; // Unique test number
 	TestType testtype;
 	LoadPercentage loadlevel;
-	TestStatus testStatus;
+	bool addTest = true;
+	RequiredTest() :
+		TestNo(0), testtype(TestType::SwitchTest), // Replace with an appropriate default value
+		loadlevel(LoadPercentage::LOAD_25P), // Replace with an appropriate default value
+		addTest(true)
+	{
+	}
+	RequiredTest(int testNo, TestType type, LoadPercentage level, bool add) :
+		TestNo(testNo), testtype(type), loadlevel(level), addTest(add)
+	{
+	}
 };
 
-template<typename T, typename U, TestType testype>
-class UPSTest;
-
-template<typename T, typename U>
 struct UPSTestRun
 {
-	T* testinstance; // Pointer to the test instance
 	RequiredTest testRequired;
-	U testData;
-};
-
-struct managerTaskParam
-{
-	SetupTaskParams taskparam;
-	Event event = Event::NONE;
+	TestStatus testStatus;
+	UPSTestRun() :
+		testRequired(), // Calls the default constructor of RequiredTest
+		testStatus() // Calls the default constructor of TestStatus
+	{
+	}
 };
 
 class TestManager
@@ -124,7 +112,7 @@ class TestManager
 	 testmanager construction or in init phase */
 	StateMachine* stateMachine = nullptr;
 
-	UPSTestRun<SwitchTest, SwitchTestData> testsSW[MAX_TESTS];
+	UPSTestRun testsSW[MAX_TESTS];
 
 	bool _initialized = false;
 	bool _newEventTrigger = false;
@@ -149,8 +137,8 @@ class TestManager
 	void pauseAllTest();
 
 	// helper functions switchTest
-	bool isTestPendingAndNotStarted(const UPSTestRun<SwitchTest, SwitchTestData>& test);
-	void logPendingSwitchTest(const UPSTestRun<SwitchTest, SwitchTestData>& test);
+	bool isTestPendingAndNotStarted(const UPSTestRun& test);
+	void logPendingSwitchTest(const UPSTestRun& test);
 	void configureSwitchTest(LoadPercentage load);
 
 	TestManager(const TestManager&) = delete;

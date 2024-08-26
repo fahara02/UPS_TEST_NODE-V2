@@ -10,7 +10,7 @@ enum TestResult
 enum class TestType
 {
 	SwitchTest = 1 << 0, // 1
-	BackupTimeTest = 1 << 1, // 2
+	BackupTest = 1 << 1, // 2
 	EfficiencyTest = 1 << 2, // 3
 	InputVoltageTest = 1 << 3, // 4
 	WaveformTest = 1 << 4, // 5
@@ -30,8 +30,8 @@ static const char* testTypeToString(TestType type)
 	{
 		case TestType::SwitchTest:
 			return "SwitchTest";
-		case TestType::BackupTimeTest:
-			return "BackupTimeTest";
+		case TestType::BackupTest:
+			return "BackupTest";
 		case TestType::EfficiencyTest:
 			return "EfficiencyTest";
 		case TestType::InputVoltageTest:
@@ -78,7 +78,7 @@ struct SwitchTestData
 	} switchTest[5];
 };
 
-struct BackUpTimeTestData
+struct BackupTestData
 {
 	struct SingleTest
 	{

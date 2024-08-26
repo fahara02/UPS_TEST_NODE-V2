@@ -1,15 +1,16 @@
 #include "SwitchTest.h"
+
 extern TestManager* Manager;
 extern QueueHandle_t TestManageQueue;
 extern EventGroupHandle_t eventGroupTest;
+extern TaskHandle_t switchTestTaskHandle;
 
 using namespace Node_Core;
-// Initialize static members
-SwitchTest* SwitchTest::instance = nullptr;
-
+// Static member initialization
+SwitchTest* SwitchTest::instanceSW = nullptr;
 SwitchTest::~SwitchTest()
 {
-	if(instance)
+	if(instanceSW)
 	{
 		if(switchTestTaskHandle != NULL)
 		{
@@ -17,43 +18,49 @@ SwitchTest::~SwitchTest()
 			switchTestTaskHandle = NULL;
 		}
 	}
-	instance = nullptr;
+	instanceSW = nullptr;
 }
 
-SwitchTest* SwitchTest::getInstance()
+SwitchTest* SwitchTest::getSWInstance()
 {
-	if(instance == nullptr)
+	if(instanceSW == nullptr)
 	{
-		instance = new SwitchTest();
-		// instance->testFunctions[0] = &SwitchTest::MainTestTask;
+		instanceSW = new SwitchTest();
 	}
-	return instance;
+	return instanceSW;
 }
 
-void SwitchTest::deleteInstance()
+void SwitchTest::deleteSWInstance()
 {
-	if(instance != nullptr)
+	if(instanceSW != nullptr)
 	{
-		delete instance;
+		delete instanceSW;
 	}
 }
 
-void SwitchTest::initTestdataImpl()
+void SwitchTest::init()
 {
-	for(auto& test: _data.switchTest)
+	if(!_initialized_SW)
 	{
-		test.testNo = 0;
-		test.testTimestamp = 0;
-		test.valid_data = false;
-		test.switchtime = 0;
-		test.starttime = 0;
-		test.endtime = 0;
-		test.load_percentage = LoadPercentage::LOAD_0P;
-	};
+		for(auto& test: _data_SW.switchTest)
+		{
+			test.testNo = 0;
+			test.testTimestamp = 0;
+			test.valid_data = false;
+			test.switchtime = 0;
+			test.starttime = 0;
+			test.endtime = 0;
+			test.load_percentage = LoadPercentage::LOAD_0P;
+		};
+		_initialized_SW = true;
+	}
 }
-
+SwitchTestData& SwitchTest::data()
+{
+	return _data_SW;
+}
 // Function for SwitchTest task
-void SwitchTest::MainTestTask(void* pvParameters)
+void SwitchTest::SwitchTestTask(void* pvParameters)
 {
 	SetupTaskParams taskParam;
 	xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
@@ -72,7 +79,7 @@ void SwitchTest::MainTestTask(void* pvParameters)
 			logger.log(LogLevel::TEST, "Switchtask VA rating is: ", taskParam.task_TestVARating);
 			logger.log(LogLevel::TEST, "Switchtask duration is: ", taskParam.task_testDuration_ms);
 
-			instance->run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
+			instanceSW->run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
 
 			logger.log(LogLevel::WARNING, "Hihg Water mark ", uxTaskGetStackHighWaterMark(NULL));
 		}
@@ -85,12 +92,12 @@ void SwitchTest::MainTestTask(void* pvParameters)
 // Start the test
 void SwitchTest::startTestCapture()
 {
-	if(_dataCaptureRunning)
+	if(_dataCaptureRunning_SW)
 	{
-		_data.switchTest[_currentTest].starttime = millis();
-		_dataCaptureOk = false;
+		_data_SW.switchTest[_currentTest_SW].starttime = millis();
+		_dataCaptureOk_SW = false;
 		logger.log(LogLevel::TEST,
-				   " time captured, starttime:", _data.switchTest[_currentTest].starttime);
+				   " time captured, starttime:", _data_SW.switchTest[_currentTest_SW].starttime);
 	}
 	else
 	{
@@ -101,20 +108,20 @@ void SwitchTest::startTestCapture()
 // Stop the test
 void SwitchTest::stopTestCapture()
 {
-	if(_dataCaptureRunning)
+	if(_dataCaptureRunning_SW)
 	{
-		_data.switchTest[_currentTest].endtime = millis();
+		_data_SW.switchTest[_currentTest_SW].endtime = millis();
 		logger.log(LogLevel::TEST,
-				   " time captured, stoptime:", _data.switchTest[_currentTest].endtime);
+				   " time captured, stoptime:", _data_SW.switchTest[_currentTest_SW].endtime);
 
 		logger.log(LogLevel::TEST, " switch time: ",
-				   _data.switchTest[_currentTest].endtime -
-					   _data.switchTest[_currentTest].starttime);
+				   _data_SW.switchTest[_currentTest_SW].endtime -
+					   _data_SW.switchTest[_currentTest_SW].starttime);
 
-		_dataCaptureRunning = false;
-		_dataCaptureOk = true; // Set flag to process timing data
+		_dataCaptureRunning_SW = false;
+		_dataCaptureOk_SW = true; // Set flag to process timing data
 
-		if(_dataCaptureOk)
+		if(_dataCaptureOk_SW)
 		{
 			logger.log(LogLevel::SUCCESS, " time capture ok");
 		}
@@ -122,8 +129,8 @@ void SwitchTest::stopTestCapture()
 }
 bool SwitchTest::checkTimerRange(unsigned long switchtime)
 {
-	if(switchtime >= _cfgTest.min_valid_switch_time_ms &&
-	   switchtime <= _cfgTest.max_valid_switch_time_ms)
+	if(switchtime >= _cfgTest_SW.min_valid_switch_time_ms &&
+	   switchtime <= _cfgTest_SW.max_valid_switch_time_ms)
 	{
 		return true;
 	}
@@ -132,18 +139,18 @@ bool SwitchTest::checkTimerRange(unsigned long switchtime)
 
 bool SwitchTest::processTestImpl()
 {
-	unsigned long endtime = _data.switchTest[_currentTest].endtime;
-	unsigned long starttime = _data.switchTest[_currentTest].starttime;
+	unsigned long endtime = _data_SW.switchTest[_currentTest_SW].endtime;
+	unsigned long starttime = _data_SW.switchTest[_currentTest_SW].starttime;
 	unsigned long switchTime = endtime - starttime;
 
 	if(starttime > 0 && endtime > 0)
 	{
 		if(checkTimerRange(switchTime))
 		{
-			_data.switchTest[_currentTest].valid_data = true;
-			_data.switchTest[_currentTest].testNo = _currentTest + 1;
-			_data.switchTest[_currentTest].testTimestamp = millis();
-			_data.switchTest[_currentTest].switchtime = switchTime;
+			_data_SW.switchTest[_currentTest_SW].valid_data = true;
+			_data_SW.switchTest[_currentTest_SW].testNo = _currentTest_SW + 1;
+			_data_SW.switchTest[_currentTest_SW].testTimestamp = millis();
+			_data_SW.switchTest[_currentTest_SW].switchtime = switchTime;
 			return true;
 		}
 	}
@@ -154,35 +161,35 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 {
 	setLoad(testVARating); // Set the load
 	unsigned long testStartTime = millis(); // Record the start time
-	_testDuration = testduration; // Set the test duration
-	_dataCaptureOk = false; // Ensure data capture is reset
-	_testinProgress = false;
+	_testDuration_SW = testduration; // Set the test duration
+	_dataCaptureOk_SW = false; // Ensure data capture is reset
+	_testinProgress_SW = false;
 
 	logger.log(LogLevel::INFO, "Starting Switching Test");
-	if(!_triggerTestOngoingEvent)
+	if(!_triggerTestOngoingEvent_SW)
 	{
-		_triggerTestEndEvent = false;
-		_triggerValidDataEvent = false;
-		_triggerTestOngoingEvent = true;
+		_triggerTestEndEvent_SW = false;
+		_triggerValidDataEvent_SW = false;
+		_triggerTestOngoingEvent_SW = true;
 		logger.log(LogLevel::WARNING, "Triggering Test ongoing event from switch test");
 		Manager->triggerEvent(Event::TEST_ONGOING);
 		vTaskDelay(pdTICKS_TO_MS(100));
 	}
 
 	// Main loop running until the total test duration expires
-	while(millis() - testStartTime < _testDuration)
+	while(millis() - testStartTime < _testDuration_SW)
 	{
 		logger.log(LogLevel::TEST, "Test ongoing...");
 
 		unsigned long elapsedTime = millis() - testStartTime;
-		unsigned long remainingTime = _testDuration - elapsedTime;
+		unsigned long remainingTime = _testDuration_SW - elapsedTime;
 		logger.log(LogLevel::INFO, "remaining time ms:", remainingTime);
 
-		if(!_testinProgress)
+		if(!_testinProgress_SW)
 		{
 			logger.log(LogLevel::WARNING, "Simulating Power cut");
 			simulatePowerCut();
-			_testinProgress = true;
+			_testinProgress_SW = true;
 			vTaskDelay(pdMS_TO_TICKS(50));
 		}
 
@@ -190,13 +197,13 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 	}
 
 	// After the main test duration has expired
-	if(_testinProgress)
+	if(_testinProgress_SW)
 	{
 		simulatePowerRestore();
 		logger.log(LogLevel::TEST, "Test cycle ended. Power restored.");
-		_testinProgress = false;
-		_triggerTestEndEvent = true;
-		_triggerTestOngoingEvent = false;
+		_testinProgress_SW = false;
+		_triggerTestEndEvent_SW = true;
+		_triggerTestOngoingEvent_SW = false;
 		logger.log(LogLevel::WARNING, "Cycle ended for single switch test");
 		Manager->triggerEvent(Event::TEST_TIME_END);
 		vTaskDelay(pdMS_TO_TICKS(100));
@@ -204,12 +211,12 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 
 	vTaskDelay(pdMS_TO_TICKS(200)); // Small delay before processing
 
-	if(_dataCaptureOk)
+	if(_dataCaptureOk_SW)
 	{
 		logger.log(LogLevel::TEST, "Processing time captured");
-		if(!_triggerDataCaptureEvent)
+		if(!_triggerDataCaptureEvent_SW)
 		{
-			_triggerDataCaptureEvent = true;
+			_triggerDataCaptureEvent_SW = true;
 			logger.log(LogLevel::SUCCESS, "Triggering DATA Captured event from switch test");
 			Manager->triggerEvent(Event::DATA_CAPTURED);
 			vTaskDelay(pdMS_TO_TICKS(100));
@@ -217,10 +224,10 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 
 		if(processTestImpl())
 		{
-			if(!_triggerValidDataEvent)
+			if(!_triggerValidDataEvent_SW)
 			{
-				_triggerDataCaptureEvent = false;
-				_triggerValidDataEvent = true;
+				_triggerDataCaptureEvent_SW = false;
+				_triggerValidDataEvent_SW = true;
 				logger.log(LogLevel::SUCCESS, "Triggering VAlid Data  event from switch test");
 				sendEndSignal();
 				Manager->triggerEvent(Event::VALID_DATA);
@@ -228,7 +235,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 			}
 
 			logger.log(LogLevel::TEST,
-					   "Switching Time: ", _data.switchTest[_currentTest].switchtime);
+					   "Switching Time: ", _data_SW.switchTest[_currentTest_SW].switchtime);
 
 			logger.log(LogLevel::SUCCESS, "Current SwitchTest finished!");
 			vTaskDelay(pdMS_TO_TICKS(1000));

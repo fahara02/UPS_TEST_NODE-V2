@@ -1,20 +1,25 @@
+#include <Arduino.h>
 #include "Adafruit_MAX31855.h"
 #include "FS.h"
-#include "Logger.h"
-#include "ModbusManager.h"
-#include "SwitchTest.h"
-#include "TestManager.h"
-#include "TestSync.h"
-#include "UPSTest.h"
+#include <LittleFS.h>
+#include <Wire.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
-#include <Arduino.h>
-#include <LittleFS.h>
-#include <Wire.h>
-#include <esp32-hal-log.h>
+
+#include "Logger.h"
+#include "ModbusManager.h"
+#include "TestSync.h"
+#include "TestManager.h"
+
+#include "SwitchTest.h"
 
 using namespace Node_Core;
+
+class SwitchTest;
+SwitchTest* switchTest = nullptr;
+// class BackupTest;
+// BackupTest* backupTest = nullptr;
 
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
@@ -33,7 +38,7 @@ xSemaphoreHandle state_mutex = NULL;
 
 TaskHandle_t modbusRTUTaskHandle = NULL;
 TaskHandle_t switchTestTaskHandle = NULL;
-TaskHandle_t backupTimeTestTaskHandle = NULL;
+TaskHandle_t backupTestTaskHandle = NULL;
 TaskHandle_t efficiencyTestTaskHandle = NULL;
 TaskHandle_t inputvoltageTestTaskHandle = NULL;
 TaskHandle_t waveformTestTaskHandle = NULL;
@@ -54,8 +59,6 @@ EventGroupHandle_t eventGroupTest = NULL;
 UPSTesterSetup* TesterSetup = nullptr;
 TestManager* Manager = nullptr;
 
-class SwitchTest;
-SwitchTest* switchTest = nullptr;
 // Task handles
 
 SemaphoreHandle_t xSemaphore;
@@ -179,8 +182,8 @@ void setup()
 	if(Manager)
 	{
 		RequiredTest testlist[] = {
-			{1, TestType::SwitchTest, LoadPercentage::LOAD_50P, TestStatus()},
-			{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, TestStatus()},
+			{1, TestType::SwitchTest, LoadPercentage::LOAD_50P, true},
+			{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
 
 		};
 		logger.log(LogLevel::INFO, "adding Tests");
