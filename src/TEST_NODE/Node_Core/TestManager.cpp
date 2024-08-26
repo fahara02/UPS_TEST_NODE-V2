@@ -1,9 +1,11 @@
 #include "TestManager.h"
 #include "Logger.h"
 #include "TestData.h"
+#include "TestSync.h"
 
 using namespace Node_Core;
 extern Logger& logger;
+extern TestSync& SyncTest;
 
 // extern TestSync& UPSTestSync;
 
@@ -47,7 +49,7 @@ void TestManager::init() {
   createManagerTasks();
   createTestTasks();
 
-  pauseAllTest();
+  // pauseAllTest();
 
   _initialized = true;  // Mark as initialized
 }
@@ -227,17 +229,11 @@ void TestManager::TestManagerTask(void* pvParameters) {
           logger.log(LogLevel::INFO, "SwitchTest task state: %s",
                      etaskStatetoString(estate));
 
-          if (estate == eSuspended) {
-            logger.log(LogLevel::INFO, "Resuming SwitchTest task");
-
-            vTaskResume(switchTestTaskHandle);
-            vTaskPrioritySet(switchTestTaskHandle,
-                             instance->_cfgTask.mainTest_taskIdlePriority + 1);
-
-            switchTest->_runTest = true;
-
-            vTaskDelay(pdMS_TO_TICKS(100));
-          }
+          SyncTest.startTest(TestType::SwitchTest);
+          vTaskPrioritySet(switchTestTaskHandle,
+                           instance->_cfgTask.mainTest_taskIdlePriority + 2);
+          vTaskDelay(pdMS_TO_TICKS(instance->_cfgTaskParam.task_testDuration_ms
+                                   + 100));
         }
       }
     }

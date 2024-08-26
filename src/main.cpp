@@ -4,6 +4,7 @@
 #include "ModbusManager.h"
 #include "SwitchTest.h"
 #include "TestManager.h"
+#include "TestSync.h"
 #include "UPSTest.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -17,6 +18,7 @@ using namespace Node_Core;
 
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
+TestSync& SyncTest = TestSync::getInstance();
 
 volatile unsigned long lastMainsTriggerTime = 0;
 volatile unsigned long lastUPSTriggerTime = 0;
@@ -45,6 +47,7 @@ TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
 
 QueueHandle_t TestManageQueue = NULL;
 static const uint8_t messageQueueLength = 10;
+EventGroupHandle_t eventGroupTest = NULL;
 
 // Define the SwitchTest instance
 

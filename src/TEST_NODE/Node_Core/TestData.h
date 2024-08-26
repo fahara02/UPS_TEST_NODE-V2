@@ -3,14 +3,15 @@
 #include <stdint.h>
 enum TestResult { TEST_FAILED = 0, TEST_SUCCESSFUL = 1 };
 enum class ISRType { MAINS_TRIGGERED, UPS_TRIGGERED };
-enum class TestType : uint8_t {
 
-  SwitchTest,        // 1
-  BackupTimeTest,    // 2
-  EfficiencyTest,    // 3
-  InputVoltageTest,  // 4
-  WaveformTest,      // 5
-  TunePWMTest        // 6
+enum class TestType {
+
+  SwitchTest = 1 << 0,        // 1
+  BackupTimeTest = 1 << 1,    // 2
+  EfficiencyTest = 1 << 2,    // 3
+  InputVoltageTest = 1 << 3,  // 4
+  WaveformTest = 1 << 4,      // 5
+  TunePWMTest = 1 << 5        // 6
 };
 enum LoadPercentage {
   LOAD_0P = 0,
@@ -54,8 +55,6 @@ static const char* loadPercentageToString(LoadPercentage load) {
       return "Unknown";
   }
 }
-
-
 
 struct SwitchTestData {
   struct SingleTest {
