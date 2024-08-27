@@ -5,14 +5,27 @@
 #include "UPSTest.h"
 #include "TestManager.h"
 extern QueueHandle_t BackupTestDataQueue;
+extern TaskHandle_t backupTestTaskHandle;
 class BackupTest : public UPSTest<BackupTest>
 {
   public:
 	static constexpr TestType test_type = TestType::BackupTest;
+	TestType getTestType() const override
+	{
+		return TestType::BackupTest;
+	}
 
-	static QueueHandle_t getQueue()
+	QueueHandle_t getQueue() const override
 	{
 		return BackupTestDataQueue;
+	}
+	const char* testTypeName() override
+	{
+		return "BackupTest";
+	}
+	TaskHandle_t getTaskHandle() const override
+	{
+		return backupTestTaskHandle;
 	}
 	bool isTestEnded() const override
 	{

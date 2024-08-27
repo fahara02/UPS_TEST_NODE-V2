@@ -1,15 +1,12 @@
 #include "SwitchTest.h"
 #include "BackupTest.h"
-#include "Logger.h"
-#include "TestData.h"
-#include "TestSync.h"
+
 
 extern SwitchTest* switchTest;
 extern BackupTest* backupTest;
 
 using namespace Node_Core;
-extern Logger& logger;
-extern TestSync& SyncTest;
+
 extern TaskHandle_t TestManagerTaskHandle;
 extern TaskHandle_t switchTestTaskHandle;
 extern TaskHandle_t backupTestTaskHandle;
@@ -255,19 +252,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 
 				else if(managerState == State::TEST_START)
 				{
-					logger.log(LogLevel::INFO, "Manager Task under test start phase");
-
-					LoadPercentage load = instance->_testList[i].testRequired.loadlevel;
-					instance->configureTest(load);
-					eTaskState estate = eTaskGetState(switchTestTaskHandle);
-					logger.log(LogLevel::INFO, "SwitchTest task state: %s",
-							   etaskStatetoString(estate));
-					vTaskPrioritySet(switchTestTaskHandle,
-									 instance->_cfgTask.mainTest_taskIdlePriority + 2);
-
-					logger.log(LogLevel::INFO, "Starting SwitchTest...");
-					SyncTest.startTest(TestType::SwitchTest);
-					vTaskDelay(pdMS_TO_TICKS(100));
+					instance->handleTestState(switchTest, managerState, i, 3);
 				}
 
 				else if(managerState == State::TEST_IN_PROGRESS)
@@ -496,51 +481,4 @@ void TestManager::logPendingTest(const UPSTestRun& test)
 	logger.log(LogLevel::INFO, "Pending Test Load level: %s", loadPercentageToString(load));
 	logger.log(LogLevel::INFO, "Pending Test name: %s", testTypeToString(type));
 	logger.log(LogLevel::INFO, "SwitchTest list is updated now.");
-}
-
-template<typename T>
-void handleTestState(UPSTest<T>* testInstance, State managerState)
-{
-	QueueHandle_t dataQueue = testInstance->getQueue();
-
-	if(managerState == State::TEST_START)
-	{
-		// testInstance->configureTest(testInstance->requiredLoadLevel());
-		SyncTest.startTest(testInstance->test_type);
-	}
-	else if(managerState == State::TEST_IN_PROGRESS)
-	{
-		if(testInstance->isdataCaptureOk())
-		{
-			logger.log(LogLevel::SUCCESS, "Successful data capture.");
-		}
-	}
-	else if(managerState == State::CURRENT_TEST_CHECK)
-	{
-		if(testInstance->isTestEnded())
-		{
-			logger.log(LogLevel::INFO, "Test Cycle ended.");
-		}
-	}
-	else if(managerState == State::CURRENT_TEST_OK)
-	{
-		auto dataBuff = testInstance->data();
-		if(xQueueReceive(dataQueue, &dataBuff, 1000) == pdTRUE)
-		{
-			logger.log(LogLevel::SUCCESS, "Received Test data");
-			SyncTest.stopTest(testInstance->test_type);
-			// testInstance->markTestAsDone();
-		}
-		else
-		{
-			logger.log(LogLevel::ERROR, "Receive Test data timeout");
-			SyncTest.stopTest(testInstance->test_type);
-		}
-	}
-	else
-	{
-		logger.log(LogLevel::WARNING, "Unhandled state encountered.");
-	}
-
-	vTaskDelay(pdMS_TO_TICKS(100)); // Delay to avoid rapid state changes
 }

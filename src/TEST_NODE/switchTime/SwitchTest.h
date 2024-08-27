@@ -5,15 +5,31 @@
 #include "TestManager.h"
 using namespace Node_Core;
 extern QueueHandle_t SwitchTestDataQueue;
+extern TaskHandle_t switchTestTaskHandle;
 class SwitchTest : public UPSTest<SwitchTest>
 {
   public:
 	static constexpr TestType test_type = TestType::SwitchTest;
 
-	static QueueHandle_t getQueue()
+	TestType getTestType() const override
+	{
+		return TestType::SwitchTest;
+	}
+
+	QueueHandle_t getQueue() const override
 	{
 		return SwitchTestDataQueue;
 	}
+	TaskHandle_t getTaskHandle() const override
+	{
+		return switchTestTaskHandle;
+	}
+
+	const char* testTypeName() override
+	{
+		return "SwitchTest";
+	}
+
 	bool isTestEnded() const override
 	{
 		if(_triggerTestEndEvent_SW)

@@ -3,7 +3,7 @@
 extern TestManager* Manager;
 
 extern EventGroupHandle_t eventGroupTest;
-extern TaskHandle_t switchTestTaskHandle;
+
 
 extern QueueHandle_t TestManageQueue;
 

@@ -3,7 +3,7 @@
 extern TestManager* Manager;
 extern QueueHandle_t TestManageQueue;
 extern EventGroupHandle_t eventGroupTest;
-extern TaskHandle_t backupTestTaskHandle;
+
 extern BackupTest* backupTest;
 
 using namespace Node_Core;

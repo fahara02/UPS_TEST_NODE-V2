@@ -17,11 +17,23 @@ template<class T>
 class UPSTest
 {
   public:
+	virtual TestType getTestType() const = 0;
+	virtual const char* testTypeName() = 0;
 	static T* getInstance();
 	static void deleteInstance();
 	// Pure virtual function to be implemented by derived classes
 	virtual void init() = 0;
 	virtual TestResult run(uint16_t testVARating, unsigned long testDuration) = 0;
+
+	void logTaskState(LogLevel level) const;
+	int getTaskPriority() const;
+	void setTaskPriority(UBaseType_t priority);
+
+	virtual QueueHandle_t getQueue() const = 0;
+	virtual TaskHandle_t getTaskHandle() const = 0;
+
+	virtual bool isTestEnded() const = 0;
+	virtual bool isdataCaptureOk() const = 0;
 
   protected:
 	UPSTest(); // Protected constructor
@@ -36,8 +48,7 @@ class UPSTest
 	void processTest(T& test);
 
 	// Pure virtual functions to be implemented by derived classes
-	virtual bool isTestEnded() const = 0;
-	virtual bool isdataCaptureOk() const = 0;
+
 	virtual void startTestCapture() = 0;
 	virtual void stopTestCapture() = 0;
 	virtual bool processTestImpl() = 0;
@@ -77,6 +88,68 @@ void UPSTest<T>::deleteInstance()
 	{
 		delete instance;
 		instance = nullptr;
+	}
+}
+template<typename T>
+int UPSTest<T>::getTaskPriority() const
+{
+	TaskHandle_t taskHandle = getTaskHandle();
+	if(taskHandle != NULL)
+	{
+		return uxTaskPriorityGet(taskHandle);
+	}
+	else
+	{
+		logger.log(LogLevel::ERROR, "Task handle is NULL. Cannot retrieve task priority.");
+		return -1; // Return an invalid priority as an error indicator
+	}
+}
+
+template<typename T>
+void UPSTest<T>::setTaskPriority(UBaseType_t priority)
+{
+	T* testInstance = T::getInstance();
+	if(testInstance != nullptr)
+	{
+		TaskHandle_t taskHandle = testInstance->getTaskHandle();
+		if(taskHandle != NULL)
+		{
+			vTaskPrioritySet(taskHandle, priority);
+			logger.log(LogLevel::INFO, "%s task new priority is: %d", testInstance->testTypeName(),
+					   testInstance->getTaskPriority());
+		}
+		else
+		{
+			logger.log(LogLevel::ERROR, "Task handle is NULL. Cannot retrieve task state.");
+		}
+	}
+	else
+	{
+		logger.log(LogLevel::ERROR, "Test instance is NULL. Cannot retrieve task state.");
+	}
+}
+
+template<typename T>
+void UPSTest<T>::logTaskState(LogLevel level) const
+{
+	T* testInstance = T::getInstance();
+	if(testInstance != nullptr)
+	{
+		TaskHandle_t taskHandle = testInstance->getTaskHandle();
+		if(taskHandle != NULL)
+		{
+			eTaskState estate = eTaskGetState(taskHandle);
+			logger.log(level, "%s task state: %s", testInstance->testTypeName(),
+					   etaskStatetoString(estate));
+		}
+		else
+		{
+			logger.log(LogLevel::ERROR, "Task handle is NULL. Cannot retrieve task state.");
+		}
+	}
+	else
+	{
+		logger.log(LogLevel::ERROR, "Test instance is NULL. Cannot retrieve task state.");
 	}
 }
 
