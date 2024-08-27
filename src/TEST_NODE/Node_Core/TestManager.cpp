@@ -101,9 +101,9 @@ void TestManager::addTests(RequiredTest testList[], int numTest)
 
 		if(testList[i].testtype == TestType::SwitchTest)
 		{
-			testsSW[_numSwitchTest].testRequired = testList[i];
-			testsSW[_numSwitchTest].testStatus.managerStatus = TestManagerStatus::PENDING;
-			testsSW[_numSwitchTest].testStatus.operatorStatus = TestOperatorStatus::NOT_STARTED;
+			_testList[_numSwitchTest].testRequired = testList[i];
+			_testList[_numSwitchTest].testStatus.managerStatus = TestManagerStatus::PENDING;
+			_testList[_numSwitchTest].testStatus.operatorStatus = TestOperatorStatus::NOT_STARTED;
 			logger.log(LogLevel::SUCCESS, "Added test", testTypeToString(testList[i].testtype));
 
 			_addedSwitchTest = true;
@@ -236,13 +236,13 @@ void TestManager::TestManagerTask(void* pvParameters)
 
 		for(int i = 0; i < instance->_numSwitchTest; ++i)
 		{
-			if(instance->isTestPendingAndNotStarted(instance->testsSW[i]))
+			if(instance->isTestPendingAndNotStarted(instance->_testList[i]))
 			{
 				managerState = SyncTest.getState();
 
 				if(managerState == State::DEVICE_READY)
 				{
-					instance->logPendingSwitchTest(instance->testsSW[i]);
+					instance->logPendingTest(instance->_testList[i]);
 					instance->triggerEvent(Event::AUTO_TEST_CMD);
 					vTaskDelay(pdMS_TO_TICKS(100));
 				}
@@ -257,8 +257,8 @@ void TestManager::TestManagerTask(void* pvParameters)
 				{
 					logger.log(LogLevel::INFO, "Manager Task under test start phase");
 
-					LoadPercentage load = instance->testsSW[i].testRequired.loadlevel;
-					instance->configureSwitchTest(load);
+					LoadPercentage load = instance->_testList[i].testRequired.loadlevel;
+					instance->configureTest(load);
 					eTaskState estate = eTaskGetState(switchTestTaskHandle);
 					logger.log(LogLevel::INFO, "SwitchTest task state: %s",
 							   etaskStatetoString(estate));
@@ -306,8 +306,8 @@ void TestManager::TestManagerTask(void* pvParameters)
 						logger.log(LogLevel::SUCCESS, "Received Test data ");
 						logger.log(LogLevel::INFO, "Stopping SwitchTest...");
 						SyncTest.stopTest(TestType::SwitchTest);
-						instance->testsSW[i].testStatus.managerStatus = TestManagerStatus::DONE;
-						instance->testsSW[i].testStatus.operatorStatus =
+						instance->_testList[i].testStatus.managerStatus = TestManagerStatus::DONE;
+						instance->_testList[i].testStatus.operatorStatus =
 							TestOperatorStatus::SUCCESS;
 						switchTest->_sendTestData = false;
 						logger.log(LogLevel::WARNING, "Triggering SAVE event from manager");
@@ -331,7 +331,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 					// Check if there are any more pending tests
 					for(int j = 0; j < instance->_numSwitchTest; ++j)
 					{
-						if(instance->isTestPendingAndNotStarted(instance->testsSW[j]))
+						if(instance->isTestPendingAndNotStarted(instance->_testList[j]))
 						{
 							pendingTestFound = true;
 							break;
@@ -448,7 +448,7 @@ bool TestManager::isTestPendingAndNotStarted(const UPSTestRun& test)
 		   test.testStatus.operatorStatus == TestOperatorStatus::NOT_STARTED;
 }
 
-void TestManager::configureSwitchTest(LoadPercentage load)
+void TestManager::configureTest(LoadPercentage load)
 {
 	SetupTaskParams task_Param;
 	task_Param = TesterSetup->paramSetup();
@@ -488,7 +488,7 @@ void TestManager::configureSwitchTest(LoadPercentage load)
 	xQueueSend(TestManageQueue, &task_Param, 100);
 }
 
-void TestManager::logPendingSwitchTest(const UPSTestRun& test)
+void TestManager::logPendingTest(const UPSTestRun& test)
 {
 	LoadPercentage load = test.testRequired.loadlevel;
 	TestType type = test.testRequired.testtype;
@@ -496,4 +496,51 @@ void TestManager::logPendingSwitchTest(const UPSTestRun& test)
 	logger.log(LogLevel::INFO, "Pending Test Load level: %s", loadPercentageToString(load));
 	logger.log(LogLevel::INFO, "Pending Test name: %s", testTypeToString(type));
 	logger.log(LogLevel::INFO, "SwitchTest list is updated now.");
+}
+
+template<typename T>
+void handleTestState(UPSTest<T>* testInstance, State managerState)
+{
+	QueueHandle_t dataQueue = testInstance->getQueue();
+
+	if(managerState == State::TEST_START)
+	{
+		// testInstance->configureTest(testInstance->requiredLoadLevel());
+		SyncTest.startTest(testInstance->test_type);
+	}
+	else if(managerState == State::TEST_IN_PROGRESS)
+	{
+		if(testInstance->isdataCaptureOk())
+		{
+			logger.log(LogLevel::SUCCESS, "Successful data capture.");
+		}
+	}
+	else if(managerState == State::CURRENT_TEST_CHECK)
+	{
+		if(testInstance->isTestEnded())
+		{
+			logger.log(LogLevel::INFO, "Test Cycle ended.");
+		}
+	}
+	else if(managerState == State::CURRENT_TEST_OK)
+	{
+		auto dataBuff = testInstance->data();
+		if(xQueueReceive(dataQueue, &dataBuff, 1000) == pdTRUE)
+		{
+			logger.log(LogLevel::SUCCESS, "Received Test data");
+			SyncTest.stopTest(testInstance->test_type);
+			// testInstance->markTestAsDone();
+		}
+		else
+		{
+			logger.log(LogLevel::ERROR, "Receive Test data timeout");
+			SyncTest.stopTest(testInstance->test_type);
+		}
+	}
+	else
+	{
+		logger.log(LogLevel::WARNING, "Unhandled state encountered.");
+	}
+
+	vTaskDelay(pdMS_TO_TICKS(100)); // Delay to avoid rapid state changes
 }

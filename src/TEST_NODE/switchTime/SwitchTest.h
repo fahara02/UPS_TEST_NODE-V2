@@ -4,11 +4,34 @@
 #include "UPSTest.h"
 #include "TestManager.h"
 using namespace Node_Core;
-
+extern QueueHandle_t SwitchTestDataQueue;
 class SwitchTest : public UPSTest<SwitchTest>
 {
   public:
 	static constexpr TestType test_type = TestType::SwitchTest;
+
+	static QueueHandle_t getQueue()
+	{
+		return SwitchTestDataQueue;
+	}
+	bool isTestEnded() const override
+	{
+		if(_triggerTestEndEvent_SW)
+		{
+			return true;
+		}
+		return false;
+	};
+
+	bool isdataCaptureOk() const override
+	{
+		if(_dataCaptureOk_SW)
+		{
+			return true;
+		}
+		return false;
+	}
+
 	static SwitchTest* getInstance()
 	{
 		return UPSTest<SwitchTest>::getInstance();

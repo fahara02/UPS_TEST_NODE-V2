@@ -6,7 +6,6 @@ extern EventGroupHandle_t eventGroupTest;
 extern TaskHandle_t switchTestTaskHandle;
 
 extern QueueHandle_t TestManageQueue;
-extern QueueHandle_t SwitchTestDataQueue;
 
 using namespace Node_Core;
 extern SwitchTest* switchTest;

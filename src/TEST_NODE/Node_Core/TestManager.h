@@ -7,15 +7,13 @@
 #include "TestData.h"
 #include "UPSError.h"
 #include "UPSTesterSetup.h"
+#include "UPSTest.h"
 
 extern void IRAM_ATTR keyISR1(void* pvParameters);
 extern void IRAM_ATTR keyISR2(void* pvParameters);
 extern void IRAM_ATTR keyISR3(void* pvParameters);
 
 using namespace Node_Core;
-
-// class BackupTest;
-// extern BackupTest* backupTest;
 
 const uint16_t MAX_TESTS = 6;
 
@@ -102,7 +100,7 @@ class TestManager
 	~TestManager();
 	static TestManager* instance;
 
-	UPSTestRun testsSW[MAX_TESTS];
+	UPSTestRun _testList[MAX_TESTS];
 
 	bool _initialized = false;
 	bool _newEventTrigger = false;
@@ -128,8 +126,11 @@ class TestManager
 
 	// helper functions switchTest
 	bool isTestPendingAndNotStarted(const UPSTestRun& test);
-	void logPendingSwitchTest(const UPSTestRun& test);
-	void configureSwitchTest(LoadPercentage load);
+	void logPendingTest(const UPSTestRun& test);
+	void configureTest(LoadPercentage load);
+
+	template<typename T>
+	void handleTestState(UPSTest<T>* testInstance, State managerState);
 
 	TestManager(const TestManager&) = delete;
 	TestManager& operator=(const TestManager&) = delete;

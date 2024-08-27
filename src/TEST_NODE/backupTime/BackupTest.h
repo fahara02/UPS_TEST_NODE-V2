@@ -4,12 +4,33 @@
 #include "TestData.h"
 #include "UPSTest.h"
 #include "TestManager.h"
-
+extern QueueHandle_t BackupTestDataQueue;
 class BackupTest : public UPSTest<BackupTest>
 {
   public:
 	static constexpr TestType test_type = TestType::BackupTest;
 
+	static QueueHandle_t getQueue()
+	{
+		return BackupTestDataQueue;
+	}
+	bool isTestEnded() const override
+	{
+		if(_triggerTestEndEvent_BT)
+		{
+			return true;
+		}
+		return false;
+	};
+
+	bool isdataCaptureOk() const override
+	{
+		if(_dataCaptureOk_BT)
+		{
+			return true;
+		}
+		return false;
+	}
 	BackupTest* getInstance()
 	{
 		return UPSTest<BackupTest>::getInstance();

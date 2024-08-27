@@ -36,6 +36,8 @@ class UPSTest
 	void processTest(T& test);
 
 	// Pure virtual functions to be implemented by derived classes
+	virtual bool isTestEnded() const = 0;
+	virtual bool isdataCaptureOk() const = 0;
 	virtual void startTestCapture() = 0;
 	virtual void stopTestCapture() = 0;
 	virtual bool processTestImpl() = 0;
