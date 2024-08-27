@@ -144,9 +144,10 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 	logger.log(LogLevel::INFO, "Starting BackUp Test");
 	if(!_triggerTestOngoingEvent_BT)
 	{
+		_triggerTestOngoingEvent_BT = true;
 		_triggerTestEndEvent_BT = false;
 		_triggerValidDataEvent_BT = false;
-		_triggerTestOngoingEvent_BT = true;
+
 		logger.log(LogLevel::WARNING, "Triggering Test ongoing event from Backup test");
 		Manager->triggerEvent(Event::TEST_ONGOING);
 		vTaskDelay(pdTICKS_TO_MS(100));
@@ -163,9 +164,9 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 
 		if(!_testinProgress_BT)
 		{
+			_testinProgress_BT = true;
 			logger.log(LogLevel::WARNING, "Simulating Power cut");
 			simulatePowerCut();
-			_testinProgress_BT = true;
 			vTaskDelay(pdMS_TO_TICKS(50));
 		}
 
@@ -177,9 +178,12 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 	{
 		simulatePowerRestore();
 		logger.log(LogLevel::TEST, "Test cycle ended. Power restored.");
+
 		_testinProgress_BT = false;
-		_triggerTestEndEvent_BT = true;
 		_triggerTestOngoingEvent_BT = false;
+		_triggerTestEndEvent_BT = true;
+		_currentTest_BT = _currentTest_BT + 1;
+
 		logger.log(LogLevel::WARNING, "Cycle ended for single switch test");
 		Manager->triggerEvent(Event::TEST_TIME_END);
 		vTaskDelay(pdMS_TO_TICKS(100));
@@ -204,16 +208,16 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 			{
 				_triggerDataCaptureEvent_BT = false;
 				_triggerValidDataEvent_BT = true;
+
 				logger.log(LogLevel::SUCCESS, "Triggering VAlid Data  event from BackUp test");
+				logger.log(LogLevel::TEST,
+						   "BackUpTime: ", _data_BT.backupTest[_currentTest_BT].backuptime);
 				sendEndSignal();
 				Manager->triggerEvent(Event::VALID_DATA);
 				vTaskDelay(pdMS_TO_TICKS(100));
 			}
 
-			logger.log(LogLevel::TEST,
-					   "BackUpTime: ", _data_BT.backupTest[_currentTest_BT].backuptime);
-
-			logger.log(LogLevel::SUCCESS, "Current BackUpTest finished!");
+			logger.log(LogLevel::TEST, "Current BackUpTest finished!");
 			vTaskDelay(pdMS_TO_TICKS(1000));
 			return TEST_SUCCESSFUL;
 		}

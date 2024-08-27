@@ -1,10 +1,12 @@
 #include "SwitchTest.h"
-#include "TestManager.h"
 
 extern TestManager* Manager;
-extern QueueHandle_t TestManageQueue;
+
 extern EventGroupHandle_t eventGroupTest;
 extern TaskHandle_t switchTestTaskHandle;
+
+extern QueueHandle_t TestManageQueue;
+extern QueueHandle_t SwitchTestDataQueue;
 
 using namespace Node_Core;
 extern SwitchTest* switchTest;
@@ -54,13 +56,47 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 		int result = xEventGroupGetBits(eventGroupTest);
 
 		if((result & sw_eventbits) != 0)
+
 		{
-			xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
-			logger.log(LogLevel::TEST, "Switchtask VA rating is: ", taskParam.task_TestVARating);
-			logger.log(LogLevel::TEST, "Switchtask duration is: ", taskParam.task_testDuration_ms);
+			if(switchTest->_currentTestResult == TestResult::TEST_SUCCESSFUL)
+			{
+				switchTest->_sendingTestData = true;
+			}
 
-			switchTest->run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
+			if(!switchTest->_sendingTestData)
+			{
+				xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
+				logger.log(LogLevel::TEST,
+						   "Switchtask VA rating is: ", taskParam.task_TestVARating);
+				logger.log(LogLevel::TEST,
+						   "Switchtask duration is: ", taskParam.task_testDuration_ms);
 
+				switchTest->_currentTestResult =
+					switchTest->run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
+			}
+			if(switchTest->_sendingTestData)
+			{
+				int retrySend = 0;
+				SwitchTestData testData = switchTest->data();
+				if(xQueueSend(SwitchTestDataQueue, &testData, 100) == pdTRUE)
+				{
+					switchTest->_sendingTestData = false;
+					logger.log(LogLevel::SUCCESS, "test data sending complete");
+					retrySend = 0;
+				}
+				else if(retrySend <= 3)
+				{
+					logger.log(LogLevel::WARNING, "retrying send data...");
+					retrySend = retrySend + 1;
+				}
+				else
+				{
+					logger.log(LogLevel::ERROR, "test data sending failed");
+					switchTest->_sendingTestData = false;
+				}
+
+				;
+			}
 			logger.log(LogLevel::WARNING, "Hihg Water mark ", uxTaskGetStackHighWaterMark(NULL));
 		}
 
@@ -131,6 +167,7 @@ bool SwitchTest::processTestImpl()
 			_data_SW.switchTest[_currentTest_SW].testNo = _currentTest_SW + 1;
 			_data_SW.switchTest[_currentTest_SW].testTimestamp = millis();
 			_data_SW.switchTest[_currentTest_SW].switchtime = switchTime;
+
 			return true;
 		}
 	}
@@ -143,13 +180,15 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 	unsigned long testStartTime = millis(); // Record the start time
 	_testDuration_SW = testduration; // Set the test duration
 	_dataCaptureOk_SW = false; // Ensure data capture is reset
+	_testinProgress_SW = false;
 
 	logger.log(LogLevel::INFO, "Starting Switching Test");
 	if(!_triggerTestOngoingEvent_SW)
 	{
-		_triggerTestEndEvent_SW = false;
-		_triggerValidDataEvent_SW = false;
 		_triggerTestOngoingEvent_SW = true;
+		_triggerValidDataEvent_SW = false;
+		_triggerTestEndEvent_SW = false;
+
 		logger.log(LogLevel::WARNING, "Triggering Test ongoing event from switch test");
 		Manager->triggerEvent(Event::TEST_ONGOING);
 		vTaskDelay(pdTICKS_TO_MS(100));
@@ -165,10 +204,11 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 		logger.log(LogLevel::INFO, "remaining time ms:", remainingTime);
 
 		if(!_testinProgress_SW)
+
 		{
+			_testinProgress_SW = true;
 			logger.log(LogLevel::TEST, "Simulating Power cut");
 			simulatePowerCut();
-			_testinProgress_SW = true;
 			vTaskDelay(pdMS_TO_TICKS(50));
 		}
 
@@ -180,9 +220,11 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 	{
 		simulatePowerRestore();
 		logger.log(LogLevel::TEST, "Test cycle ended. Power restored.");
+
 		_testinProgress_SW = false;
-		_triggerTestEndEvent_SW = true;
 		_triggerTestOngoingEvent_SW = false;
+		_triggerTestEndEvent_SW = true;
+
 		logger.log(LogLevel::WARNING, "Cycle ended for single switch test");
 		Manager->triggerEvent(Event::TEST_TIME_END);
 		vTaskDelay(pdMS_TO_TICKS(100));
@@ -196,7 +238,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 		if(!_triggerDataCaptureEvent_SW)
 		{
 			_triggerDataCaptureEvent_SW = true;
-			logger.log(LogLevel::SUCCESS, "Triggering DATA Captured event from switch test");
+			logger.log(LogLevel::INFO, "Triggering DATA Captured event from switch test");
 			Manager->triggerEvent(Event::DATA_CAPTURED);
 			vTaskDelay(pdMS_TO_TICKS(100));
 		}
@@ -207,24 +249,24 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 			{
 				_triggerDataCaptureEvent_SW = false;
 				_triggerValidDataEvent_SW = true;
-				logger.log(LogLevel::SUCCESS, "Triggering VAlid Data  event from switch test");
+
+				logger.log(LogLevel::SUCCESS, "Triggering valid Data  event from switch test");
+				logger.log(LogLevel::TEST,
+						   "Switching Time: ", _data_SW.switchTest[_currentTest_SW].switchtime);
 				sendEndSignal();
 				Manager->triggerEvent(Event::VALID_DATA);
 				vTaskDelay(pdMS_TO_TICKS(100));
 			}
 
-			logger.log(LogLevel::TEST,
-					   "Switching Time: ", _data_SW.switchTest[_currentTest_SW].switchtime);
-
-			logger.log(LogLevel::SUCCESS, "Current SwitchTest finished!");
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			logger.log(LogLevel::TEST, "Current SwitchTest finished!");
+			vTaskDelay(pdMS_TO_TICKS(100));
 			return TEST_SUCCESSFUL;
 		}
 		else
 		{
 			logger.log(LogLevel::ERROR, "Invalid timing data");
 			Manager->triggerEvent(Event::TEST_FAILED);
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			vTaskDelay(pdMS_TO_TICKS(100));
 			return TEST_FAILED;
 		}
 	}
@@ -232,12 +274,12 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 	{
 		logger.log(LogLevel::ERROR, "Data capture failed");
 		Manager->triggerEvent(Event::TEST_FAILED);
-		vTaskDelay(pdMS_TO_TICKS(1000));
+		vTaskDelay(pdMS_TO_TICKS(100));
 		return TEST_FAILED;
 	}
 
 	logger.log(LogLevel::ERROR, "Test failed");
 	Manager->triggerEvent(Event::TEST_FAILED);
-	vTaskDelay(pdMS_TO_TICKS(1000));
+	vTaskDelay(pdMS_TO_TICKS(100));
 	return TEST_FAILED;
 }

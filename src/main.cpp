@@ -49,8 +49,13 @@ TaskHandle_t ISR_UPS_POWER_GAIN = NULL;
 TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
 
 QueueHandle_t TestManageQueue = NULL;
+QueueHandle_t SwitchTestDataQueue = NULL;
+QueueHandle_t BackupTestDataQueue = NULL;
 static const uint8_t messageQueueLength = 10;
+
 EventGroupHandle_t eventGroupTest = NULL;
+EventGroupHandle_t eventGroupSwitchTestData = NULL;
+EventGroupHandle_t eventGroupBackupTestData = NULL;
 
 // Define the SwitchTest instance
 
@@ -128,6 +133,10 @@ void setup()
 	upsGain = xSemaphoreCreateBinary();
 	upsLoss = xSemaphoreCreateBinary();
 
+	TestManageQueue = xQueueCreate(messageQueueLength, sizeof(SetupTaskParams));
+	SwitchTestDataQueue = xQueueCreate(messageQueueLength, sizeof(SwitchTestData));
+	BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
+
 	// Initialize Serial for debugging
 	logger.init();
 	logger.log(LogLevel::INFO, "Serial started........");
@@ -152,7 +161,6 @@ void setup()
 	logger.log(LogLevel::INFO, "creating semaphores..");
 
 	logger.log(LogLevel::INFO, "creating queue");
-	TestManageQueue = xQueueCreate(messageQueueLength, sizeof(SetupTaskParams));
 
 	logger.log(LogLevel::INFO, "getting TesterSetup  instance");
 	TesterSetup = UPSTesterSetup::getInstance();

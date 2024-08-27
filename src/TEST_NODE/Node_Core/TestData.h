@@ -4,7 +4,8 @@
 enum TestResult
 {
 	TEST_FAILED = 0,
-	TEST_SUCCESSFUL = 1
+	TEST_PENDING = 1,
+	TEST_SUCCESSFUL = 2
 };
 
 enum class TestType

@@ -38,6 +38,7 @@ class SwitchTest : public UPSTest<SwitchTest>
 	SetupTuning _cfgTuning_SW;
 
 	uint8_t _currentTest_SW = 0;
+	TestResult _currentTestResult = TestResult::TEST_PENDING;
 	unsigned long _testDuration_SW = 0;
 
 	bool _initialized_SW = false;
@@ -49,6 +50,7 @@ class SwitchTest : public UPSTest<SwitchTest>
 	bool _triggerDataCaptureEvent_SW = false;
 	bool _triggerValidDataEvent_SW = false;
 	bool _triggerDataSaveEvent_SW = false;
+	bool _sendingTestData = false;
 
 	void startTestCapture() override;
 	void stopTestCapture() override;
