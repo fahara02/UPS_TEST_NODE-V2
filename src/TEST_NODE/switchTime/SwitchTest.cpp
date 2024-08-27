@@ -35,8 +35,23 @@ void SwitchTest::init()
 			test.load_percentage = LoadPercentage::LOAD_0P;
 		};
 		_initialized_SW = true;
+
+		UpdateSettings();
 	}
 }
+
+void SwitchTest::UpdateSettings()
+{
+	if(TesterSetup)
+	{
+		switchTest->_cfgSpec_SW = TesterSetup->specSetup();
+		switchTest->_cfgTest_SW = TesterSetup->testSetup();
+		switchTest->_cfgTask_SW = TesterSetup->taskSetup();
+		switchTest->_cfgTaskParam_SW = TesterSetup->paramSetup();
+		switchTest->_cfgHardware_SW = TesterSetup->hardwareSetup();
+	};
+}
+
 SwitchTestData& SwitchTest::data()
 {
 	return _data_SW;
@@ -60,10 +75,10 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 		{
 			if(switchTest->_currentTestResult == TestResult::TEST_SUCCESSFUL)
 			{
-				switchTest->_sendingTestData = true;
+				switchTest->_sendTestData = true;
 			}
 
-			if(!switchTest->_sendingTestData)
+			if(!switchTest->_sendTestData)
 			{
 				xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 				logger.log(LogLevel::TEST,
@@ -74,13 +89,13 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 				switchTest->_currentTestResult =
 					switchTest->run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
 			}
-			if(switchTest->_sendingTestData)
+			if(switchTest->_sendTestData)
 			{
 				int retrySend = 0;
 				SwitchTestData testData = switchTest->data();
 				if(xQueueSend(SwitchTestDataQueue, &testData, 100) == pdTRUE)
 				{
-					switchTest->_sendingTestData = false;
+					switchTest->_currentTestResult = TestResult::TEST_PENDING;
 					logger.log(LogLevel::SUCCESS, "test data sending complete");
 					retrySend = 0;
 				}
@@ -92,7 +107,7 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 				else
 				{
 					logger.log(LogLevel::ERROR, "test data sending failed");
-					switchTest->_sendingTestData = false;
+					switchTest->_sendTestData = false;
 				}
 
 				;
@@ -167,10 +182,11 @@ bool SwitchTest::processTestImpl()
 			_data_SW.switchTest[_currentTest_SW].testNo = _currentTest_SW + 1;
 			_data_SW.switchTest[_currentTest_SW].testTimestamp = millis();
 			_data_SW.switchTest[_currentTest_SW].switchtime = switchTime;
-
+			logger.log(LogLevel::SUCCESS, "Processing successful");
 			return true;
 		}
 	}
+	logger.log(LogLevel::ERROR, "Processing failed ,invalid data");
 	return false;
 }
 

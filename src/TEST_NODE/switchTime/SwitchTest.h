@@ -21,6 +21,8 @@ class SwitchTest : public UPSTest<SwitchTest>
 	void init() override;
 	TestResult run(uint16_t testVARating = 4000, unsigned long testduration = 10000) override;
 	static void SwitchTestTask(void* pvParameters);
+
+	void UpdateSettings();
 	~SwitchTest() override;
 
   protected:
@@ -50,7 +52,7 @@ class SwitchTest : public UPSTest<SwitchTest>
 	bool _triggerDataCaptureEvent_SW = false;
 	bool _triggerValidDataEvent_SW = false;
 	bool _triggerDataSaveEvent_SW = false;
-	bool _sendingTestData = false;
+	bool _sendTestData = false;
 
 	void startTestCapture() override;
 	void stopTestCapture() override;

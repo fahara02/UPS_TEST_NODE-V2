@@ -299,23 +299,26 @@ void TestManager::TestManagerTask(void* pvParameters)
 				}
 				else if(managerState == State::CURRENT_TEST_OK)
 				{
-					logger.log(LogLevel::INFO, "Stopping SwitchTest...");
-					SyncTest.stopTest(TestType::SwitchTest);
-					instance->testsSW[i].testStatus.managerStatus = TestManagerStatus::DONE;
-					instance->testsSW[i].testStatus.operatorStatus = TestOperatorStatus::SUCCESS;
-					logger.log(LogLevel::WARNING, "Triggering SAVE event from manager");
-
 					SwitchTestData dataBuff;
 
 					if(xQueueReceive(SwitchTestDataQueue, &dataBuff, 1000) == pdTRUE)
 					{
 						logger.log(LogLevel::SUCCESS, "Received Test data ");
+						logger.log(LogLevel::INFO, "Stopping SwitchTest...");
+						SyncTest.stopTest(TestType::SwitchTest);
+						instance->testsSW[i].testStatus.managerStatus = TestManagerStatus::DONE;
+						instance->testsSW[i].testStatus.operatorStatus =
+							TestOperatorStatus::SUCCESS;
+						switchTest->_sendTestData = false;
+						logger.log(LogLevel::WARNING, "Triggering SAVE event from manager");
 						instance->triggerEvent(Event::SAVE);
 						vTaskDelay(pdMS_TO_TICKS(100));
 					}
 					else
 					{
 						logger.log(LogLevel::ERROR, "Receive Test data timeout");
+						logger.log(LogLevel::INFO, "Stopping SwitchTest...");
+						SyncTest.stopTest(TestType::SwitchTest);
 					};
 				}
 
