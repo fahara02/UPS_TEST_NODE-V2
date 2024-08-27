@@ -8,9 +8,6 @@ extern TaskHandle_t switchTestTaskHandle;
 
 using namespace Node_Core;
 extern SwitchTest* switchTest;
-// Static member initialization
-// template<>
-// SwitchTest* UPSTest<SwitchTest>::instance = nullptr;
 
 SwitchTest::~SwitchTest()
 {

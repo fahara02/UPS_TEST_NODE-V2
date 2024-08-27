@@ -37,6 +37,7 @@ class BackupTest : public UPSTest<BackupTest>
 
 	uint8_t _currentTest_BT = 0;
 	unsigned long _testDuration_BT = 0;
+
 	bool _initialized_BT = false;
 	bool _testinProgress_BT = false;
 	bool _dataCaptureRunning_BT = false;

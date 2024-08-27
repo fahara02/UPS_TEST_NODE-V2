@@ -5,9 +5,7 @@ extern QueueHandle_t TestManageQueue;
 extern EventGroupHandle_t eventGroupTest;
 extern TaskHandle_t backupTestTaskHandle;
 extern BackupTest* backupTest;
-// Initialize static members
-// template<>
-// BackupTest* UPSTest<BackupTest>::instance = nullptr;
+
 using namespace Node_Core;
 
 BackupTest::~BackupTest()

@@ -55,8 +55,7 @@ struct RequiredTest
 	LoadPercentage loadlevel;
 	bool addTest = true;
 	RequiredTest() :
-		TestNo(0), testtype(TestType::SwitchTest), // Replace with an appropriate default value
-		loadlevel(LoadPercentage::LOAD_25P), // Replace with an appropriate default value
+		TestNo(0), testtype(TestType::SwitchTest), loadlevel(LoadPercentage::LOAD_25P),
 		addTest(true)
 	{
 	}
@@ -114,7 +113,7 @@ class TestManager
 	bool _setupUpdated = false;
 	bool _addedSwitchTest = false;
 	uint8_t _numSwitchTest = 0;
-	uint8_t _numBackupTimeTest = 0;
+	uint8_t _numBackupTest = 0;
 
 	State _currentstate;
 	SetupSpec _cfgSpec;

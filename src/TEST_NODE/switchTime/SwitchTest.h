@@ -40,7 +40,7 @@ class SwitchTest : public UPSTest<SwitchTest>
 	uint8_t _currentTest_SW = 0;
 	unsigned long _testDuration_SW = 0;
 
-	bool _initialized_SW;
+	bool _initialized_SW = false;
 	bool _testinProgress_SW = false;
 	bool _dataCaptureOk_SW = false;
 	bool _dataCaptureRunning_SW = false;
