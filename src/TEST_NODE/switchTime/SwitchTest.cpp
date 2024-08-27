@@ -143,7 +143,6 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 	unsigned long testStartTime = millis(); // Record the start time
 	_testDuration_SW = testduration; // Set the test duration
 	_dataCaptureOk_SW = false; // Ensure data capture is reset
-	_testinProgress_SW = false;
 
 	logger.log(LogLevel::INFO, "Starting Switching Test");
 	if(!_triggerTestOngoingEvent_SW)
@@ -167,7 +166,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 
 		if(!_testinProgress_SW)
 		{
-			logger.log(LogLevel::WARNING, "Simulating Power cut");
+			logger.log(LogLevel::TEST, "Simulating Power cut");
 			simulatePowerCut();
 			_testinProgress_SW = true;
 			vTaskDelay(pdMS_TO_TICKS(50));

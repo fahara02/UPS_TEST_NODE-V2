@@ -1,16 +1,18 @@
 #include "SwitchTest.h"
+#include "BackupTest.h"
 #include "Logger.h"
 #include "TestData.h"
 #include "TestSync.h"
 
 extern SwitchTest* switchTest;
+extern BackupTest* backupTest;
 
 using namespace Node_Core;
 extern Logger& logger;
 extern TestSync& SyncTest;
 extern TaskHandle_t TestManagerTaskHandle;
 extern TaskHandle_t switchTestTaskHandle;
-extern TaskHandle_t backupTimeTestTaskHandle;
+extern TaskHandle_t backupTestTaskHandle;
 extern TaskHandle_t efficiencyTestTaskHandle;
 extern TaskHandle_t inputvoltageTestTaskHandle;
 extern TaskHandle_t waveformTestTaskHandle;
@@ -31,12 +33,6 @@ TestManager* TestManager::instance = nullptr;
 
 TestManager::TestManager() : _initialized(false), _newEventTrigger(false), _setupUpdated(false)
 {
-	stateMachine = StateMachine::getInstance();
-	if(stateMachine)
-	{
-		logger.log(LogLevel::SUCCESS, "State machine is on!");
-		_currentstate = stateMachine->getCurrentState();
-	}
 	instance->UpdateSettings();
 }
 
@@ -128,7 +124,7 @@ void TestManager::pauseAllTest()
 }
 void TestManager::triggerEvent(Event event)
 {
-	instance->stateMachine->handleEvent(event);
+	SyncTest.triggerEvent(event);
 }
 
 void TestManager::setupPins()
@@ -209,6 +205,18 @@ void TestManager::createTestTasks()
 		eTaskState state = eTaskGetState(switchTestTaskHandle);
 		logger.log(LogLevel::INFO, "SwitchTest task state: %s", etaskStatetoString(state));
 	}
+	if(backupTest)
+	{
+		logger.log(LogLevel::INFO, "Creating Backuptest task ");
+
+		xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
+
+		xTaskCreatePinnedToCore(backupTest->BackupTestTask, "MainsTestManager", 12000, NULL,
+								_cfgTask.mainTest_taskIdlePriority, &backupTestTaskHandle, 0);
+
+		eTaskState state = eTaskGetState(backupTestTaskHandle);
+		logger.log(LogLevel::INFO, "BackupTest task state: %s", etaskStatetoString(state));
+	}
 }
 
 void TestManager::TestManagerTask(void* pvParameters)
@@ -217,9 +225,9 @@ void TestManager::TestManagerTask(void* pvParameters)
 
 	while(true)
 	{
-		State currentState = instance->stateMachine->getCurrentState();
+		State managerState = SyncTest.getState();
 
-		if(currentState == State::DEVICE_READY)
+		if(managerState == State::DEVICE_READY)
 		{
 			logger.log(LogLevel::INFO, "Device is ready. Checking pending tests...");
 		}
@@ -228,22 +236,22 @@ void TestManager::TestManagerTask(void* pvParameters)
 		{
 			if(instance->isTestPendingAndNotStarted(instance->testsSW[i]))
 			{
-				currentState = instance->stateMachine->getCurrentState();
+				managerState = SyncTest.getState();
 
-				if(currentState == State::DEVICE_READY)
+				if(managerState == State::DEVICE_READY)
 				{
 					instance->logPendingSwitchTest(instance->testsSW[i]);
 					instance->triggerEvent(Event::AUTO_TEST_CMD);
 					vTaskDelay(pdMS_TO_TICKS(100));
 				}
-				else if(currentState == State::AUTO_MODE)
+				else if(managerState == State::AUTO_MODE)
 				{
 					vTaskDelay(pdMS_TO_TICKS(100));
 					instance->triggerEvent(Event::PENDING_TEST_FOUND);
 					vTaskDelay(pdMS_TO_TICKS(100));
 				}
 
-				else if(currentState == State::TEST_START)
+				else if(managerState == State::TEST_START)
 				{
 					logger.log(LogLevel::INFO, "Manager Task under test start phase");
 
@@ -260,7 +268,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 					vTaskDelay(pdMS_TO_TICKS(100));
 				}
 
-				else if(currentState == State::TEST_IN_PROGRESS)
+				else if(managerState == State::TEST_IN_PROGRESS)
 				{
 					logger.log(LogLevel::INFO, "Manager observing running test");
 
@@ -271,7 +279,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 
 					vTaskDelay(pdMS_TO_TICKS(100));
 				}
-				else if(currentState == State::CURRENT_TEST_CHECK)
+				else if(managerState == State::CURRENT_TEST_CHECK)
 				{
 					logger.log(LogLevel::INFO,
 							   "In check State  checking either test ended or data captured");
@@ -286,7 +294,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 
 					vTaskDelay(pdMS_TO_TICKS(100));
 				}
-				else if(currentState == State::CURRENT_TEST_OK)
+				else if(managerState == State::CURRENT_TEST_OK)
 				{
 					logger.log(LogLevel::INFO,
 							   "Test completed successfully. Stopping SwitchTest...");
@@ -298,7 +306,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 					vTaskDelay(pdMS_TO_TICKS(100));
 				}
 
-				else if(currentState == State::READY_NEXT_TEST)
+				else if(managerState == State::READY_NEXT_TEST)
 				{
 					logger.log(LogLevel::INFO, "Checking for next pending test...");
 
@@ -342,12 +350,20 @@ void TestManager::onMainsPowerLossTask(void* pvParameters)
 	{
 		if(xSemaphoreTake(mainLoss, portMAX_DELAY))
 		{
-			vTaskPrioritySet(&ISR_MAINS_POWER_LOSS, 3);
-			if(switchTest)
+			// vTaskPrioritySet(&ISR_MAINS_POWER_LOSS, 3);
+			if(switchTest->_testinProgress_SW)
 			{
 				switchTest->_dataCaptureRunning_SW = true;
-				switchTest->startTestCapture();
 				logger.log(LogLevel::INTR, "mains Powerloss triggered...");
+				logger.log(LogLevel::TEST, " Switch Test DataCapture...");
+				switchTest->startTestCapture();
+			}
+			if(backupTest->_testinProgress_BT)
+			{
+				backupTest->_dataCaptureRunning_BT = true;
+				logger.log(LogLevel::INTR, "mains Powerloss triggered...");
+				logger.log(LogLevel::TEST, " Backup Test DataCapture...");
+				backupTest->startTestCapture();
 			}
 
 			logger.log(LogLevel::INFO,
@@ -367,8 +383,8 @@ void TestManager::onUPSPowerGainTask(void* pvParameters)
 		{
 			if(switchTest)
 			{
+				logger.log(LogLevel::INTR, "UPS Power gain triggered...");
 				switchTest->stopTestCapture();
-				logger.log(LogLevel::INTR, "UPS Powerloss triggered...");
 			}
 			logger.log(LogLevel::INFO, "UPS High Water Mark:", uxTaskGetStackHighWaterMark(NULL));
 
@@ -380,6 +396,21 @@ void TestManager::onUPSPowerGainTask(void* pvParameters)
 
 void TestManager::onUPSPowerLossTask(void* pvParameters)
 {
+	while(true)
+	{
+		if(xSemaphoreTake(upsLoss, portMAX_DELAY))
+		{
+			if(backupTest)
+
+			{
+				logger.log(LogLevel::INTR, "UPS lost power triggered...");
+				backupTest->stopTestCapture();
+			}
+			logger.log(LogLevel::INFO, "UPS High Water Mark:", uxTaskGetStackHighWaterMark(NULL));
+
+			vTaskDelay(pdMS_TO_TICKS(100)); // Task delay
+		}
+	}
 	vTaskDelete(NULL);
 }
 
@@ -388,6 +419,10 @@ void TestManager::initializeTestInstances()
 	if(switchTest)
 	{
 		switchTest->init();
+	}
+	if(backupTest)
+	{
+		backupTest->init();
 	}
 }
 

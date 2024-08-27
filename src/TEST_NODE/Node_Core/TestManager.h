@@ -102,10 +102,6 @@ class TestManager
 	~TestManager();
 	static TestManager* instance;
 
-	/* external class instances as private member and will be initialise in
-	 testmanager construction or in init phase */
-	StateMachine* stateMachine = nullptr;
-
 	UPSTestRun testsSW[MAX_TESTS];
 
 	bool _initialized = false;
@@ -115,7 +111,7 @@ class TestManager
 	uint8_t _numSwitchTest = 0;
 	uint8_t _numBackupTest = 0;
 
-	State _currentstate;
+	State _stateManager;
 	SetupSpec _cfgSpec;
 	SetupTest _cfgTest;
 	SetupTask _cfgTask;

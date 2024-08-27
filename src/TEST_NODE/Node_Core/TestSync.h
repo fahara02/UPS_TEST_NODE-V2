@@ -6,6 +6,7 @@
 #include "TestData.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
+#include "StateMachine.h"
 
 using namespace Node_Core;
 extern Logger& logger;
@@ -30,7 +31,8 @@ class TestSync
 	{
 		EventBits_t test_eventbits = static_cast<EventBits_t>(test);
 		xEventGroupSetBits(eventGroupTest, test_eventbits);
-		logger.log(LogLevel::SUCCESS, "for test %s set Eventbit to->", testTypeToString(test));
+		logger.log(LogLevel::SUCCESS, "for test %s got Start Command,bit set to->",
+				   testTypeToString(test));
 		int result = xEventGroupGetBits(eventGroupTest);
 		logger.logBinary(LogLevel::WARNING, result);
 	};
@@ -38,19 +40,41 @@ class TestSync
 	{
 		EventBits_t test_eventbits = static_cast<EventBits_t>(test);
 		xEventGroupClearBits(eventGroupTest, test_eventbits);
-		logger.log(LogLevel::SUCCESS, "for test %s cleared Eventbit to->", testTypeToString(test));
+		logger.log(LogLevel::SUCCESS, "for test %s got Stop Command,bit cleared to->",
+				   testTypeToString(test));
 		int result = xEventGroupGetBits(eventGroupTest);
 		logger.logBinary(LogLevel::WARNING, result);
 		vTaskDelay(pdMS_TO_TICKS(50));
 	};
 
+	void triggerEvent(Event event)
+	{
+		if(stateMachine)
+		{
+			stateMachine->handleEvent(event);
+		}
+	}
+
+	State getState()
+	{
+		if(stateMachine)
+		{
+			_currentState = stateMachine->getCurrentState();
+
+			return _currentState;
+		}
+		return State::DEVICE_ON;
+	}
+
   private:
 	TestSync()
 	{
+		stateMachine = StateMachine::getInstance();
+		if(stateMachine)
+		{
+			logger.log(LogLevel::SUCCESS, "State machine is on!");
+		}
 	}
-
-	TestSync(const TestSync&) = delete;
-	TestSync& operator=(const TestSync&) = delete;
 
 	void resetAllBits()
 	{
@@ -58,9 +82,13 @@ class TestSync
 		int result = xEventGroupGetBits(eventGroupTest);
 		logger.logBinary(LogLevel::WARNING, result);
 	}
+	State _currentState = State::DEVICE_ON;
+	StateMachine* stateMachine = nullptr;
 
 	static const EventBits_t ALL_TEST_BITS = (1 << MAX_TEST) - 1;
-	// Dynamically calculate all bits
+
+	TestSync(const TestSync&) = delete;
+	TestSync& operator=(const TestSync&) = delete;
 };
 
 #endif // TEST_SYNC_H

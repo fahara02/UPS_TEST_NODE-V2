@@ -17,12 +17,11 @@
 
 using namespace Node_Core;
 
-SwitchTest* switchTest = UPSTest<SwitchTest>::getInstance();
-BackupTest* backupTest = UPSTest<BackupTest>::getInstance();
-
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
+SwitchTest* switchTest = UPSTest<SwitchTest>::getInstance();
+BackupTest* backupTest = UPSTest<BackupTest>::getInstance();
 
 volatile unsigned long lastMainsTriggerTime = 0;
 volatile unsigned long lastUPSTriggerTime = 0;
@@ -72,11 +71,12 @@ void IRAM_ATTR keyISR1(void* pvParameters)
 	unsigned long currentTime = millis();
 	if(currentTime - lastMainsTriggerTime > debounceDelay)
 	{
-		BaseType_t higherPriorityTaskWoken = pdFALSE;
+		BaseType_t urgentTask = pdFALSE;
 		lastMainsTriggerTime = currentTime;
-		if(xSemaphoreGiveFromISR(mainLoss, &higherPriorityTaskWoken) != pdTRUE)
+		xSemaphoreGiveFromISR(mainLoss, &urgentTask);
+		if(urgentTask)
 		{
-			xTaskResumeFromISR(ISR_MAINS_POWER_LOSS);
+			vPortEvaluateYieldFromISR(urgentTask);
 		}
 	}
 }
