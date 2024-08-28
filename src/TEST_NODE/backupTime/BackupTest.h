@@ -61,6 +61,7 @@ class BackupTest : public UPSTest<BackupTest, BackupTestData>
 	void init() override;
 	TestResult run(uint16_t testVARating = 4000, unsigned long testduration = 10000) override;
 	static void BackupTestTask(void* pvParameters);
+	void UpdateSettings();
 	~BackupTest() override;
 
   private:
@@ -75,6 +76,7 @@ class BackupTest : public UPSTest<BackupTest, BackupTestData>
 
 	uint8_t _currentTest_BT = 0;
 	unsigned long _testDuration_BT = 0;
+	TestResult _currentTestResult = TestResult::TEST_PENDING;
 
 	bool _initialized_BT = false;
 	bool _testinProgress_BT = false;
