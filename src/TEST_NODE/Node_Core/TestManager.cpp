@@ -95,20 +95,12 @@ void TestManager::addTests(RequiredTest testList[], int numTest)
 		logger.log(LogLevel::INFO, "Test Type:%s ", testTypeToString(testList[i].testtype));
 		logger.log(LogLevel::INFO, "Load Level:%s ", loadPercentageToString(testList[i].loadlevel));
 
-		if(testList[i].testtype == TestType::SwitchTest)
-		{
-			_testList[_numSwitchTest].testRequired = testList[i];
-			_testList[_numSwitchTest].testStatus.managerStatus = TestManagerStatus::PENDING;
-			_testList[_numSwitchTest].testStatus.operatorStatus = TestOperatorStatus::NOT_STARTED;
-			logger.log(LogLevel::SUCCESS, "Added test", testTypeToString(testList[i].testtype));
+		_testList[_numTest].testRequired = testList[i];
+		_testList[_numTest].testStatus.managerStatus = TestManagerStatus::PENDING;
+		_testList[_numTest].testStatus.operatorStatus = TestOperatorStatus::NOT_STARTED;
+		logger.log(LogLevel::SUCCESS, "Added test", testTypeToString(testList[i].testtype));
 
-			_addedSwitchTest = true;
-			_numSwitchTest++;
-		}
-		else
-		{
-			logger.log(LogLevel::WARNING, "Other Test still not available");
-		}
+		_numTest++;
 	}
 }
 

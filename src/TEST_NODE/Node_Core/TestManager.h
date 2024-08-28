@@ -107,9 +107,10 @@ class TestManager
 	bool _initialized = false;
 	bool _newEventTrigger = false;
 	bool _setupUpdated = false;
-	bool _addedSwitchTest = false;
+
 	uint8_t _numSwitchTest = 0;
 	uint8_t _numBackupTest = 0;
+	uint8_t _numTest = 0;
 
 	State _stateManager;
 	SetupSpec _cfgSpec;
