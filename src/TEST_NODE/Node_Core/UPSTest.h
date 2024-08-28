@@ -31,8 +31,8 @@ class UPSTest
 
 	virtual QueueHandle_t getQueue() const = 0;
 	virtual TaskHandle_t getTaskHandle() const = 0;
-	virtual U& data() =0 ;
-
+	virtual U& data() = 0;
+	virtual bool isTestRunning() const = 0;
 	virtual bool isTestEnded() const = 0;
 	virtual bool isdataCaptureOk() const = 0;
 	virtual void markTestAsDone() = 0;
@@ -64,17 +64,17 @@ class UPSTest
 };
 
 template<class T, typename U>
-T* UPSTest<T,U>::instance = nullptr;
+T* UPSTest<T, U>::instance = nullptr;
 
 // Protected Constructor
 template<class T, typename U>
-UPSTest<T,U>::UPSTest()
+UPSTest<T, U>::UPSTest()
 {
 	// Constructor logic if needed
 }
 
 template<class T, typename U>
-T* UPSTest<T,U>::getInstance()
+T* UPSTest<T, U>::getInstance()
 {
 	if(instance == nullptr)
 	{
@@ -84,7 +84,7 @@ T* UPSTest<T,U>::getInstance()
 }
 
 template<class T, typename U>
-void UPSTest<T,U>::deleteInstance()
+void UPSTest<T, U>::deleteInstance()
 {
 	if(instance != nullptr)
 	{
@@ -93,7 +93,7 @@ void UPSTest<T,U>::deleteInstance()
 	}
 }
 template<class T, typename U>
-int UPSTest<T,U>::getTaskPriority() const
+int UPSTest<T, U>::getTaskPriority() const
 {
 	TaskHandle_t taskHandle = getTaskHandle();
 	if(taskHandle != NULL)
@@ -108,7 +108,7 @@ int UPSTest<T,U>::getTaskPriority() const
 }
 
 template<class T, typename U>
-void UPSTest<T,U>::setTaskPriority(UBaseType_t priority)
+void UPSTest<T, U>::setTaskPriority(UBaseType_t priority)
 {
 	T* testInstance = T::getInstance();
 	if(testInstance != nullptr)
@@ -132,7 +132,7 @@ void UPSTest<T,U>::setTaskPriority(UBaseType_t priority)
 }
 
 template<class T, typename U>
-void UPSTest<T,U>::logTaskState(LogLevel level) const
+void UPSTest<T, U>::logTaskState(LogLevel level) const
 {
 	T* testInstance = T::getInstance();
 	if(testInstance != nullptr)
@@ -156,7 +156,7 @@ void UPSTest<T,U>::logTaskState(LogLevel level) const
 }
 
 template<class T, typename U>
-void UPSTest<T,U>::setLoad(uint16_t testVARating)
+void UPSTest<T, U>::setLoad(uint16_t testVARating)
 {
 	if(!TesterSetup)
 		return; // Ensure TesterSetup is valid
@@ -206,7 +206,7 @@ void UPSTest<T,U>::setLoad(uint16_t testVARating)
 }
 
 template<class T, typename U>
-void UPSTest<T,U>::selectLoadBank(uint16_t bankNumbers)
+void UPSTest<T, U>::selectLoadBank(uint16_t bankNumbers)
 {
 	digitalWrite(LOAD25P_ON_PIN, bankNumbers >= 1 ? HIGH : LOW);
 	digitalWrite(LOAD50P_ON_PIN, bankNumbers >= 2 ? HIGH : LOW);
@@ -215,7 +215,7 @@ void UPSTest<T,U>::selectLoadBank(uint16_t bankNumbers)
 }
 
 template<class T, typename U>
-void UPSTest<T,U>::sendEndSignal()
+void UPSTest<T, U>::sendEndSignal()
 {
 	digitalWrite(TEST_END_INT_PIN, HIGH);
 	vTaskDelay(pdMS_TO_TICKS(10));
@@ -223,19 +223,19 @@ void UPSTest<T,U>::sendEndSignal()
 }
 
 template<class T, typename U>
-void UPSTest<T,U>::simulatePowerCut()
+void UPSTest<T, U>::simulatePowerCut()
 {
 	digitalWrite(UPS_POWER_CUT_PIN, HIGH); // Simulate power cut
 }
 
 template<class T, typename U>
-void UPSTest<T,U>::simulatePowerRestore()
+void UPSTest<T, U>::simulatePowerRestore()
 {
 	digitalWrite(UPS_POWER_CUT_PIN, LOW); // Simulate mains power restore
 }
 
 template<class T, typename U>
-void UPSTest<T,U>::processTest(T& test)
+void UPSTest<T, U>::processTest(T& test)
 {
 	// Placeholder for processing the test; type-specific implementations should override
 	// processTestImpl

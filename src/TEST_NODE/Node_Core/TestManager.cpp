@@ -269,14 +269,14 @@ void TestManager::onMainsPowerLossTask(void* pvParameters)
 		if(xSemaphoreTake(mainLoss, portMAX_DELAY))
 		{
 			// vTaskPrioritySet(&ISR_MAINS_POWER_LOSS, 3);
-			if(switchTest->_testinProgress_SW)
+			if(switchTest->isTestRunning())
 			{
 				switchTest->_dataCaptureRunning_SW = true;
 				logger.log(LogLevel::INTR, "mains Powerloss triggered...");
 				logger.log(LogLevel::TEST, " Switch Test DataCapture...");
 				switchTest->startTestCapture();
 			}
-			if(backupTest->_testinProgress_BT)
+			if(backupTest->isTestRunning())
 			{
 				backupTest->_dataCaptureRunning_BT = true;
 				logger.log(LogLevel::INTR, "mains Powerloss triggered...");
@@ -299,7 +299,7 @@ void TestManager::onUPSPowerGainTask(void* pvParameters)
 	{
 		if(xSemaphoreTake(upsGain, portMAX_DELAY))
 		{
-			if(switchTest)
+			if(switchTest->isTestRunning())
 			{
 				logger.log(LogLevel::INTR, "UPS Power gain triggered...");
 				switchTest->stopTestCapture();
@@ -318,7 +318,7 @@ void TestManager::onUPSPowerLossTask(void* pvParameters)
 	{
 		if(xSemaphoreTake(upsLoss, portMAX_DELAY))
 		{
-			if(backupTest)
+			if(backupTest->isTestRunning())
 
 			{
 				logger.log(LogLevel::INTR, "UPS lost power triggered...");

@@ -27,22 +27,19 @@ class BackupTest : public UPSTest<BackupTest, BackupTestData>
 	{
 		return backupTestTaskHandle;
 	}
+	bool isTestRunning() const override
+	{
+		return _testinProgress_BT;
+	}
+
 	bool isTestEnded() const override
 	{
-		if(_triggerTestEndEvent_BT)
-		{
-			return true;
-		}
-		return false;
-	};
+		return _triggerTestEndEvent_BT;
+	}
 
 	bool isdataCaptureOk() const override
 	{
-		if(_dataCaptureOk_BT)
-		{
-			return true;
-		}
-		return false;
+		return _dataCaptureOk_BT;
 	}
 	void markTestAsDone() override
 	{

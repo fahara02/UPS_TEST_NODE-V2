@@ -29,24 +29,21 @@ class SwitchTest : public UPSTest<SwitchTest, SwitchTestData>
 	{
 		return "SwitchTest";
 	}
+	bool isTestRunning() const override
+	{
+		return _testinProgress_SW;
+	}
 
 	bool isTestEnded() const override
 	{
-		if(_triggerTestEndEvent_SW)
-		{
-			return true;
-		}
-		return false;
-	};
+		return _triggerTestEndEvent_SW;
+	}
 
 	bool isdataCaptureOk() const override
 	{
-		if(_dataCaptureOk_SW)
-		{
-			return true;
-		}
-		return false;
+		return _dataCaptureOk_SW;
 	}
+
 	void markTestAsDone() override
 	{
 		_sendTestData_SW = false;
