@@ -1,12 +1,16 @@
 #include <Arduino.h>
 #include "Adafruit_MAX31855.h"
-#include "FS.h"
+#include "SPI.h"
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <WiFiManager.h>
+#include <ESPAsyncWebServer.h>
+#include <Preferences.h>
 #include <LittleFS.h>
 #include <Wire.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
-
 #include "Logger.h"
 #include "ModbusManager.h"
 #include "TestSync.h"
@@ -14,14 +18,16 @@
 #include "UPSTest.h"
 #include "SwitchTest.h"
 #include "BackupTest.h"
+#include "UPSdebug.h"
+#include "PageBuilder.h"
 
 using namespace Node_Core;
 
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
-SwitchTest* switchTest = UPSTest<SwitchTest,SwitchTestData>::getInstance();
-BackupTest* backupTest = UPSTest<BackupTest,BackupTestData>::getInstance();
+SwitchTest* switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
+BackupTest* backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 
 volatile unsigned long lastMainsTriggerTime = 0;
 volatile unsigned long lastUPSTriggerTime = 0;
