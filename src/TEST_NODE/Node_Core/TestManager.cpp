@@ -91,15 +91,12 @@ void TestManager::addTests(RequiredTest testList[], int numTest)
 	}
 	for(int i = 0; i < numTest; ++i)
 	{
-		logger.log(LogLevel::INFO, "Test No: ", testList[i].TestNo);
-		logger.log(LogLevel::INFO, "Test Type:%s ", testTypeToString(testList[i].testtype));
-		logger.log(LogLevel::INFO, "Load Level:%s ", loadPercentageToString(testList[i].loadlevel));
-
 		_testList[_numTest].testRequired = testList[i];
 		_testList[_numTest].testStatus.managerStatus = TestManagerStatus::PENDING;
 		_testList[_numTest].testStatus.operatorStatus = TestOperatorStatus::NOT_STARTED;
 		logger.log(LogLevel::SUCCESS, "Added test", testTypeToString(testList[i].testtype));
-
+		logger.log(LogLevel::INFO, "Test No: ", testList[i].TestNo);
+		logger.log(LogLevel::INFO, "Load Level:%s ", loadPercentageToString(testList[i].loadlevel));
 		_numTest++;
 	}
 }

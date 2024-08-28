@@ -65,22 +65,31 @@ static const char* loadPercentageToString(LoadPercentage load)
 	}
 }
 
+struct TestData
+{
+	uint8_t testNo;
+	unsigned long testTimestamp;
+	unsigned long starttime;
+	unsigned long endtime;
+	LoadPercentage load_percentage : 7;
+	bool valid_data : 1;
+
+	// Default constructor for TestData
+	TestData() :
+		testNo(0), testTimestamp(0), starttime(0), endtime(0),
+		load_percentage(LoadPercentage::LOAD_0P), valid_data(false)
+	{
+	}
+};
+
+// Derived struct for SwitchTestData
 struct SwitchTestData
 {
-	struct SingleTest
+	struct SingleTest : public TestData
 	{
-		uint8_t testNo;
-		unsigned long testTimestamp;
 		unsigned long switchtime;
-		unsigned long starttime;
-		unsigned long endtime;
-		LoadPercentage load_percentage : 7;
-		bool valid_data : 1;
 
-		// Default constructor for SingleTest
-		SingleTest() :
-			testNo(0), testTimestamp(0), switchtime(0), starttime(0), endtime(0),
-			load_percentage(LoadPercentage::LOAD_0P), valid_data(false)
+		SingleTest() : TestData(), switchtime(0)
 		{
 		}
 	} switchTest[5];
@@ -88,6 +97,7 @@ struct SwitchTestData
 	// Default constructor for SwitchTestData
 	SwitchTestData()
 	{
+		// Initialize the array of SingleTest
 		for(int i = 0; i < 5; ++i)
 		{
 			switchTest[i] = SingleTest();
@@ -95,22 +105,17 @@ struct SwitchTestData
 	}
 };
 
+// Derived struct for BackupTestData
+// Derived struct for BackupTestData
 struct BackupTestData
 {
-	struct SingleTest
+	struct SingleTest : public TestData
 	{
-		uint8_t testNo;
-		unsigned long testTimestamp;
 		unsigned long backuptime;
-		unsigned long starttime;
-		unsigned long endtime;
-		LoadPercentage load_percentage : 7;
-		bool valid_data : 1;
 
-		// Default constructor for SingleTest
 		SingleTest() :
-			testNo(0), testTimestamp(0), backuptime(0), starttime(0), endtime(0),
-			load_percentage(LoadPercentage::LOAD_0P), valid_data(false)
+			TestData(), // Explicitly initialize the base class
+			backuptime(0)
 		{
 		}
 	} backupTest[5];
@@ -118,6 +123,7 @@ struct BackupTestData
 	// Default constructor for BackupTestData
 	BackupTestData()
 	{
+		// Initialize the array of SingleTest
 		for(int i = 0; i < 5; ++i)
 		{
 			backupTest[i] = SingleTest();
