@@ -50,7 +50,7 @@ class BackupTest : public UPSTest<BackupTest, BackupTestData>
 		return UPSTest<BackupTest, BackupTestData>::getInstance();
 	}
 
-	void deleteInstance()
+	static void deleteInstance()
 	{
 		UPSTest<BackupTest, BackupTestData>::deleteInstance();
 	}
