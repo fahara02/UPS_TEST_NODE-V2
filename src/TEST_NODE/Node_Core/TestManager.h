@@ -165,30 +165,77 @@ void TestManager::handleTestState(UPSTest<T,U>* testInstance, State managerState
 		{
 			logger.log(LogLevel::SUCCESS, "Successful data capture.");
 		}
-	}
-	else if(managerState == State::CURRENT_TEST_CHECK)
-	{
 		if(testInstance->isTestEnded())
 		{
 			logger.log(LogLevel::INFO, "Test Cycle ended.");
 		}
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+	else if(managerState == State::CURRENT_TEST_CHECK)
+	{
+		logger.log(LogLevel::INFO,
+							   "In check State  checking either test ended or data captured");
+		if(testInstance->isdataCaptureOk())
+		{
+			logger.log(LogLevel::SUCCESS, "Successful data capture.");
+		}
+		testInstance->setTaskPriority(TestPriority);
+		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::CURRENT_TEST_OK)
 	{
 		logger.log(LogLevel::SUCCESS, "Received Test data");
 		U dataBuff = testInstance->data();
-		// if(xQueueReceive(dataQueue, &dataBuff, 1000) == pdTRUE)
-		// {
-		// 	logger.log(LogLevel::SUCCESS, "Received Test data");
-		// 	SyncTest.stopTest(testInstance->test_type);
-		// 	// testInstance->markTestAsDone();
-		// }
-		// else
-		// {
-		// 	logger.log(LogLevel::ERROR, "Receive Test data timeout");
-		// 	SyncTest.stopTest(testInstance->getTestType());
-		// }
+		if(xQueueReceive(dataQueue, &dataBuff, 1000) == pdTRUE)
+		{
+			logger.log(LogLevel::SUCCESS, "Received Test data ");
+			logger.log(LogLevel::INFO, "Stopping SwitchTest...");
+			SyncTest.stopTest(testInstance->getTestType());
+			instance->_testList[i].testStatus.managerStatus = TestManagerStatus::DONE;
+			instance->_testList[i].testStatus.operatorStatus =
+							TestOperatorStatus::SUCCESS;
+			
+			testInstance->markTestAsDone();
+			logger.log(LogLevel::WARNING, "Triggering SAVE event from manager");
+			instance->triggerEvent(Event::SAVE);
+			vTaskDelay(pdMS_TO_TICKS(100));
+		}
+		else
+		{
+			logger.log(LogLevel::ERROR, "Receive Test data timeout");
+			SyncTest.stopTest(testInstance->getTestType());
+		}
 	}
+
+				else if(managerState == State::READY_NEXT_TEST)
+				{
+					logger.log(LogLevel::INFO, "Checking for next pending test...");
+
+					bool pendingTestFound = false;
+
+					// Check if there are any more pending tests
+					for(int j = 0; j < instance->_numSwitchTest; ++j)
+					{
+						if(instance->isTestPendingAndNotStarted(instance->_testList[j]))
+						{
+							pendingTestFound = true;
+							break;
+						}
+					}
+
+					if(pendingTestFound)
+					{
+						logger.log(LogLevel::INFO,
+								   "Pending test found. Preparing to start next test...");
+
+						instance->triggerEvent(Event::PENDING_TEST_FOUND);
+						vTaskDelay(pdMS_TO_TICKS(200));
+					}
+					else
+					{
+						logger.log(LogLevel::INFO, "No more pending tests.");
+					}
+				}
 	else
 	{
 		logger.log(LogLevel::WARNING, "Unhandled state encountered.");

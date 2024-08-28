@@ -74,10 +74,10 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 		{
 			if(switchTest->_currentTestResult == TestResult::TEST_SUCCESSFUL)
 			{
-				switchTest->_sendTestData = true;
+				switchTest->_sendTestData_SW = true;
 			}
 
-			if(!switchTest->_sendTestData)
+			if(!switchTest->_sendTestData_SW)
 			{
 				xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 				logger.log(LogLevel::TEST,
@@ -88,7 +88,7 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 				switchTest->_currentTestResult =
 					switchTest->run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
 			}
-			if(switchTest->_sendTestData)
+			if(switchTest->_sendTestData_SW)
 			{
 				int retrySend = 0;
 				SwitchTestData testData = switchTest->data();
@@ -106,7 +106,7 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 				else
 				{
 					logger.log(LogLevel::ERROR, "test data sending failed");
-					switchTest->_sendTestData = false;
+					switchTest->_sendTestData_SW = false;
 				}
 
 				;

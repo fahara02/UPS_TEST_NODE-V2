@@ -44,6 +44,11 @@ class BackupTest : public UPSTest<BackupTest,BackupTestData>
 		}
 		return false;
 	}
+	void markTestAsDone() override{
+		
+          _sendTestData_BT= false;
+
+	}
 	BackupTest* getInstance()
 	{
 		return UPSTest<BackupTest,BackupTestData>::getInstance();
@@ -81,6 +86,7 @@ class BackupTest : public UPSTest<BackupTest,BackupTestData>
 	bool _triggerDataCaptureEvent_BT = false;
 	bool _triggerValidDataEvent_BT = false;
 	bool _triggerDataSaveEvent_BT = false;
+	bool _sendTestData_BT = false;
 
 	BackupTestData _data_BT;
 	void startTestCapture() override;

@@ -257,84 +257,22 @@ void TestManager::TestManagerTask(void* pvParameters)
 
 				else if(managerState == State::TEST_IN_PROGRESS)
 				{
-					logger.log(LogLevel::INFO, "Manager observing running test");
-
-					if(switchTest->_dataCaptureOk_SW)
-					{
-						logger.log(LogLevel::SUCCESS, "Successful data capture.");
-					}
-
-					vTaskDelay(pdMS_TO_TICKS(100));
+					instance->handleTestState(switchTest, managerState, i, 3);
 				}
 				else if(managerState == State::CURRENT_TEST_CHECK)
 				{
-					logger.log(LogLevel::INFO,
-							   "In check State  checking either test ended or data captured");
-					if(switchTest->_triggerTestEndEvent_SW)
-					{
-						logger.log(LogLevel::INFO, "test Cycle ended ");
-					}
-					if(switchTest->_dataCaptureOk_SW)
-					{
-						logger.log(LogLevel::SUCCESS, "Successful data capture.");
-					}
-					vTaskPrioritySet(switchTestTaskHandle,
-									 instance->_cfgTask.mainTest_taskIdlePriority);
-					vTaskDelay(pdMS_TO_TICKS(100));
+					instance->handleTestState(switchTest, managerState, i, 3);
 				}
 				else if(managerState == State::CURRENT_TEST_OK)
 				{
 					SwitchTestData dataBuff;
+					instance->handleTestState(switchTest, managerState, i, 1);
 
-					if(xQueueReceive(SwitchTestDataQueue, &dataBuff, 1000) == pdTRUE)
-					{
-						logger.log(LogLevel::SUCCESS, "Received Test data ");
-						logger.log(LogLevel::INFO, "Stopping SwitchTest...");
-						SyncTest.stopTest(TestType::SwitchTest);
-						instance->_testList[i].testStatus.managerStatus = TestManagerStatus::DONE;
-						instance->_testList[i].testStatus.operatorStatus =
-							TestOperatorStatus::SUCCESS;
-						switchTest->_sendTestData = false;
-						logger.log(LogLevel::WARNING, "Triggering SAVE event from manager");
-						instance->triggerEvent(Event::SAVE);
-						vTaskDelay(pdMS_TO_TICKS(100));
-					}
-					else
-					{
-						logger.log(LogLevel::ERROR, "Receive Test data timeout");
-						logger.log(LogLevel::INFO, "Stopping SwitchTest...");
-						SyncTest.stopTest(TestType::SwitchTest);
-					};
 				}
 
 				else if(managerState == State::READY_NEXT_TEST)
 				{
-					logger.log(LogLevel::INFO, "Checking for next pending test...");
-
-					bool pendingTestFound = false;
-
-					// Check if there are any more pending tests
-					for(int j = 0; j < instance->_numSwitchTest; ++j)
-					{
-						if(instance->isTestPendingAndNotStarted(instance->_testList[j]))
-						{
-							pendingTestFound = true;
-							break;
-						}
-					}
-
-					if(pendingTestFound)
-					{
-						logger.log(LogLevel::INFO,
-								   "Pending test found. Preparing to start next test...");
-
-						instance->triggerEvent(Event::PENDING_TEST_FOUND);
-						vTaskDelay(pdMS_TO_TICKS(200));
-					}
-					else
-					{
-						logger.log(LogLevel::INFO, "No more pending tests.");
-					}
+					instance->handleTestState(switchTest, managerState, i, 1);
 				}
 			}
 		}

@@ -47,6 +47,11 @@ class SwitchTest : public UPSTest<SwitchTest,SwitchTestData>
 		}
 		return false;
 	}
+	void markTestAsDone() override{
+		
+          _sendTestData_SW = false;
+
+	}
 
 	static SwitchTest* getInstance()
 	{
@@ -91,7 +96,7 @@ class SwitchTest : public UPSTest<SwitchTest,SwitchTestData>
 	bool _triggerDataCaptureEvent_SW = false;
 	bool _triggerValidDataEvent_SW = false;
 	bool _triggerDataSaveEvent_SW = false;
-	bool _sendTestData = false;
+	bool _sendTestData_SW = false;
 
 	void startTestCapture() override;
 	void stopTestCapture() override;

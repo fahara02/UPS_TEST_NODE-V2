@@ -35,6 +35,7 @@ class UPSTest
 
 	virtual bool isTestEnded() const = 0;
 	virtual bool isdataCaptureOk() const = 0;
+	virtual void markTestAsDone() = 0;
 
   protected:
 	UPSTest(); // Protected constructor
