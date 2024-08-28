@@ -46,8 +46,10 @@ struct SetupTest
 	unsigned long testDuration_ms = 600000UL;
 	unsigned long min_valid_switch_time_ms = 1UL;
 	unsigned long max_valid_switch_time_ms = 3000UL;
+	unsigned long min_valid_backup_time_ms = 1UL;
+	unsigned long max_valid_backup_time_ms = 300000UL;
 	unsigned long ToleranceSwitchTime_ms = 50UL;
-	unsigned long maxBackupTime_ms = 28800000UL;
+	unsigned long maxBackupTime_min = 300UL;
 	unsigned long ToleranceBackUpTime_ms = 300000UL;
 	int MaxRetest = 3;
 	unsigned long lastsetting_updated = 0UL;

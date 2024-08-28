@@ -157,8 +157,8 @@ void BackupTest::stopTestCapture()
 
 bool BackupTest::checkBackupRange(unsigned long backuptime)
 {
-	if(backuptime >= _cfgTest_BT.min_valid_switch_time_ms &&
-	   backuptime <= _cfgTest_BT.max_valid_switch_time_ms)
+	if(backuptime >= _cfgTest_BT.min_valid_backup_time_ms &&
+	   backuptime <= _cfgTest_BT.max_valid_backup_time_ms)
 	{
 		return true;
 	}
@@ -210,7 +210,7 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 	// Main loop running until the total test duration expires
 	while(millis() - testStartTime < _testDuration_BT)
 	{
-		logger.log(LogLevel::TEST, "Test ongoing...");
+		logger.log(LogLevel::TEST, "BackupTest ongoing...");
 
 		unsigned long elapsedTime = millis() - testStartTime;
 		unsigned long remainingTime = _testDuration_BT - elapsedTime;
@@ -264,7 +264,7 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 
 				logger.log(LogLevel::SUCCESS, "Triggering valid Data event from backup test");
 				logger.log(LogLevel::TEST,
-						   "Switching Time: ", _data_BT.backupTest[_currentTest_BT].backuptime);
+						   "BackUp Time: ", _data_BT.backupTest[_currentTest_BT].backuptime);
 				sendEndSignal();
 				Manager->triggerEvent(Event::VALID_DATA);
 				vTaskDelay(pdMS_TO_TICKS(100));

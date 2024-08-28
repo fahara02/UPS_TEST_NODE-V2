@@ -4,7 +4,6 @@ extern TestManager* Manager;
 
 extern EventGroupHandle_t eventGroupTest;
 
-
 extern QueueHandle_t TestManageQueue;
 
 using namespace Node_Core;
@@ -51,7 +50,7 @@ void SwitchTest::UpdateSettings()
 	};
 }
 
-SwitchTestData& SwitchTest::data() 
+SwitchTestData& SwitchTest::data()
 {
 	return _data_SW;
 }
@@ -212,7 +211,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 	// Main loop running until the total test duration expires
 	while(millis() - testStartTime < _testDuration_SW)
 	{
-		logger.log(LogLevel::TEST, "Test ongoing...");
+		logger.log(LogLevel::TEST, "SwitchTest ongoing...");
 
 		unsigned long elapsedTime = millis() - testStartTime;
 		unsigned long remainingTime = _testDuration_SW - elapsedTime;

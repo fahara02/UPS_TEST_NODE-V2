@@ -229,7 +229,7 @@ bool TestManager::handleTestState(UPSTest<T, U>* testInstance, State managerStat
 		bool pendingTestFound = false;
 
 		// Check if there are any more pending tests
-		for(int j = 0; j < instance->_numSwitchTest; ++j)
+		for(int j = 0; j < instance->_numTest; ++j)
 		{
 			if(instance->isTestPendingAndNotStarted(instance->_testList[j]))
 			{

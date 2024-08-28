@@ -189,7 +189,7 @@ void setup()
 	if(Manager)
 	{
 		RequiredTest testlist[] = {
-			{1, TestType::SwitchTest, LoadPercentage::LOAD_50P, true},
+			{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
 			{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
 
 		};

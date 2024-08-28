@@ -82,21 +82,21 @@ void TestManager::UpdateSettings()
 	};
 }
 
-void TestManager::addTests(RequiredTest testList[], int numTest)
+void TestManager::addTests(RequiredTest testList[], int testNum)
 {
-	if(numTest > MAX_TESTS)
+	if(testNum > MAX_TESTS)
 	{
 		logger.log(LogLevel::ERROR, "Maximum Test Limit exeeded", MAX_TESTS);
 		return;
 	}
-	for(int i = 0; i < numTest; ++i)
+	for(int i = 0; i < testNum; ++i)
 	{
 		_testList[_numTest].testRequired = testList[i];
 		_testList[_numTest].testStatus.managerStatus = TestManagerStatus::PENDING;
 		_testList[_numTest].testStatus.operatorStatus = TestOperatorStatus::NOT_STARTED;
 		logger.log(LogLevel::SUCCESS, "Added test", testTypeToString(testList[i].testtype));
 		logger.log(LogLevel::INFO, "Test No: ", testList[i].TestNo);
-		logger.log(LogLevel::INFO, "Load Level:%s ", loadPercentageToString(testList[i].loadlevel));
+		logger.log(LogLevel::INFO, "Load Level: ", loadPercentageToString(testList[i].loadlevel));
 		_numTest++;
 	}
 }
@@ -116,9 +116,9 @@ void TestManager::triggerEvent(Event event)
 
 void TestManager::setupPins()
 {
-	pinMode(SENSE_MAINS_POWER_PIN, INPUT_PULLDOWN);
-	pinMode(SENSE_UPS_POWER_PIN, INPUT_PULLDOWN);
-	pinMode(SENSE_UPS_POWER_DOWN, INPUT_PULLDOWN);
+	pinMode(SENSE_MAINS_POWER_PIN, INPUT);
+	pinMode(SENSE_UPS_POWER_PIN, INPUT);
+	pinMode(SENSE_UPS_POWER_DOWN, INPUT);
 
 	pinMode(UPS_POWER_CUT_PIN, OUTPUT); // Set power cut pin as output
 	pinMode(TEST_END_INT_PIN, OUTPUT);
@@ -136,9 +136,9 @@ void TestManager::setupPins()
 	configureInterrupts();
 
 	logger.log(LogLevel::SUCCESS, "Interrupts configured");
-	pinMode(SENSE_MAINS_POWER_PIN, INPUT_PULLDOWN);
-	pinMode(SENSE_UPS_POWER_PIN, INPUT_PULLDOWN);
-	pinMode(SENSE_UPS_POWER_DOWN, INPUT_PULLDOWN);
+	pinMode(SENSE_MAINS_POWER_PIN, INPUT);
+	pinMode(SENSE_UPS_POWER_PIN, INPUT);
+	pinMode(SENSE_UPS_POWER_DOWN, INPUT);
 }
 
 void TestManager::configureInterrupts()
@@ -219,7 +219,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 			logger.log(LogLevel::INFO, "Device is ready. Checking pending tests...");
 		}
 
-		for(int i = 0; i < instance->_numSwitchTest; ++i)
+		for(int i = 0; i < instance->_numTest; ++i)
 		{
 			if(instance->isTestPendingAndNotStarted(instance->_testList[i]))
 			{
@@ -230,30 +230,49 @@ void TestManager::TestManagerTask(void* pvParameters)
 
 				if(testType == TestType::SwitchTest)
 				{
+					managerState = SyncTest.getState();
 					SwitchTestData dataBuff1;
 					success = instance->handleTestState(SwitchTest::getInstance(), managerState, i,
 														&dataBuff1);
+
+					if(success && managerState == State::CURRENT_TEST_OK)
+					{
+						logger.log(LogLevel::SUCCESS, "Test Data recived");
+
+						logger.log(LogLevel::SUCCESS,
+								   "Test Report switch time:", dataBuff1.switchTest->switchtime);
+					}
+					else if(!success && managerState == State::CURRENT_TEST_OK)
+					{
+						logger.log(LogLevel::ERROR, "Test Data not recived");
+					}
+					else
+					{
+						logger.log(LogLevel::INFO, "Manager observing test..");
+					}
 				}
 				else if(testType == TestType::BackupTest)
 				{
+					managerState = SyncTest.getState();
 					BackupTestData dataBuff2;
 					success = instance->handleTestState(BackupTest::getInstance(), managerState, i,
 														&dataBuff2);
-				}
 
-				if(success && managerState == State::CURRENT_TEST_OK)
-				{
-					logger.log(LogLevel::SUCCESS, "Test Data recived");
-					// logger.log(LogLevel::SUCCESS,
-					// 		   "Test Report switch time:", dataBuff1.switchTest->switchtime);
-				}
-				else if(!success && managerState == State::CURRENT_TEST_OK)
-				{
-					logger.log(LogLevel::ERROR, "Test Data not recived");
-				}
-				else
-				{
-					logger.log(LogLevel::INFO, "Manager observing test..");
+					if(success && managerState == State::CURRENT_TEST_OK)
+					{
+						logger.log(LogLevel::SUCCESS, "Test Data recived");
+
+						logger.log(LogLevel::SUCCESS,
+								   "Test Report backup time:", dataBuff2.backupTest->backuptime);
+					}
+					else if(!success && managerState == State::CURRENT_TEST_OK)
+					{
+						logger.log(LogLevel::ERROR, "Test Data not recived");
+					}
+					else
+					{
+						logger.log(LogLevel::INFO, "Manager observing test..");
+					}
 				}
 			}
 		}
@@ -275,14 +294,14 @@ void TestManager::onMainsPowerLossTask(void* pvParameters)
 			{
 				switchTest->_dataCaptureRunning_SW = true;
 				logger.log(LogLevel::INTR, "mains Powerloss triggered...");
-				logger.log(LogLevel::TEST, " Switch Test DataCapture...");
+				logger.log(LogLevel::TEST, " Switch Test DataCapture starts...");
 				switchTest->startTestCapture();
 			}
 			if(backupTest->isTestRunning())
 			{
 				backupTest->_dataCaptureRunning_BT = true;
 				logger.log(LogLevel::INTR, "mains Powerloss triggered...");
-				logger.log(LogLevel::TEST, " Backup Test DataCapture...");
+				logger.log(LogLevel::TEST, " Backup Test DataCapture starts...");
 				backupTest->startTestCapture();
 			}
 

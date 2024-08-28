@@ -105,8 +105,6 @@ struct SwitchTestData
 	}
 };
 
-// Derived struct for BackupTestData
-// Derived struct for BackupTestData
 struct BackupTestData
 {
 	struct SingleTest : public TestData
