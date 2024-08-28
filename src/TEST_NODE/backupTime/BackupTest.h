@@ -45,7 +45,7 @@ class BackupTest : public UPSTest<BackupTest, BackupTestData>
 	{
 		_sendTestData_BT = false;
 	}
-	BackupTest* getInstance()
+	static BackupTest* getInstance()
 	{
 		return UPSTest<BackupTest, BackupTestData>::getInstance();
 	}

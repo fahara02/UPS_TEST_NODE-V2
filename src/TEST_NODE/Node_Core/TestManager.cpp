@@ -236,14 +236,27 @@ void TestManager::TestManagerTask(void* pvParameters)
 			{
 				managerState = SyncTest.getState();
 
-				SwitchTestData dataBuff;
-				bool success = instance->handleTestState(switchTest, managerState, i, &dataBuff);
+				TestType testType = instance->_testList[i].testRequired.testtype;
+				bool success = false;
+
+				if(testType == TestType::SwitchTest)
+				{
+					SwitchTestData dataBuff1;
+					success = instance->handleTestState(SwitchTest::getInstance(), managerState, i,
+														&dataBuff1);
+				}
+				else if(testType == TestType::BackupTest)
+				{
+					BackupTestData dataBuff2;
+					success = instance->handleTestState(BackupTest::getInstance(), managerState, i,
+														&dataBuff2);
+				}
 
 				if(success && managerState == State::CURRENT_TEST_OK)
 				{
 					logger.log(LogLevel::SUCCESS, "Test Data recived");
-					logger.log(LogLevel::SUCCESS,
-							   "Test Report switch time:", dataBuff.switchTest->switchtime);
+					// logger.log(LogLevel::SUCCESS,
+					// 		   "Test Report switch time:", dataBuff1.switchTest->switchtime);
 				}
 				else if(!success && managerState == State::CURRENT_TEST_OK)
 				{
