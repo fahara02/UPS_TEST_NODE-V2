@@ -74,9 +74,25 @@ struct SwitchTestData
 		unsigned long switchtime;
 		unsigned long starttime;
 		unsigned long endtime;
-		LoadPercentage load_percentage : 7; // Adjusted to cover all possible
+		LoadPercentage load_percentage : 7;
 		bool valid_data : 1;
+
+		// Default constructor for SingleTest
+		SingleTest() :
+			testNo(0), testTimestamp(0), switchtime(0), starttime(0), endtime(0),
+			load_percentage(LoadPercentage::LOAD_0P), valid_data(false)
+		{
+		}
 	} switchTest[5];
+
+	// Default constructor for SwitchTestData
+	SwitchTestData()
+	{
+		for(int i = 0; i < 5; ++i)
+		{
+			switchTest[i] = SingleTest();
+		}
+	}
 };
 
 struct BackupTestData
@@ -88,8 +104,25 @@ struct BackupTestData
 		unsigned long backuptime;
 		unsigned long starttime;
 		unsigned long endtime;
-		LoadPercentage load_percentage : 7; // Adjusted to cover all possible
+		LoadPercentage load_percentage : 7;
 		bool valid_data : 1;
+
+		// Default constructor for SingleTest
+		SingleTest() :
+			testNo(0), testTimestamp(0), backuptime(0), starttime(0), endtime(0),
+			load_percentage(LoadPercentage::LOAD_0P), valid_data(false)
+		{
+		}
 	} backupTest[5];
+
+	// Default constructor for BackupTestData
+	BackupTestData()
+	{
+		for(int i = 0; i < 5; ++i)
+		{
+			backupTest[i] = SingleTest();
+		}
+	}
 };
+
 #endif

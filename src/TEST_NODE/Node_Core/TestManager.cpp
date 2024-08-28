@@ -1,7 +1,6 @@
 #include "SwitchTest.h"
 #include "BackupTest.h"
 
-
 extern SwitchTest* switchTest;
 extern BackupTest* backupTest;
 
@@ -237,42 +236,22 @@ void TestManager::TestManagerTask(void* pvParameters)
 			{
 				managerState = SyncTest.getState();
 
-				if(managerState == State::DEVICE_READY)
-				{
-					instance->logPendingTest(instance->_testList[i]);
-					instance->triggerEvent(Event::AUTO_TEST_CMD);
-					vTaskDelay(pdMS_TO_TICKS(100));
-				}
-				else if(managerState == State::AUTO_MODE)
-				{
-					vTaskDelay(pdMS_TO_TICKS(100));
-					instance->triggerEvent(Event::PENDING_TEST_FOUND);
-					vTaskDelay(pdMS_TO_TICKS(100));
-				}
+				SwitchTestData dataBuff;
+				bool success = instance->handleTestState(switchTest, managerState, i, &dataBuff);
 
-				else if(managerState == State::TEST_START)
+				if(success && managerState == State::CURRENT_TEST_OK)
 				{
-					instance->handleTestState(switchTest, managerState, i, 3);
+					logger.log(LogLevel::SUCCESS, "Test Data recived");
+					logger.log(LogLevel::SUCCESS,
+							   "Test Report switch time:", dataBuff.switchTest->switchtime);
 				}
-
-				else if(managerState == State::TEST_IN_PROGRESS)
+				else if(!success && managerState == State::CURRENT_TEST_OK)
 				{
-					instance->handleTestState(switchTest, managerState, i, 3);
+					logger.log(LogLevel::ERROR, "Test Data not recived");
 				}
-				else if(managerState == State::CURRENT_TEST_CHECK)
+				else
 				{
-					instance->handleTestState(switchTest, managerState, i, 3);
-				}
-				else if(managerState == State::CURRENT_TEST_OK)
-				{
-					SwitchTestData dataBuff;
-					instance->handleTestState(switchTest, managerState, i, 1);
-
-				}
-
-				else if(managerState == State::READY_NEXT_TEST)
-				{
-					instance->handleTestState(switchTest, managerState, i, 1);
+					logger.log(LogLevel::INFO, "Manager observing test..");
 				}
 			}
 		}

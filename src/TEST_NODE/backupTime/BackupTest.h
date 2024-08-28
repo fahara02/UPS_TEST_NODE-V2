@@ -6,7 +6,7 @@
 #include "TestManager.h"
 extern QueueHandle_t BackupTestDataQueue;
 extern TaskHandle_t backupTestTaskHandle;
-class BackupTest : public UPSTest<BackupTest,BackupTestData>
+class BackupTest : public UPSTest<BackupTest, BackupTestData>
 {
   public:
 	static constexpr TestType test_type = TestType::BackupTest;
@@ -44,21 +44,20 @@ class BackupTest : public UPSTest<BackupTest,BackupTestData>
 		}
 		return false;
 	}
-	void markTestAsDone() override{
-		
-          _sendTestData_BT= false;
-
+	void markTestAsDone() override
+	{
+		_sendTestData_BT = false;
 	}
 	BackupTest* getInstance()
 	{
-		return UPSTest<BackupTest,BackupTestData>::getInstance();
+		return UPSTest<BackupTest, BackupTestData>::getInstance();
 	}
 
 	void deleteInstance()
 	{
-		UPSTest<BackupTest,BackupTestData>::deleteInstance();
+		UPSTest<BackupTest, BackupTestData>::deleteInstance();
 	}
-    BackupTestData& data()  override;
+	BackupTestData& data() override;
 	void init() override;
 	TestResult run(uint16_t testVARating = 4000, unsigned long testduration = 10000) override;
 	static void BackupTestTask(void* pvParameters);
@@ -88,7 +87,7 @@ class BackupTest : public UPSTest<BackupTest,BackupTestData>
 	bool _triggerDataSaveEvent_BT = false;
 	bool _sendTestData_BT = false;
 
-	BackupTestData _data_BT;
+	BackupTestData _data_BT = BackupTestData();
 	void startTestCapture() override;
 	void stopTestCapture() override;
 	bool processTestImpl() override;

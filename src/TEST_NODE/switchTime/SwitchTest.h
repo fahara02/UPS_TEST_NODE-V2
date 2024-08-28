@@ -6,7 +6,7 @@
 using namespace Node_Core;
 extern QueueHandle_t SwitchTestDataQueue;
 extern TaskHandle_t switchTestTaskHandle;
-class SwitchTest : public UPSTest<SwitchTest,SwitchTestData>
+class SwitchTest : public UPSTest<SwitchTest, SwitchTestData>
 {
   public:
 	static constexpr TestType test_type = TestType::SwitchTest;
@@ -47,21 +47,20 @@ class SwitchTest : public UPSTest<SwitchTest,SwitchTestData>
 		}
 		return false;
 	}
-	void markTestAsDone() override{
-		
-          _sendTestData_SW = false;
-
+	void markTestAsDone() override
+	{
+		_sendTestData_SW = false;
 	}
 
 	static SwitchTest* getInstance()
 	{
-		return UPSTest<SwitchTest,SwitchTestData>::getInstance();
+		return UPSTest<SwitchTest, SwitchTestData>::getInstance();
 	}
 	static void deleteInstance()
 	{
-		UPSTest<SwitchTest,SwitchTestData>::deleteInstance();
+		UPSTest<SwitchTest, SwitchTestData>::deleteInstance();
 	}
-	SwitchTestData& data()  override;
+	SwitchTestData& data() override;
 	void init() override;
 	TestResult run(uint16_t testVARating = 4000, unsigned long testduration = 10000) override;
 	static void SwitchTestTask(void* pvParameters);
@@ -74,7 +73,7 @@ class SwitchTest : public UPSTest<SwitchTest,SwitchTestData>
 	friend class TestManager;
 
 	// static SwitchTest* instanceSW; // Static pointer to hold the instance
-	SwitchTestData _data_SW;
+	SwitchTestData _data_SW = SwitchTestData();
 
 	SetupSpec _cfgSpec_SW;
 	SetupTest _cfgTest_SW;
