@@ -35,6 +35,10 @@ void BackupTest::init()
 	}
 }
 
+BackupTestData& BackupTest::data() 
+{
+	return _data_BT;
+}
 // Function for SwitchTest task
 void BackupTest::BackupTestTask(void* pvParameters)
 {

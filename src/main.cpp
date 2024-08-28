@@ -20,8 +20,8 @@ using namespace Node_Core;
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
-SwitchTest* switchTest = UPSTest<SwitchTest>::getInstance();
-BackupTest* backupTest = UPSTest<BackupTest>::getInstance();
+SwitchTest* switchTest = UPSTest<SwitchTest,SwitchTestData>::getInstance();
+BackupTest* backupTest = UPSTest<BackupTest,BackupTestData>::getInstance();
 
 volatile unsigned long lastMainsTriggerTime = 0;
 volatile unsigned long lastUPSTriggerTime = 0;

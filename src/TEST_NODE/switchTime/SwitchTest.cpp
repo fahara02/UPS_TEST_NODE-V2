@@ -51,7 +51,7 @@ void SwitchTest::UpdateSettings()
 	};
 }
 
-SwitchTestData& SwitchTest::data()
+SwitchTestData& SwitchTest::data() 
 {
 	return _data_SW;
 }

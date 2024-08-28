@@ -6,7 +6,7 @@
 using namespace Node_Core;
 extern QueueHandle_t SwitchTestDataQueue;
 extern TaskHandle_t switchTestTaskHandle;
-class SwitchTest : public UPSTest<SwitchTest>
+class SwitchTest : public UPSTest<SwitchTest,SwitchTestData>
 {
   public:
 	static constexpr TestType test_type = TestType::SwitchTest;
@@ -50,13 +50,13 @@ class SwitchTest : public UPSTest<SwitchTest>
 
 	static SwitchTest* getInstance()
 	{
-		return UPSTest<SwitchTest>::getInstance();
+		return UPSTest<SwitchTest,SwitchTestData>::getInstance();
 	}
 	static void deleteInstance()
 	{
-		UPSTest<SwitchTest>::deleteInstance();
+		UPSTest<SwitchTest,SwitchTestData>::deleteInstance();
 	}
-	SwitchTestData& data();
+	SwitchTestData& data()  override;
 	void init() override;
 	TestResult run(uint16_t testVARating = 4000, unsigned long testduration = 10000) override;
 	static void SwitchTestTask(void* pvParameters);

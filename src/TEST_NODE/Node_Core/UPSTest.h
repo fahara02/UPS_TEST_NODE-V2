@@ -13,7 +13,7 @@ extern Logger& logger;
 
 extern UPSTesterSetup* TesterSetup;
 
-template<class T>
+template<class T, typename U>
 class UPSTest
 {
   public:
@@ -31,6 +31,7 @@ class UPSTest
 
 	virtual QueueHandle_t getQueue() const = 0;
 	virtual TaskHandle_t getTaskHandle() const = 0;
+	virtual U& data() =0 ;
 
 	virtual bool isTestEnded() const = 0;
 	virtual bool isdataCaptureOk() const = 0;
@@ -61,18 +62,18 @@ class UPSTest
 	UPSTest& operator=(const UPSTest&) = delete;
 };
 
-template<typename T>
-T* UPSTest<T>::instance = nullptr;
+template<class T, typename U>
+T* UPSTest<T,U>::instance = nullptr;
 
 // Protected Constructor
-template<typename T>
-UPSTest<T>::UPSTest()
+template<class T, typename U>
+UPSTest<T,U>::UPSTest()
 {
 	// Constructor logic if needed
 }
 
-template<typename T>
-T* UPSTest<T>::getInstance()
+template<class T, typename U>
+T* UPSTest<T,U>::getInstance()
 {
 	if(instance == nullptr)
 	{
@@ -81,8 +82,8 @@ T* UPSTest<T>::getInstance()
 	return instance;
 }
 
-template<typename T>
-void UPSTest<T>::deleteInstance()
+template<class T, typename U>
+void UPSTest<T,U>::deleteInstance()
 {
 	if(instance != nullptr)
 	{
@@ -90,8 +91,8 @@ void UPSTest<T>::deleteInstance()
 		instance = nullptr;
 	}
 }
-template<typename T>
-int UPSTest<T>::getTaskPriority() const
+template<class T, typename U>
+int UPSTest<T,U>::getTaskPriority() const
 {
 	TaskHandle_t taskHandle = getTaskHandle();
 	if(taskHandle != NULL)
@@ -105,8 +106,8 @@ int UPSTest<T>::getTaskPriority() const
 	}
 }
 
-template<typename T>
-void UPSTest<T>::setTaskPriority(UBaseType_t priority)
+template<class T, typename U>
+void UPSTest<T,U>::setTaskPriority(UBaseType_t priority)
 {
 	T* testInstance = T::getInstance();
 	if(testInstance != nullptr)
@@ -129,8 +130,8 @@ void UPSTest<T>::setTaskPriority(UBaseType_t priority)
 	}
 }
 
-template<typename T>
-void UPSTest<T>::logTaskState(LogLevel level) const
+template<class T, typename U>
+void UPSTest<T,U>::logTaskState(LogLevel level) const
 {
 	T* testInstance = T::getInstance();
 	if(testInstance != nullptr)
@@ -153,8 +154,8 @@ void UPSTest<T>::logTaskState(LogLevel level) const
 	}
 }
 
-template<typename T>
-void UPSTest<T>::setLoad(uint16_t testVARating)
+template<class T, typename U>
+void UPSTest<T,U>::setLoad(uint16_t testVARating)
 {
 	if(!TesterSetup)
 		return; // Ensure TesterSetup is valid
@@ -203,8 +204,8 @@ void UPSTest<T>::setLoad(uint16_t testVARating)
 	selectLoadBank(reqbankNumbers);
 }
 
-template<typename T>
-void UPSTest<T>::selectLoadBank(uint16_t bankNumbers)
+template<class T, typename U>
+void UPSTest<T,U>::selectLoadBank(uint16_t bankNumbers)
 {
 	digitalWrite(LOAD25P_ON_PIN, bankNumbers >= 1 ? HIGH : LOW);
 	digitalWrite(LOAD50P_ON_PIN, bankNumbers >= 2 ? HIGH : LOW);
@@ -212,28 +213,28 @@ void UPSTest<T>::selectLoadBank(uint16_t bankNumbers)
 	digitalWrite(LOAD_FULL_ON_PIN, bankNumbers >= 4 ? HIGH : LOW);
 }
 
-template<typename T>
-void UPSTest<T>::sendEndSignal()
+template<class T, typename U>
+void UPSTest<T,U>::sendEndSignal()
 {
 	digitalWrite(TEST_END_INT_PIN, HIGH);
 	vTaskDelay(pdMS_TO_TICKS(10));
 	digitalWrite(TEST_END_INT_PIN, LOW);
 }
 
-template<typename T>
-void UPSTest<T>::simulatePowerCut()
+template<class T, typename U>
+void UPSTest<T,U>::simulatePowerCut()
 {
 	digitalWrite(UPS_POWER_CUT_PIN, HIGH); // Simulate power cut
 }
 
-template<typename T>
-void UPSTest<T>::simulatePowerRestore()
+template<class T, typename U>
+void UPSTest<T,U>::simulatePowerRestore()
 {
 	digitalWrite(UPS_POWER_CUT_PIN, LOW); // Simulate mains power restore
 }
 
-template<typename T>
-void UPSTest<T>::processTest(T& test)
+template<class T, typename U>
+void UPSTest<T,U>::processTest(T& test)
 {
 	// Placeholder for processing the test; type-specific implementations should override
 	// processTestImpl

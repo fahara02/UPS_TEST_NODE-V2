@@ -131,16 +131,16 @@ class TestManager
 	void logPendingTest(const UPSTestRun& test);
 	void configureTest(LoadPercentage load);
 
-	template<typename T>
-	void handleTestState(UPSTest<T>* testInstance, State managerState, int testIndex,
+	template<typename T,typename U>
+	void handleTestState(UPSTest<T,U>* testInstance, State managerState, int testIndex,
 						 int TestPriority);
 
 	TestManager(const TestManager&) = delete;
 	TestManager& operator=(const TestManager&) = delete;
 };
 
-template<typename T>
-void TestManager::handleTestState(UPSTest<T>* testInstance, State managerState, int testIndex,
+template<typename T , typename U>
+void TestManager::handleTestState(UPSTest<T,U>* testInstance, State managerState, int testIndex,
 								  int TestPriority)
 {
 	QueueHandle_t dataQueue = testInstance->getQueue();
@@ -152,7 +152,7 @@ void TestManager::handleTestState(UPSTest<T>* testInstance, State managerState, 
 		LoadPercentage load = instance->_testList[i].testRequired.loadlevel;
 		instance->configureTest(load);
 		testInstance->logTaskState(LogLevel::INFO);
-		TaskHandle_t taskHandle = testInstance->getTaskHandle();
+		// TaskHandle_t taskHandle = testInstance->getTaskHandle();
 		testInstance->setTaskPriority(TestPriority);
 
 		logger.log(LogLevel::INFO, "Starting %s...", testInstance->testTypeName());
@@ -161,10 +161,10 @@ void TestManager::handleTestState(UPSTest<T>* testInstance, State managerState, 
 	}
 	else if(managerState == State::TEST_IN_PROGRESS)
 	{
-		// if(testInstance->isdataCaptureOk())
-		// {
-		// 	logger.log(LogLevel::SUCCESS, "Successful data capture.");
-		// }
+		if(testInstance->isdataCaptureOk())
+		{
+			logger.log(LogLevel::SUCCESS, "Successful data capture.");
+		}
 	}
 	else if(managerState == State::CURRENT_TEST_CHECK)
 	{
@@ -176,7 +176,7 @@ void TestManager::handleTestState(UPSTest<T>* testInstance, State managerState, 
 	else if(managerState == State::CURRENT_TEST_OK)
 	{
 		logger.log(LogLevel::SUCCESS, "Received Test data");
-		// auto dataBuff = testInstance->data();
+		U dataBuff = testInstance->data();
 		// if(xQueueReceive(dataQueue, &dataBuff, 1000) == pdTRUE)
 		// {
 		// 	logger.log(LogLevel::SUCCESS, "Received Test data");

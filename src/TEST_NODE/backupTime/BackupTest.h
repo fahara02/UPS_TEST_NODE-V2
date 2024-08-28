@@ -6,7 +6,7 @@
 #include "TestManager.h"
 extern QueueHandle_t BackupTestDataQueue;
 extern TaskHandle_t backupTestTaskHandle;
-class BackupTest : public UPSTest<BackupTest>
+class BackupTest : public UPSTest<BackupTest,BackupTestData>
 {
   public:
 	static constexpr TestType test_type = TestType::BackupTest;
@@ -46,14 +46,14 @@ class BackupTest : public UPSTest<BackupTest>
 	}
 	BackupTest* getInstance()
 	{
-		return UPSTest<BackupTest>::getInstance();
+		return UPSTest<BackupTest,BackupTestData>::getInstance();
 	}
 
 	void deleteInstance()
 	{
-		UPSTest<BackupTest>::deleteInstance();
+		UPSTest<BackupTest,BackupTestData>::deleteInstance();
 	}
-
+    BackupTestData& data()  override;
 	void init() override;
 	TestResult run(uint16_t testVARating = 4000, unsigned long testduration = 10000) override;
 	static void BackupTestTask(void* pvParameters);
