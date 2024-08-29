@@ -63,19 +63,19 @@ class UPSTesterSetup
 	{
 		return _TuningSetting;
 	};
-    
-    
-	template<typename T, typename U,typename V>
-	bool setField( T& setup, const U Field,V Fieldvalue);
 
-	template<typename T, typename U,typename V>
-	bool setField( T& setup, const U Field,V Fieldvalue, std::function<void(bool, U)> callback);
+	template<typename T, typename U, typename V>
+
+	bool setField(T& setup, const U Field, V Fieldvalue);
+
+	template<typename T, typename U, typename V>
+	bool setField(T& setup, const U Field, V Fieldvalue, std::function<void(bool, U)> callback);
 
 	template<typename T, typename U>
 	bool updateField(T& currentField, const T& newField, std::function<void(bool, U)> callback,
 					 U setup);
 	void updateSettings(SettingType settingType, const void* newSetting);
-	void notifySpecUpdated(const SetupSpec newSpec,bool SaveSetting=false);
+	void notifySpecUpdated(const SetupSpec newSpec, bool SaveSetting = false);
 
 	void loadSettings(SettingType settingType, const void* newSetting);
 	void loadFactorySettings();
@@ -114,7 +114,7 @@ class UPSTesterSetup
 	SetupNetwork _networkSetting;
 	SetupModbus _modbusSetting;
 	SetupReport _reportSetting;
-	SetupUPSTest  _allSetting;
+	SetupUPSTest _allSetting;
 
 	OnTestModeCallback _testModeCallback;
 	OnSetupSpecCallback _specSetCallback;

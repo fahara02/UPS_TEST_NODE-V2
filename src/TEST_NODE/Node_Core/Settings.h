@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <ctime>
 #include <cstring>
+#include <tuple>
 #include "NodeConstants.h"
 
 namespace Node_Core
@@ -30,215 +31,254 @@ enum class SettingType
 
 struct SetupSpec
 {
-    uint16_t Rating_va = 2000;
-    uint16_t RatedVoltage_volt = 230;
-    uint16_t RatedCurrent_amp = 6;
-    uint16_t MinInputVoltage_volt = 180;
-    uint16_t MaxInputVoltage_volt = 260;
-    unsigned long AvgSwitchTime_ms = 50UL;
-    unsigned long AvgBackupTime_ms = 300000UL;
+	uint16_t Rating_va = 2000;
+	uint16_t RatedVoltage_volt = 230;
+	uint16_t RatedCurrent_amp = 6;
+	uint16_t MinInputVoltage_volt = 180;
+	uint16_t MaxInputVoltage_volt = 260;
+	unsigned long AvgSwitchTime_ms = 50UL;
+	unsigned long AvgBackupTime_ms = 300000UL;
 
-    enum class Field
-    {
-        RatingVa,
-        RatedVoltage,
-        RatedCurrent,
-        MinInputVoltage,
-        MaxInputVoltage,
-        AvgSwitchTime,
-        AvgBackupTime
-    };
+	enum class Field
+	{
+		RatingVa,
+		RatedVoltage,
+		RatedCurrent,
+		MinInputVoltage,
+		MaxInputVoltage,
+		AvgSwitchTime,
+		AvgBackupTime
+	};
 
-    bool setField(Field field, uint32_t value) {
-        switch(field) {
-            case Field::RatingVa:
-			  if ( value >=UPS_MIN_VA && value <=UPS_MAX_VA){
-				Rating_va = static_cast<uint16_t>(value);
-				return true;
-			  }
-			  return false;
-			  break;
+	bool setField(Field field, uint32_t value)
+	{
+		switch(field)
+		{
+			case Field::RatingVa:
+				if(value >= UPS_MIN_VA && value <= UPS_MAX_VA)
+				{
+					Rating_va = static_cast<uint16_t>(value);
+					return true;
+				}
+				return false;
+				break;
 			case Field::RatedVoltage:
-			if ( value >=UPS_MIN_INPUT_VOLT && value <=UPS_MAX_INPUT_VOLT){
-				 RatedVoltage_volt = static_cast<uint16_t>(value);
-				return true;
-			  }
-			   return false;
-               
-                break;
-            case Field::RatedCurrent:
-			if ( value >=UPS_MIN_OUTPUT_mAMP&& value <=UPS_MIN_OUTPUT_mAMP){
-				  RatedCurrent_amp  = static_cast<uint16_t>(value)/1000;
-				return true;
-			  }
-                return false;
-                break;
-            case Field::MinInputVoltage:
-			if ( value >=UPS_MIN_INPUT_VOLT && value < UPS_MAX_INPUT_VOLT){
-				 MinInputVoltage_volt = static_cast<uint16_t>(value);
-				return true;
-			  }
-                 return false;
-                break;
-            case Field::MaxInputVoltage:
-			if ( value > UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT){
-				  MaxInputVoltage_volt = static_cast<uint16_t>(value);
-				return true;
-			  }
-                return false;
-                break;
-            case Field::AvgSwitchTime:
-			if ( value <= UPS_MAX_SWITCHING_TIME_MS ){
-				  AvgSwitchTime_ms = value;
-				return true;
-			  }
-                 return false;
-                break;
-            case Field::AvgBackupTime:
-			if ( value >= UPS_MIN_BACKUP_TIME_MS ){
-				 AvgBackupTime_ms = value;
-				return true;
-			  }
-                return false;
-                break;
-        }
-        lastsetting_updated = millis(); // Update the timestamp to the current time.
-		lastupdate_time= std::time(nullptr); 
-    }
+				if(value >= UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT)
+				{
+					RatedVoltage_volt = static_cast<uint16_t>(value);
+					return true;
+				}
+				return false;
 
-    unsigned lastUpdate() const {
-        return lastsetting_updated;
-    }
-	 const char* lastUpdateTime() const {
-        std::time_t t = lastsetting_updated;
-        std::strftime(last_update_str, sizeof(last_update_str), "%Y-%m-%d %H:%M:%S", std::localtime(&t));
-        return last_update_str;
-    }
+				break;
+			case Field::RatedCurrent:
+				if(value >= UPS_MIN_OUTPUT_mAMP && value <= UPS_MIN_OUTPUT_mAMP)
+				{
+					RatedCurrent_amp = static_cast<uint16_t>(value) / 1000;
+					return true;
+				}
+				return false;
+				break;
+			case Field::MinInputVoltage:
+				if(value >= UPS_MIN_INPUT_VOLT && value < UPS_MAX_INPUT_VOLT)
+				{
+					MinInputVoltage_volt = static_cast<uint16_t>(value);
+					return true;
+				}
+				return false;
+				break;
+			case Field::MaxInputVoltage:
+				if(value > UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT)
+				{
+					MaxInputVoltage_volt = static_cast<uint16_t>(value);
+					return true;
+				}
+				return false;
+				break;
+			case Field::AvgSwitchTime:
+				if(value <= UPS_MAX_SWITCHING_TIME_MS)
+				{
+					AvgSwitchTime_ms = value;
+					return true;
+				}
+				return false;
+				break;
+			case Field::AvgBackupTime:
+				if(value >= UPS_MIN_BACKUP_TIME_MS)
+				{
+					AvgBackupTime_ms = value;
+					return true;
+				}
+				return false;
+				break;
+		}
+		lastsetting_updated = millis(); // Update the timestamp to the current time.
+		lastupdate_time = std::time(nullptr);
+	}
 
-private:
-    unsigned long lastsetting_updated = 0UL;
-	unsigned long lastupdate_time= 0UL;
-	 mutable char last_update_str[20]; 
+	unsigned lastUpdate() const
+	{
+		return lastsetting_updated;
+	}
+	const char* lastUpdateTime() const
+	{
+		std::time_t t = lastsetting_updated;
+		std::strftime(last_update_str, sizeof(last_update_str), "%Y-%m-%d %H:%M:%S",
+					  std::localtime(&t));
+		return last_update_str;
+	}
+
+  private:
+	SettingType typeofSetting = SettingType::SPEC;
+	unsigned long lastsetting_updated = 0UL;
+	unsigned long lastupdate_time = 0UL;
+	mutable char last_update_str[20];
 };
 
+struct SetupTest
+{
+	const char* TestStandard = "IEC 62040-3";
+	TestMode mode = TestMode::AUTO;
+	uint16_t testVARating = 3000;
+	uint16_t inputVoltage_volt = 220;
+	unsigned long testDuration_ms = 600000UL;
+	unsigned long min_valid_switch_time_ms = 1UL;
+	unsigned long max_valid_switch_time_ms = 3000UL;
+	unsigned long min_valid_backup_time_ms = 1UL;
+	unsigned long max_valid_backup_time_ms = 300000UL;
+	unsigned long ToleranceSwitchTime_ms = 50UL;
+	unsigned long maxBackupTime_min = 300UL;
+	unsigned long ToleranceBackUpTime_ms = 300000UL;
+	int MaxRetest = 3;
 
-struct SetupTest {
-    const char* TestStandard = "IEC 62040-3";
-    TestMode mode = TestMode::AUTO;
-    uint16_t testVARating = 3000;
-    uint16_t inputVoltage_volt = 220;
-    unsigned long testDuration_ms = 600000UL;
-    unsigned long min_valid_switch_time_ms = 1UL;
-    unsigned long max_valid_switch_time_ms = 3000UL;
-    unsigned long min_valid_backup_time_ms = 1UL;
-    unsigned long max_valid_backup_time_ms = 300000UL;
-    unsigned long ToleranceSwitchTime_ms = 50UL;
-    unsigned long maxBackupTime_min = 300UL;
-    unsigned long ToleranceBackUpTime_ms = 300000UL;
-    int MaxRetest = 3;
-   
+	enum class Field
+	{
+		TestStandard,
+		Mode,
+		TestVARating,
+		InputVoltage,
+		TestDuration,
+		MinValidSwitchTime,
+		MaxValidSwitchTime,
+		MinValidBackupTime,
+		MaxValidBackupTime,
+		ToleranceSwitchTime,
+		MaxBackupTime,
+		ToleranceBackupTime,
+		MaxRetest
+	};
 
-    enum class Field {
-        TestStandard,
-        Mode,
-        TestVARating,
-        InputVoltage,
-        TestDuration,
-        MinValidSwitchTime,
-        MaxValidSwitchTime,
-        MinValidBackupTime,
-        MaxValidBackupTime,
-        ToleranceSwitchTime,
-        MaxBackupTime,
-        ToleranceBackupTime,
-        MaxRetest
-    };
+	bool setField(Field field, uint32_t value)
+	{
+		switch(field)
+		{
+			case Field::TestStandard:
+				TestStandard = reinterpret_cast<const char*>(value);
+				break;
+			case Field::Mode:
+				mode = static_cast<TestMode>(value);
+				break;
+			case Field::TestVARating:
+				if(value >= UPS_MIN_VA && value <= UPS_MAX_VA)
+				{
+					testVARating = static_cast<uint16_t>(value);
+				}
+				else
+				{
+					return false;
+				}
+				break;
+			case Field::InputVoltage:
+				if(value >= UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT)
+				{
+					inputVoltage_volt = static_cast<uint16_t>(value);
+				}
+				else
+				{
+					return false;
+				}
+				break;
+			case Field::TestDuration:
+				testDuration_ms = value;
+				break;
+			case Field::MinValidSwitchTime:
+				if(value >= UPS_MIN_SWITCHING_TIME_MS_SANITY_CHECK &&
+				   value <= UPS_MAX_SWITCHING_TIME_MS_SANITY_CHECK)
+				{
+					min_valid_switch_time_ms = value;
+				}
+				else
+				{
+					return false;
+				}
+				break;
+			case Field::MaxValidSwitchTime:
+				if(value >= UPS_MIN_SWITCHING_TIME_MS_SANITY_CHECK &&
+				   value <= UPS_MAX_SWITCHING_TIME_MS_SANITY_CHECK)
+				{
+					max_valid_switch_time_ms = value;
+				}
+				else
+				{
+					return false;
+				}
+				break;
+			case Field::MinValidBackupTime:
+				if(value >= UPS_MIN_BACKUP_TIME_MS_SANITY_CHECK)
+				{
+					min_valid_backup_time_ms = value;
+				}
+				else
+				{
+					return false;
+				}
+				break;
+			case Field::MaxValidBackupTime:
+				if(value >= UPS_MIN_BACKUP_TIME_MS_SANITY_CHECK)
+				{
+					max_valid_backup_time_ms = value;
+				}
+				else
+				{
+					return false;
+				}
+				break;
+			case Field::ToleranceSwitchTime:
+				ToleranceSwitchTime_ms = value;
+				break;
+			case Field::MaxBackupTime:
+				maxBackupTime_min = value;
+				break;
+			case Field::ToleranceBackupTime:
+				ToleranceBackUpTime_ms = value;
+				break;
+			case Field::MaxRetest:
+				MaxRetest = static_cast<int>(value);
+				break;
+		}
+		lastsetting_updated = millis(); // Update the timestamp to the current time.
+		return true;
+	}
 
-    bool setField(Field field, uint32_t value) {
-        switch (field) {
-            case Field::TestStandard:
-                TestStandard = reinterpret_cast<const char*>(value);
-                break;
-            case Field::Mode:
-                mode = static_cast<TestMode>(value);
-                break;
-            case Field::TestVARating:
-                if (value >= UPS_MIN_VA && value <= UPS_MAX_VA) {
-                    testVARating = static_cast<uint16_t>(value);
-                } else {
-                    return false;
-                }
-                break;
-            case Field::InputVoltage:
-                if (value >= UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT) {
-                    inputVoltage_volt = static_cast<uint16_t>(value);
-                } else {
-                    return false;
-                }
-                break;
-            case Field::TestDuration:
-                testDuration_ms = value;
-                break;
-            case Field::MinValidSwitchTime:
-                if (value >= 1 && value <= max_valid_switch_time_ms) {
-                    min_valid_switch_time_ms = value;
-                } else {
-                    return false;
-                }
-                break;
-            case Field::MaxValidSwitchTime:
-                if (value >= min_valid_switch_time_ms && value <= 3000UL) {
-                    max_valid_switch_time_ms = value;
-                } else {
-                    return false;
-                }
-                break;
-            case Field::MinValidBackupTime:
-                if (value >= 1 && value <= max_valid_backup_time_ms) {
-                    min_valid_backup_time_ms = value;
-                } else {
-                    return false;
-                }
-                break;
-            case Field::MaxValidBackupTime:
-                if (value >= min_valid_backup_time_ms && value <= 300000UL) {
-                    max_valid_backup_time_ms = value;
-                } else {
-                    return false;
-                }
-                break;
-            case Field::ToleranceSwitchTime:
-                ToleranceSwitchTime_ms = value;
-                break;
-            case Field::MaxBackupTime:
-                maxBackupTime_min = value;
-                break;
-            case Field::ToleranceBackupTime:
-                ToleranceBackUpTime_ms = value;
-                break;
-            case Field::MaxRetest:
-                MaxRetest = static_cast<int>(value);
-                break;
-        }
-        lastsetting_updated = millis(); // Update the timestamp to the current time.
-        return true;
-    }
+	unsigned lastUpdate() const
+	{
+		return lastsetting_updated;
+	}
 
-    unsigned lastUpdate() const {
-        return lastsetting_updated;
-    }
+	const char* lastUpdateTime() const
+	{
+		std::time_t t = lastsetting_updated;
+		std::strftime(last_update_str, sizeof(last_update_str), "%Y-%m-%d %H:%M:%S",
+					  std::localtime(&t));
+		return last_update_str;
+	}
 
-    const char* lastUpdateTime() const {
-        std::time_t t = lastsetting_updated;
-        std::strftime(last_update_str, sizeof(last_update_str), "%Y-%m-%d %H:%M:%S", std::localtime(&t));
-        return last_update_str;
-    }
-	private:
-    unsigned long lastsetting_updated = 0UL;
-	unsigned long lastupdate_time= 0UL;
-	 mutable char last_update_str[20]; 
+  private:
+	SettingType typeofSetting = SettingType::TEST;
+	unsigned long lastsetting_updated = 0UL;
+	unsigned long lastupdate_time = 0UL;
+	mutable char last_update_str[20];
 };
-
 
 struct SetupTask
 {
@@ -253,20 +293,19 @@ struct SetupTask
 	uint32_t upsISR_taskStack = 4096;
 	unsigned long lastsetting_updated = 0UL;
 	enum class Field
-{
-	MainTestTaskCore,
-	MainsISRTaskCore,
-	UpsISRTaskCore,
-	MainTestTaskIdlePriority,
-	MainsISRTaskIdlePriority,
-	UpsISRTaskIdlePriority,
-	MainTestTaskStack,
-	MainsISRTaskStack,
-	UpsISRTaskStack,
-	LastSettingUpdated
+	{
+		MainTestTaskCore,
+		MainsISRTaskCore,
+		UpsISRTaskCore,
+		MainTestTaskIdlePriority,
+		MainsISRTaskIdlePriority,
+		UpsISRTaskIdlePriority,
+		MainTestTaskStack,
+		MainsISRTaskStack,
+		UpsISRTaskStack,
+		LastSettingUpdated
+	};
 };
-};
-
 
 struct SetupTaskParams
 {
@@ -278,17 +317,16 @@ struct SetupTaskParams
 	unsigned long task_testDuration_ms = 10000UL;
 	unsigned long lastsetting_updated = 0UL;
 	enum class Field
-{
-	FlagMainsPowerLoss,
-	FlagUpsPowerGain,
-	FlagUpsPowerLoss,
-	TestNo,
-	TaskTestVARating,
-	TaskTestDuration,
-	LastSettingUpdated
+	{
+		FlagMainsPowerLoss,
+		FlagUpsPowerGain,
+		FlagUpsPowerLoss,
+		TestNo,
+		TaskTestVARating,
+		TaskTestDuration,
+		LastSettingUpdated
+	};
 };
-};
-
 
 struct SetupHardware
 {
@@ -298,15 +336,14 @@ struct SetupHardware
 	uint32_t pwm_frequency = 3000UL;
 	unsigned long lastsetting_updated = 0UL;
 	enum class Field
-{
-	PwmChannelNo,
-	PwmResolutionBits,
-	PwmDutySet,
-	PwmFrequency,
-	LastSettingUpdated
+	{
+		PwmChannelNo,
+		PwmResolutionBits,
+		PwmDutySet,
+		PwmFrequency,
+		LastSettingUpdated
+	};
 };
-};
-
 
 struct SetupTuning
 {
@@ -315,14 +352,13 @@ struct SetupTuning
 	uint16_t adjust_pwm_75P = 0;
 	uint16_t adjust_pwm_100P = 0;
 	enum class Field
-{
-	AdjustPwm25P,
-	AdjustPwm50P,
-	AdjustPwm75P,
-	AdjustPwm100P
+	{
+		AdjustPwm25P,
+		AdjustPwm50P,
+		AdjustPwm75P,
+		AdjustPwm100P
+	};
 };
-};
-
 
 struct SetupNetwork
 {
@@ -340,23 +376,22 @@ struct SetupNetwork
 	uint32_t refreshConnectionAfter_ms = 86400000UL;
 	unsigned long lastsetting_updated = 0UL;
 	enum class Field
-{
-	ApSSID,
-	ApPass,
-	StaSSID,
-	StaPass,
-	StaIP,
-	StaGW,
-	StaSN,
-	DHCP,
-	MaxRetry,
-	ReconnectTimeout,
-	NetworkTimeout,
-	RefreshConnectionAfter,
-	LastSettingUpdated
+	{
+		ApSSID,
+		ApPass,
+		StaSSID,
+		StaPass,
+		StaIP,
+		StaGW,
+		StaSN,
+		DHCP,
+		MaxRetry,
+		ReconnectTimeout,
+		NetworkTimeout,
+		RefreshConnectionAfter,
+		LastSettingUpdated
+	};
 };
-};
-
 
 struct SetupModbus
 {
@@ -367,36 +402,88 @@ struct SetupModbus
 	unsigned long baudrate = 9600;
 	unsigned long lastsetting_updated = 0UL;
 	enum class Field
-{
-	SlaveID,
-	DataBits,
-	StopBits,
-	Parity,
-	BaudRate,
-	LastSettingUpdated
+	{
+		SlaveID,
+		DataBits,
+		StopBits,
+		Parity,
+		BaudRate,
+		LastSettingUpdated
+	};
 };
-};
-
 
 struct SetupReport
 {
 	bool enableReport = true;
-	const char* ReportFormat = "PDF";
+	const char* reportFormat = "PDF";
 	const char* clientName = "Default";
 	const char* brandName = "Default";
 	const char* serialNumber = "SN12345";
 	int sampleNumber = 1;
-	unsigned long lastsetting_updated = 0UL;
+
 	enum class Field
-{
-	EnableReport,
-	ReportFormat,
-	ClientName,
-	BrandName,
-	SerialNumber,
-	SampleNumber,
-	LastSettingUpdated
-};
+	{
+		EnableReport,
+		ReportFormat,
+		ClientName,
+		BrandName,
+		SerialNumber,
+		SampleNumber,
+		LastSettingUpdated
+	};
+
+	bool setField(Field field, const char* value)
+	{
+		switch(field)
+		{
+			case Field::ReportFormat:
+				reportFormat = value;
+				return true;
+			case Field::ClientName:
+				clientName = value;
+				return true;
+			case Field::BrandName:
+				brandName = value;
+				return true;
+			case Field::SerialNumber:
+				serialNumber = value;
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	bool setField(Field field, int value)
+	{
+		switch(field)
+		{
+			case Field::SampleNumber:
+				sampleNumber = value;
+				return true;
+			case Field::EnableReport:
+				enableReport = value;
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	unsigned long lastUpdate() const
+	{
+		return lastsetting_updated;
+	}
+
+	const char* lastUpdateTime() const
+	{
+		std::time_t t = lastsetting_updated;
+		std::strftime(last_update_str, sizeof(last_update_str), "%Y-%m-%d %H:%M:%S",
+					  std::localtime(&t));
+		return last_update_str;
+	}
+
+  private:
+	unsigned long lastsetting_updated = 0UL;
+	mutable char last_update_str[20];
 };
 
 struct SetupUPSTest

@@ -4,13 +4,15 @@
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
 #include <Update.h>
+#include "vector"
+
+#include "RawHtml.h"
 #include "Settings.h"
 #include "TestData.h"
 #include "UPSdebug.h"
 #include "TestSync.h"
 #include "TestManager.h"
 #include "UPSTesterSetup.h"
-#include "vector"
 
 static const String WiFiQuality(int rssiValue)
 {
@@ -37,16 +39,15 @@ class PageBuilder
 	}
 
 	void setupPages(WiFiManager* wm, TestManager* testManager, TestSync* testSync,
-					UPSTesterSetup* testSetup);
-
-	void setupPages(WiFiManager* wm, Node_Core::SetupUPSTest* setup);
-
-	void setupPages(WiFiManager* wm, TestData* data);
+					UPSTesterSetup* testSetup, SetupUPSTest* allSetup, TestData* data);
 
 	void sendResponseHeader(AsyncResponseStream* response, const char* title,
 							bool inlineStyle = false);
 
 	void sendResponseTrailer(AsyncResponseStream* response);
+
+	void sendNavbar(AsyncResponseStream* response, const char* title, const char* action,
+					const char* css, const char* routes[]);
 
 	void sendButton(AsyncResponseStream* response, const char* title, const char* action,
 					const char* css = "");

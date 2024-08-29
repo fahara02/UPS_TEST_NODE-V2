@@ -30,6 +30,30 @@ void PageBuilder::sendResponseTrailer(AsyncResponseStream* response)
 {
 	response->print("</div></body></html>");
 }
+
+void PageBuilder::sendNavbar(AsyncResponseStream* response, const char* title, const char* action,
+							 const char* css, const char* routes[])
+{
+	// Assuming routes array contains:
+	// [0] - Dashboard route
+	// [1] - Settings route
+	// [2] - Network route
+	// [3] - Modbus route
+	// [4] - Test Report route
+
+	response->printf(NAVBAR_HTML, title,
+					 routes[0], // Dashboard route
+					 routes[1], // Settings route
+					 routes[2], // Network route
+					 routes[3], // Modbus route
+					 routes[4], // Test Report route
+					 action, // Action for Shutdown button
+					 css, // CSS class for Shutdown button
+					 action, // Action for Restart button
+					 css // CSS class for Restart button
+	);
+}
+
 void PageBuilder::sendButton(AsyncResponseStream* response, const char* title, const char* action,
 							 const char* css)
 {

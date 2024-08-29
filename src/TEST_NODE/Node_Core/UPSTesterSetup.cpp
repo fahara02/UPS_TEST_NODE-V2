@@ -9,13 +9,13 @@ UPSTesterSetup* UPSTesterSetup::instance = nullptr;
 
 UPSTesterSetup::UPSTesterSetup()
 {
-    // // Initialize LittleFS
-    // if (!LittleFS.begin()) {
-    //     Serial.println("Failed to mount LittleFS");
-    // }
+	// // Initialize LittleFS
+	// if (!LittleFS.begin()) {
+	//     Serial.println("Failed to mount LittleFS");
+	// }
 
-    // // Load settings from LittleFS
-    // loadSettings();
+	// // Load settings from LittleFS
+	// loadSettings();
 }
 
 UPSTesterSetup::~UPSTesterSetup()
@@ -50,7 +50,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 	{
 		case SettingType::SPEC:
 			_spec = *static_cast<const SetupSpec*>(newSetting);
-			//_spec.lastUpdate() = millis();
+
 			if(_specSetCallback)
 			{
 				_specSetCallback(true, _spec);
@@ -62,7 +62,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 			const SetupTest* newTest = static_cast<const SetupTest*>(newSetting);
 			bool modeChanged = (_testSetting.mode != newTest->mode);
 			_testSetting = *newTest;
-			//_testSetting.lastUpdate()= millis();
+
 			if(_testSetCallback)
 			{
 				_testSetCallback(true, _testSetting);
@@ -76,7 +76,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 
 		case SettingType::TASK:
 			_taskSetting = *static_cast<const SetupTask*>(newSetting);
-			_taskSetting.lastsetting_updated = millis();
+
 			if(_taskSetCallback)
 			{
 				_taskSetCallback(true, _taskSetting);
@@ -85,7 +85,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 
 		case SettingType::TASK_PARAMS:
 			_taskParamsSetting = *static_cast<const SetupTaskParams*>(newSetting);
-			_taskParamsSetting.lastsetting_updated = millis();
+
 			if(_taskParamsSetCallback)
 			{
 				_taskParamsSetCallback(true, _taskParamsSetting);
@@ -94,7 +94,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 
 		case SettingType::HARDWARE:
 			_hardwareSetting = *static_cast<const SetupHardware*>(newSetting);
-			_hardwareSetting.lastsetting_updated = millis();
+
 			if(_hardwareSetCallback)
 			{
 				_hardwareSetCallback(true, _hardwareSetting);
@@ -103,7 +103,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 
 		case SettingType::NETWORK:
 			_networkSetting = *static_cast<const SetupNetwork*>(newSetting);
-			_networkSetting.lastsetting_updated = millis();
+
 			if(_commSetCallback)
 			{
 				_commSetCallback(true, _networkSetting);
@@ -112,7 +112,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 
 		case SettingType::MODBUS:
 			_modbusSetting = *static_cast<const SetupModbus*>(newSetting);
-			_modbusSetting.lastsetting_updated = millis();
+
 			if(_modbusSetCallback)
 			{
 				_modbusSetCallback(true, _modbusSetting);
@@ -121,7 +121,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 
 		case SettingType::REPORT:
 			_reportSetting = *static_cast<const SetupReport*>(newSetting);
-			_reportSetting.lastsetting_updated = millis();
+
 			if(_reportSetCallback)
 			{
 				_reportSetCallback(true, _reportSetting);
@@ -130,7 +130,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 
 		case SettingType::ALL:
 			_allSetting = *static_cast<const SetupUPSTest*>(newSetting);
-			_allSetting.lastsetting_updated = millis();
+
 			allsettings_updated = true; // Assume all settings are updated directly
 			break;
 
@@ -143,7 +143,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 	unsigned long currentTime = millis();
 	int updatedSettingsCount = 0;
 
-	if(currentTime - _spec.lastUpdate()<= ONE_DAY_MS)
+	if(currentTime - _spec.lastUpdate() <= ONE_DAY_MS)
 		updatedSettingsCount++;
 	if(currentTime - _testSetting.lastUpdate() <= ONE_DAY_MS)
 		updatedSettingsCount++;
@@ -157,7 +157,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 		updatedSettingsCount++;
 	if(currentTime - _modbusSetting.lastsetting_updated <= ONE_DAY_MS)
 		updatedSettingsCount++;
-	if(currentTime - _reportSetting.lastsetting_updated <= ONE_DAY_MS)
+	if(currentTime - _reportSetting.lastUpdate() <= ONE_DAY_MS)
 		updatedSettingsCount++;
 
 	// If most settings are updated, consider all settings updated
@@ -187,115 +187,130 @@ void UPSTesterSetup::loadSettings(SettingType settingType, const void* newSettin
 	deserializeSettings("/tester_settings.json");
 }
 
-// template<typename T, typename U, typename V>
-// typename std::enable_if<std::is_same<T, SetupSpec>::value, bool>::type
-// UPSTesterSetup::setField(T& setup, const U Field, V Fieldvalue) {
-//     if (setup.setField(Field, Fieldvalue)) {
-//         if (_specSetCallback) {
-//             _specSetCallback(true, _spec);
-//         }
-//         return true;
-//     }
-//     return false;
-// }
+template<typename T, typename U, typename V>
+bool UPSTesterSetup::setField(T& setup, const U Field, V Fieldvalue)
+{
+	if(setup.setField(Field, Fieldvalue))
+	{
+		SettingType settingType = setup.typeofSetting;
+		switch(settingType)
+		{
+			case SettingType::ALL:
+				if(_allSettingCallback)
+				{
+					_allSettingCallback(true, setup);
+				}
+				break;
 
-// template<typename T, typename U, typename V>
-// typename std::enable_if<std::is_same<T, SetupTest>::value, bool>::type
-// UPSTesterSetup::setField(T& setup, const U Field, V Fieldvalue) {
-//     if (setup.setField(Field, Fieldvalue)) {
-//         if (_testSetCallback) {
-//             _testSetCallback(true, _testSetting);
-//         }
-//         return true;
-//     }
-//     return false;
-// }
+			case SettingType::SPEC:
+				if(_specSetCallback)
+				{
+					_specSetCallback(true, setup.spec);
+				}
+				break;
 
+			case SettingType::TEST:
+				if(_testSetCallback)
+				{
+					_testSetCallback(true, setup.testSetting);
+				}
+				break;
 
-template<typename T, typename U,typename V>
-bool  UPSTesterSetup::setField( T& setup, const U Field, V Fieldvalue, std::function<void(bool, U)> callback){
-	if(setup->setField(Field, Fieldvalue)){
-		if (callback) {
-            callback(true, setup);
-        }
+			case SettingType::TASK:
+				if(_taskSetCallback)
+				{
+					_taskSetCallback(true, setup.taskSetting);
+				}
+				break;
+
+			case SettingType::TASK_PARAMS:
+				if(_taskParamsSetCallback)
+				{
+					_taskParamsSetCallback(true, setup.paramsSetting);
+				}
+				break;
+
+			case SettingType::HARDWARE:
+				if(_hardwareSetCallback)
+				{
+					_hardwareSetCallback(true, setup.hardwareSetting);
+				}
+				break;
+
+			case SettingType::NETWORK:
+				if(_commSetCallback)
+				{
+					_commSetCallback(true, setup.commSetting);
+				}
+				break;
+
+			case SettingType::MODBUS:
+				if(_modbusSetCallback)
+				{
+					_modbusSetCallback(true, setup.modbusSetting);
+				}
+				break;
+
+			case SettingType::REPORT:
+				if(_reportSetCallback)
+				{
+					_reportSetCallback(true, setup.reportSetting);
+				}
+				break;
+
+			default:
+				return false;
+		}
+
 		return true;
-	};
+	}
 	return false;
 }
 
-
-
-
-
-
-
-
 template<typename T, typename U>
-bool UPSTesterSetup::updateField(T& currentField, const T& newField, std::function<void(bool, U)> callback, U setup) {
-    if (currentField != newField) {
-        currentField = newField;
-        if (callback) {
-            callback(true, setup);
-        }
-        return true; // Field was updated
-    }
-    return false; // No update occurred
-}
-
-
-
-
-
-
-
-
-
-
-
-void UPSTesterSetup::notifySpecUpdated(const SetupSpec newSpec,bool SaveSetting) {
-    bool updated = false;
-
-    // Update individual fields using the updated template function
-    updated |= updateField(_spec.Rating_va, newSpec.Rating_va, _specSetCallback, _spec);
-    updated |= updateField(_spec.RatedVoltage_volt, newSpec.RatedVoltage_volt, _specSetCallback, _spec);
-    updated |= updateField(_spec.RatedCurrent_amp, newSpec.RatedCurrent_amp, _specSetCallback, _spec);
-    updated |= updateField(_spec.MinInputVoltage_volt, newSpec.MinInputVoltage_volt, _specSetCallback, _spec);
-    updated |= updateField(_spec.MaxInputVoltage_volt, newSpec.MaxInputVoltage_volt, _specSetCallback, _spec);
-    updated |= updateField(_spec.AvgSwitchTime_ms, newSpec.AvgSwitchTime_ms, _specSetCallback, _spec);
-    updated |= updateField(_spec.AvgBackupTime_ms, newSpec.AvgBackupTime_ms, _specSetCallback, _spec);
-
-    if (updated ) {
-        //_spec.lastUpdate()= millis();
-		if(SaveSetting){
-             serializeSettings("/tester_settings.json");
+bool UPSTesterSetup::updateField(T& currentField, const T& newField,
+								 std::function<void(bool, U)> callback, U setup)
+{
+	if(currentField != newField)
+	{
+		currentField = newField;
+		if(callback)
+		{
+			callback(true, setup);
 		}
-        
-    }
+		return true; // Field was updated
+	}
+	return false; // No update occurred
 }
 
+void UPSTesterSetup::notifySpecUpdated(const SetupSpec newSpec, bool SaveSetting)
+{
+	bool updated = false;
 
+	// Update individual fields using the updated template function
+	updated |= updateField(_spec.Rating_va, newSpec.Rating_va, _specSetCallback, _spec);
+	updated |=
+		updateField(_spec.RatedVoltage_volt, newSpec.RatedVoltage_volt, _specSetCallback, _spec);
+	updated |=
+		updateField(_spec.RatedCurrent_amp, newSpec.RatedCurrent_amp, _specSetCallback, _spec);
+	updated |= updateField(_spec.MinInputVoltage_volt, newSpec.MinInputVoltage_volt,
+						   _specSetCallback, _spec);
+	updated |= updateField(_spec.MaxInputVoltage_volt, newSpec.MaxInputVoltage_volt,
+						   _specSetCallback, _spec);
+	updated |=
+		updateField(_spec.AvgSwitchTime_ms, newSpec.AvgSwitchTime_ms, _specSetCallback, _spec);
+	updated |=
+		updateField(_spec.AvgBackupTime_ms, newSpec.AvgBackupTime_ms, _specSetCallback, _spec);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	if(updated)
+	{
+		//_spec.lastUpdate()= millis();
+		if(SaveSetting)
+		{
+			serializeSettings("/tester_settings.json");
+		}
+	}
+}
 
 void UPSTesterSetup::serializeSettings(const char* filename)
 {
@@ -368,12 +383,12 @@ void UPSTesterSetup::serializeSettings(const char* filename)
 	doc["modbus"]["lastsetting_updated"] = _modbusSetting.lastsetting_updated;
 
 	doc["report"]["enableReport"] = _reportSetting.enableReport;
-	doc["report"]["ReportFormat"] = _reportSetting.ReportFormat;
+	doc["report"]["ReportFormat"] = _reportSetting.reportFormat;
 	doc["report"]["clientName"] = _reportSetting.clientName;
 	doc["report"]["brandName"] = _reportSetting.brandName;
 	doc["report"]["serialNumber"] = _reportSetting.serialNumber;
 	doc["report"]["sampleNumber"] = _reportSetting.sampleNumber;
-	doc["report"]["lastsetting_updated"] = _reportSetting.lastsetting_updated;
+	doc["report"]["lastsetting_updated"] = _reportSetting.lastUpdate();
 
 	// Open file for writing
 	File file = LittleFS.open(filename, "w");
@@ -510,13 +525,11 @@ void UPSTesterSetup::deserializeSettings(const char* filename)
 		doc["modbus"]["lastsetting_updated"] | _modbusSetting.lastsetting_updated;
 
 	_reportSetting.enableReport = doc["report"]["enableReport"] | _reportSetting.enableReport;
-	_reportSetting.ReportFormat = doc["report"]["ReportFormat"] | _reportSetting.ReportFormat;
+	_reportSetting.reportFormat = doc["report"]["ReportFormat"] | _reportSetting.reportFormat;
 	_reportSetting.clientName = doc["report"]["clientName"] | _reportSetting.clientName;
 	_reportSetting.brandName = doc["report"]["brandName"] | _reportSetting.brandName;
 	_reportSetting.serialNumber = doc["report"]["serialNumber"] | _reportSetting.serialNumber;
 	_reportSetting.sampleNumber = doc["report"]["sampleNumber"] | _reportSetting.sampleNumber;
-	_reportSetting.lastsetting_updated =
-		doc["report"]["lastsetting_updated"] | _reportSetting.lastsetting_updated;
 }
 
 void UPSTesterSetup::notifyAllSettingsApplied()
