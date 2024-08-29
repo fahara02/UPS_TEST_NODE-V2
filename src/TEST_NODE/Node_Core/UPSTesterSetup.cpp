@@ -62,7 +62,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 			const SetupTest* newTest = static_cast<const SetupTest*>(newSetting);
 			bool modeChanged = (_testSetting.mode != newTest->mode);
 			_testSetting = *newTest;
-			_testSetting.lastsetting_updated = millis();
+			//_testSetting.lastUpdate()= millis();
 			if(_testSetCallback)
 			{
 				_testSetCallback(true, _testSetting);
@@ -145,7 +145,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 
 	if(currentTime - _spec.lastUpdate()<= ONE_DAY_MS)
 		updatedSettingsCount++;
-	if(currentTime - _testSetting.lastsetting_updated <= ONE_DAY_MS)
+	if(currentTime - _testSetting.lastUpdate() <= ONE_DAY_MS)
 		updatedSettingsCount++;
 	if(currentTime - _taskSetting.lastsetting_updated <= ONE_DAY_MS)
 		updatedSettingsCount++;
@@ -189,10 +189,14 @@ void UPSTesterSetup::loadSettings(SettingType settingType, const void* newSettin
 
 template<typename T, typename U,typename V>
 bool  UPSTesterSetup::setField( T setup, const U Field, V Fieldvalue, std::function<void(bool, U)> callback	 ){
-	T.setField(Field, FieldValue);
-
-					 }
-
+	if(setup.setField(Field, Fieldvalue)){
+		if (callback) {
+            callback(true, setup);
+        }
+		return true;
+	};
+	return false;
+}
 
 
 
