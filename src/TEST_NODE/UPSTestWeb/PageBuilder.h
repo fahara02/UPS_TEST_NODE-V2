@@ -73,6 +73,9 @@ class PageBuilder
 	void sendDropdown(AsyncResponseStream* response, const char* name,
 					  const std::vector<const char*>& options, const char* selected = nullptr);
 	void sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType);
+
+	void sendLogmonitor(AsyncResponseStream* response, Logger* logger);
+	void sendDashboard(AsyncResponseStream* response, Logger* logger);
 	void sendSidebar(AsyncResponseStream* response);
 
 	// Utility function

@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <deque>
 
 namespace Node_Core
 {
@@ -101,6 +102,16 @@ class Logger
 		outputStr += "\033[0m"; // Reset color
 
 		_output->println(outputStr);
+		addToBuffer(outputStr);
+	}
+	String getBufferedLogs() const
+	{
+		String allLogs;
+		for(const String& log: _logBuffer)
+		{
+			allLogs += log + "\n";
+		}
+		return allLogs;
 	}
 	void log(LogLevel level, eTaskState state)
 	{
@@ -231,6 +242,8 @@ class Logger
 
   private:
 	Print* _output;
+	static const size_t BUFFER_SIZE = 10;
+	std::deque<String> _logBuffer;
 	// Private constructor for singleton pattern
 	Logger() : _output(&Serial), errorCallback(nullptr)
 	{
@@ -245,7 +258,14 @@ class Logger
 			vTaskDelay(pdMS_TO_TICKS(1000)); // Example delay
 		}
 	}
-
+	void addToBuffer(const String& logEntry)
+	{
+		if(_logBuffer.size() >= BUFFER_SIZE)
+		{
+			_logBuffer.pop_front(); // Remove the oldest entry if buffer is full
+		}
+		_logBuffer.push_back(logEntry); // Add the new log entry
+	}
 	// Callback function pointer
 	void (*errorCallback)(UPSError);
 };

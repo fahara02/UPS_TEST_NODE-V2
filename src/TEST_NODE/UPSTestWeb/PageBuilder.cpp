@@ -135,6 +135,29 @@ void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, 
 					 "</tr>",
 					 name, value);
 }
+void PageBuilder::sendDashboard(AsyncResponseStream* response, Logger* logger)
+{
+	response->print("<div class=\"content\">");
+	response->print("<h1>Dashboard</h1>");
+	response->print("<p>This is where test reports and status will be shown.</p>");
+
+	this->sendLogmonitor(response, logger);
+
+	response->print("</div>");
+}
+
+void PageBuilder::sendLogmonitor(AsyncResponseStream* response, Logger* logger)
+{
+	response->print("<div class=\"log-monitor\" id=\"logMonitor\">");
+
+	// Optionally, you can inject initial log data here
+	response->print("<!-- UPS TESTING PANEL LOGS-->");
+
+	// Example: Sending some initial log messages
+	response->printf("<p>%s</p>", logger->getBufferedLogs().c_str());
+
+	response->print("</div>");
+}
 
 void PageBuilder::sendSidebar(AsyncResponseStream* response)
 {
