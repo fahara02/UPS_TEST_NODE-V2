@@ -13,6 +13,13 @@
 #include "TestSync.h"
 #include "TestManager.h"
 #include "UPSTesterSetup.h"
+enum class MarginType
+{
+	Top,
+	Bottom,
+	Left,
+	Right
+};
 
 static const String WiFiQuality(int rssiValue)
 {
@@ -65,6 +72,8 @@ class PageBuilder
 
 	void sendDropdown(AsyncResponseStream* response, const char* name,
 					  const std::vector<const char*>& options, const char* selected = nullptr);
+	void sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType);
+	void sendSidebar(AsyncResponseStream* response);
 
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;

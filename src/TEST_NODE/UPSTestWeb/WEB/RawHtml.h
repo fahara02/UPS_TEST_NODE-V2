@@ -22,4 +22,12 @@ const char* const NAVBAR_HTML PROGMEM = R"rawliteral(
 </div>
 )rawliteral";
 
+// Sidebar HTML
+const char* const SIDEBAR_HTML_PROGMEM = R"rawliteral(
+<div class="sidebar" id="sidebar">
+  <div class="resizer" id="resizer"></div>
+  <!-- Dynamic content will be inserted here -->
+</div>
+)rawliteral";
+
 #endif // RAWHTML_H
