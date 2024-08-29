@@ -48,9 +48,10 @@ class Logger
 	}
 
 	// Initialize the logger
-	void init()
+	void init(Print* output = &Serial)
 	{
-		Serial.begin(115200);
+		_output = output;
+
 		xTaskCreate(logTask, "LoggerTask", 4096, nullptr, 1, nullptr);
 		this->log(LogLevel::INFO, "Logtask started");
 	}
@@ -84,17 +85,22 @@ class Logger
 	// Log function with formatted output
 	void log(LogLevel level, const char* format, ...)
 	{
+		if(_output == nullptr)
+		{
+			return; // Ensure _output is valid
+		}
+
 		va_list args;
 		va_start(args, format);
 		char buffer[256];
 		vsnprintf(buffer, sizeof(buffer), format, args);
 		va_end(args);
 
-		String output = formatLogLevel(level);
-		output += buffer;
-		output += "\033[0m";
+		String outputStr = formatLogLevel(level);
+		outputStr += buffer;
+		outputStr += "\033[0m"; // Reset color
 
-		Serial.println(output);
+		_output->println(outputStr);
 	}
 	void log(LogLevel level, eTaskState state)
 	{
@@ -224,8 +230,9 @@ class Logger
 	}
 
   private:
+	Print* _output;
 	// Private constructor for singleton pattern
-	Logger() : errorCallback(nullptr)
+	Logger() : _output(&Serial), errorCallback(nullptr)
 	{
 	}
 

@@ -134,7 +134,10 @@ void modbusRTUTask(void* pvParameters)
 }
 
 void setup()
+
 {
+	Serial.begin(115200);
+
 	mainLoss = xSemaphoreCreateBinary();
 	upsGain = xSemaphoreCreateBinary();
 	upsLoss = xSemaphoreCreateBinary();
