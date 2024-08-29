@@ -35,6 +35,75 @@ struct SetupSpec
 	unsigned long AvgSwitchTime_ms = 50UL;
 	unsigned long AvgBackupTime_ms = 300000UL;
 	unsigned long lastsetting_updated = 0UL;
+
+	enum class SpecField
+	{
+		RatingVa,
+		RatedVoltage,
+		RatedCurrent,
+		MinInputVoltage,
+		MaxInputVoltage,
+		AvgSwitchTime,
+		AvgBackupTime
+	};
+	// void setSpecField(UPSTesterSetup* Tester, SpecField field, uint32_t value)
+	// {
+	// 	// Create a copy of the current _spec struct
+	// 	SetupSpec updatedSpec = Tester->specSetup();
+
+	// 	// Modify the field based on the enum selector
+	// 	switch(field)
+	// 	{
+	// 		case SpecField::RatingVa:
+	// 			updatedSpec.Rating_va = static_cast<uint16_t>(value);
+	// 			break;
+	// 		case SpecField::RatedVoltage:
+	// 			updatedSpec.RatedVoltage_volt = static_cast<uint16_t>(value);
+	// 			break;
+	// 		case SpecField::RatedCurrent:
+	// 			updatedSpec.RatedCurrent_amp = static_cast<uint16_t>(value);
+	// 			break;
+	// 		case SpecField::MinInputVoltage:
+	// 			updatedSpec.MinInputVoltage_volt = static_cast<uint16_t>(value);
+	// 			break;
+	// 		case SpecField::MaxInputVoltage:
+	// 			updatedSpec.MaxInputVoltage_volt = static_cast<uint16_t>(value);
+	// 			break;
+	// 		case SpecField::AvgSwitchTime:
+	// 			updatedSpec.AvgSwitchTime_ms = value;
+	// 			break;
+	// 		case SpecField::AvgBackupTime:
+	// 			updatedSpec.AvgBackupTime_ms = value;
+	// 			break;
+	// 		default:
+	// 			// Handle error: unknown field
+	// 			Serial.println("Unknown field in setSpecField");
+	// 			return;
+	// 	}
+
+	// 	// Update the lastsetting_updated timestamp
+	// 	updatedSpec.lastsetting_updated = millis();
+
+	// 	// Apply the updated spec using the updateSettings function
+	// 	Tester->updateSettings(SettingType::SPEC, &updatedSpec);
+	// }
+};
+enum class TestField
+{
+	TestStandard,
+	Mode,
+	TestVARating,
+	InputVoltage,
+	TestDuration,
+	MinValidSwitchTime,
+	MaxValidSwitchTime,
+	MinValidBackupTime,
+	MaxValidBackupTime,
+	ToleranceSwitchTime,
+	MaxBackupTime,
+	ToleranceBackupTime,
+	MaxRetest,
+	LastSettingUpdated
 };
 
 struct SetupTest
@@ -54,6 +123,19 @@ struct SetupTest
 	int MaxRetest = 3;
 	unsigned long lastsetting_updated = 0UL;
 };
+enum class TaskField
+{
+	MainTestTaskCore,
+	MainsISRTaskCore,
+	UpsISRTaskCore,
+	MainTestTaskIdlePriority,
+	MainsISRTaskIdlePriority,
+	UpsISRTaskIdlePriority,
+	MainTestTaskStack,
+	MainsISRTaskStack,
+	UpsISRTaskStack,
+	LastSettingUpdated
+};
 
 struct SetupTask
 {
@@ -68,6 +150,16 @@ struct SetupTask
 	uint32_t upsISR_taskStack = 4096;
 	unsigned long lastsetting_updated = 0UL;
 };
+enum class TaskParamsField
+{
+	FlagMainsPowerLoss,
+	FlagUpsPowerGain,
+	FlagUpsPowerLoss,
+	TestNo,
+	TaskTestVARating,
+	TaskTestDuration,
+	LastSettingUpdated
+};
 
 struct SetupTaskParams
 {
@@ -79,6 +171,14 @@ struct SetupTaskParams
 	unsigned long task_testDuration_ms = 10000UL;
 	unsigned long lastsetting_updated = 0UL;
 };
+enum class HardwareField
+{
+	PwmChannelNo,
+	PwmResolutionBits,
+	PwmDutySet,
+	PwmFrequency,
+	LastSettingUpdated
+};
 
 struct SetupHardware
 {
@@ -88,6 +188,13 @@ struct SetupHardware
 	uint32_t pwm_frequency = 3000UL;
 	unsigned long lastsetting_updated = 0UL;
 };
+enum class TuningField
+{
+	AdjustPwm25P,
+	AdjustPwm50P,
+	AdjustPwm75P,
+	AdjustPwm100P
+};
 
 struct SetupTuning
 {
@@ -95,6 +202,22 @@ struct SetupTuning
 	uint16_t adjust_pwm_50P = 0;
 	uint16_t adjust_pwm_75P = 0;
 	uint16_t adjust_pwm_100P = 0;
+};
+enum class NetworkField
+{
+	ApSSID,
+	ApPass,
+	StaSSID,
+	StaPass,
+	StaIP,
+	StaGW,
+	StaSN,
+	DHCP,
+	MaxRetry,
+	ReconnectTimeout,
+	NetworkTimeout,
+	RefreshConnectionAfter,
+	LastSettingUpdated
 };
 
 struct SetupNetwork
@@ -113,6 +236,15 @@ struct SetupNetwork
 	uint32_t refreshConnectionAfter_ms = 86400000UL;
 	unsigned long lastsetting_updated = 0UL;
 };
+enum class ModbusField
+{
+	SlaveID,
+	DataBits,
+	StopBits,
+	Parity,
+	BaudRate,
+	LastSettingUpdated
+};
 
 struct SetupModbus
 {
@@ -122,6 +254,16 @@ struct SetupModbus
 	uint8_t parity = 0;
 	unsigned long baudrate = 9600;
 	unsigned long lastsetting_updated = 0UL;
+};
+enum class ReportField
+{
+	EnableReport,
+	ReportFormat,
+	ClientName,
+	BrandName,
+	SerialNumber,
+	SampleNumber,
+	LastSettingUpdated
 };
 
 struct SetupReport

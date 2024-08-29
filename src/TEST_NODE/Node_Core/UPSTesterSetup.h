@@ -63,6 +63,9 @@ class UPSTesterSetup
 	{
 		return _TuningSetting;
 	};
+
+	template<typename T, typename U>
+	bool updateField(T& currentField, const U& newField, std::function<void(bool, T)> callback);
 	void updateSettings(SettingType settingType, const void* newSetting);
 	void loadSettings(SettingType settingType, const void* newSetting);
 	void loadFactorySettings();
@@ -88,6 +91,7 @@ class UPSTesterSetup
   private:
 	UPSTesterSetup();
 	~UPSTesterSetup();
+
 	static UPSTesterSetup* instance;
 	bool _user_update_call = false;
 
