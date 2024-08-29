@@ -3,6 +3,9 @@
 #include "Arduino.h"
 #include <IPAddress.h>
 #include <stdint.h>
+#include <ctime>
+#include <cstring>
+#include "NodeConstants.h"
 
 namespace Node_Core
 {
@@ -27,67 +30,97 @@ enum class SettingType
 
 struct SetupSpec
 {
-	uint16_t Rating_va = 2000;
-	uint16_t RatedVoltage_volt = 230;
-	uint16_t RatedCurrent_amp = 6;
-	uint16_t MinInputVoltage_volt = 180;
-	uint16_t MaxInputVoltage_volt = 260;
-	unsigned long AvgSwitchTime_ms = 50UL;
-	unsigned long AvgBackupTime_ms = 300000UL;
-	unsigned long lastsetting_updated = 0UL;
+    uint16_t Rating_va = 2000;
+    uint16_t RatedVoltage_volt = 230;
+    uint16_t RatedCurrent_amp = 6;
+    uint16_t MinInputVoltage_volt = 180;
+    uint16_t MaxInputVoltage_volt = 260;
+    unsigned long AvgSwitchTime_ms = 50UL;
+    unsigned long AvgBackupTime_ms = 300000UL;
 
-	enum class SpecField
-	{
-		RatingVa,
-		RatedVoltage,
-		RatedCurrent,
-		MinInputVoltage,
-		MaxInputVoltage,
-		AvgSwitchTime,
-		AvgBackupTime
-	};
-	// void setSpecField(UPSTesterSetup* Tester, SpecField field, uint32_t value)
-	// {
-	// 	// Create a copy of the current _spec struct
-	// 	SetupSpec updatedSpec = Tester->specSetup();
+    enum class Field
+    {
+        RatingVa,
+        RatedVoltage,
+        RatedCurrent,
+        MinInputVoltage,
+        MaxInputVoltage,
+        AvgSwitchTime,
+        AvgBackupTime
+    };
 
-	// 	// Modify the field based on the enum selector
-	// 	switch(field)
-	// 	{
-	// 		case SpecField::RatingVa:
-	// 			updatedSpec.Rating_va = static_cast<uint16_t>(value);
-	// 			break;
-	// 		case SpecField::RatedVoltage:
-	// 			updatedSpec.RatedVoltage_volt = static_cast<uint16_t>(value);
-	// 			break;
-	// 		case SpecField::RatedCurrent:
-	// 			updatedSpec.RatedCurrent_amp = static_cast<uint16_t>(value);
-	// 			break;
-	// 		case SpecField::MinInputVoltage:
-	// 			updatedSpec.MinInputVoltage_volt = static_cast<uint16_t>(value);
-	// 			break;
-	// 		case SpecField::MaxInputVoltage:
-	// 			updatedSpec.MaxInputVoltage_volt = static_cast<uint16_t>(value);
-	// 			break;
-	// 		case SpecField::AvgSwitchTime:
-	// 			updatedSpec.AvgSwitchTime_ms = value;
-	// 			break;
-	// 		case SpecField::AvgBackupTime:
-	// 			updatedSpec.AvgBackupTime_ms = value;
-	// 			break;
-	// 		default:
-	// 			// Handle error: unknown field
-	// 			Serial.println("Unknown field in setSpecField");
-	// 			return;
-	// 	}
+    bool setField(Field field, uint32_t value) {
+        switch(field) {
+            case Field::RatingVa:
+			  if ( value >=UPS_MIN_VA && value <=UPS_MAX_VA){
+				Rating_va = static_cast<uint16_t>(value);
+				return true;
+			  }
+			  return false;
+			  break;
+			case Field::RatedVoltage:
+			if ( value >=UPS_MIN_INPUT_VOLT && value <=UPS_MAX_INPUT_VOLT){
+				 RatedVoltage_volt = static_cast<uint16_t>(value);
+				return true;
+			  }
+			   return false;
+               
+                break;
+            case Field::RatedCurrent:
+			if ( value >=UPS_MIN_OUTPUT_mAMP&& value <=UPS_MIN_OUTPUT_mAMP){
+				  RatedCurrent_amp  = static_cast<uint16_t>(value)/1000;
+				return true;
+			  }
+                return false;
+                break;
+            case Field::MinInputVoltage:
+			if ( value >=UPS_MIN_INPUT_VOLT && value < UPS_MAX_INPUT_VOLT){
+				 MinInputVoltage_volt = static_cast<uint16_t>(value);
+				return true;
+			  }
+                 return false;
+                break;
+            case Field::MaxInputVoltage:
+			if ( value > UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT){
+				  MaxInputVoltage_volt = static_cast<uint16_t>(value);
+				return true;
+			  }
+                return false;
+                break;
+            case Field::AvgSwitchTime:
+			if ( value <= UPS_MAX_SWITCHING_TIME_MS ){
+				  AvgSwitchTime_ms = value;
+				return true;
+			  }
+                 return false;
+                break;
+            case Field::AvgBackupTime:
+			if ( value >= UPS_MIN_BACKUP_TIME_MS ){
+				 AvgBackupTime_ms = value;
+				return true;
+			  }
+                return false;
+                break;
+        }
+        lastsetting_updated = millis(); // Update the timestamp to the current time.
+		lastupdate_time= std::time(nullptr); 
+    }
 
-	// 	// Update the lastsetting_updated timestamp
-	// 	updatedSpec.lastsetting_updated = millis();
+    unsigned lastUpdate() const {
+        return lastsetting_updated;
+    }
+	 const char* lastUpdateTime() const {
+        std::time_t t = lastsetting_updated;
+        std::strftime(last_update_str, sizeof(last_update_str), "%Y-%m-%d %H:%M:%S", std::localtime(&t));
+        return last_update_str;
+    }
 
-	// 	// Apply the updated spec using the updateSettings function
-	// 	Tester->updateSettings(SettingType::SPEC, &updatedSpec);
-	// }
+private:
+    unsigned long lastsetting_updated = 0UL;
+	unsigned long lastupdate_time= 0UL;
+	 mutable char last_update_str[20]; 
 };
+
 enum class TestField
 {
 	TestStandard,

@@ -9,10 +9,13 @@ UPSTesterSetup* UPSTesterSetup::instance = nullptr;
 
 UPSTesterSetup::UPSTesterSetup()
 {
-	// Initialize LittleFS
-	// if (!LittleFS.begin()) {
-	//   Serial.println("Failed to mount LittleFS");
-	// }
+    // // Initialize LittleFS
+    // if (!LittleFS.begin()) {
+    //     Serial.println("Failed to mount LittleFS");
+    // }
+
+    // // Load settings from LittleFS
+    // loadSettings();
 }
 
 UPSTesterSetup::~UPSTesterSetup()
@@ -47,7 +50,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 	{
 		case SettingType::SPEC:
 			_spec = *static_cast<const SetupSpec*>(newSetting);
-			_spec.lastsetting_updated = millis();
+			//_spec.lastUpdate() = millis();
 			if(_specSetCallback)
 			{
 				_specSetCallback(true, _spec);
@@ -140,7 +143,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 	unsigned long currentTime = millis();
 	int updatedSettingsCount = 0;
 
-	if(currentTime - _spec.lastsetting_updated <= ONE_DAY_MS)
+	if(currentTime - _spec.lastUpdate()<= ONE_DAY_MS)
 		updatedSettingsCount++;
 	if(currentTime - _testSetting.lastsetting_updated <= ONE_DAY_MS)
 		updatedSettingsCount++;
@@ -183,6 +186,87 @@ void UPSTesterSetup::loadSettings(SettingType settingType, const void* newSettin
 {
 	deserializeSettings("/tester_settings.json");
 }
+
+template<typename T, typename U,typename V>
+bool  UPSTesterSetup::setField( T setup, const U Field, V Fieldvalue, std::function<void(bool, U)> callback	 ){
+	T.setField(Field, FieldValue);
+
+					 }
+
+
+
+
+
+
+
+
+
+template<typename T, typename U>
+bool UPSTesterSetup::updateField(T& currentField, const T& newField, std::function<void(bool, U)> callback, U setup) {
+    if (currentField != newField) {
+        currentField = newField;
+        if (callback) {
+            callback(true, setup);
+        }
+        return true; // Field was updated
+    }
+    return false; // No update occurred
+}
+
+
+
+
+
+
+
+
+
+
+
+void UPSTesterSetup::notifySpecUpdated(const SetupSpec newSpec,bool SaveSetting) {
+    bool updated = false;
+
+    // Update individual fields using the updated template function
+    updated |= updateField(_spec.Rating_va, newSpec.Rating_va, _specSetCallback, _spec);
+    updated |= updateField(_spec.RatedVoltage_volt, newSpec.RatedVoltage_volt, _specSetCallback, _spec);
+    updated |= updateField(_spec.RatedCurrent_amp, newSpec.RatedCurrent_amp, _specSetCallback, _spec);
+    updated |= updateField(_spec.MinInputVoltage_volt, newSpec.MinInputVoltage_volt, _specSetCallback, _spec);
+    updated |= updateField(_spec.MaxInputVoltage_volt, newSpec.MaxInputVoltage_volt, _specSetCallback, _spec);
+    updated |= updateField(_spec.AvgSwitchTime_ms, newSpec.AvgSwitchTime_ms, _specSetCallback, _spec);
+    updated |= updateField(_spec.AvgBackupTime_ms, newSpec.AvgBackupTime_ms, _specSetCallback, _spec);
+
+    if (updated ) {
+        //_spec.lastUpdate()= millis();
+		if(SaveSetting){
+             serializeSettings("/tester_settings.json");
+		}
+        
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void UPSTesterSetup::serializeSettings(const char* filename)
 {
