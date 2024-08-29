@@ -187,9 +187,34 @@ void UPSTesterSetup::loadSettings(SettingType settingType, const void* newSettin
 	deserializeSettings("/tester_settings.json");
 }
 
+// template<typename T, typename U, typename V>
+// typename std::enable_if<std::is_same<T, SetupSpec>::value, bool>::type
+// UPSTesterSetup::setField(T& setup, const U Field, V Fieldvalue) {
+//     if (setup.setField(Field, Fieldvalue)) {
+//         if (_specSetCallback) {
+//             _specSetCallback(true, _spec);
+//         }
+//         return true;
+//     }
+//     return false;
+// }
+
+// template<typename T, typename U, typename V>
+// typename std::enable_if<std::is_same<T, SetupTest>::value, bool>::type
+// UPSTesterSetup::setField(T& setup, const U Field, V Fieldvalue) {
+//     if (setup.setField(Field, Fieldvalue)) {
+//         if (_testSetCallback) {
+//             _testSetCallback(true, _testSetting);
+//         }
+//         return true;
+//     }
+//     return false;
+// }
+
+
 template<typename T, typename U,typename V>
-bool  UPSTesterSetup::setField( T setup, const U Field, V Fieldvalue, std::function<void(bool, U)> callback	 ){
-	if(setup.setField(Field, Fieldvalue)){
+bool  UPSTesterSetup::setField( T& setup, const U Field, V Fieldvalue, std::function<void(bool, U)> callback){
+	if(setup->setField(Field, Fieldvalue)){
 		if (callback) {
             callback(true, setup);
         }

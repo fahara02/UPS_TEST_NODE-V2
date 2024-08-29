@@ -63,9 +63,13 @@ class UPSTesterSetup
 	{
 		return _TuningSetting;
 	};
+    
+    
+	template<typename T, typename U,typename V>
+	bool setField( T& setup, const U Field,V Fieldvalue);
 
 	template<typename T, typename U,typename V>
-	bool setField( T setup, const U Field,V Fieldvalue, std::function<void(bool, U)> callback	 );
+	bool setField( T& setup, const U Field,V Fieldvalue, std::function<void(bool, U)> callback);
 
 	template<typename T, typename U>
 	bool updateField(T& currentField, const T& newField, std::function<void(bool, U)> callback,
