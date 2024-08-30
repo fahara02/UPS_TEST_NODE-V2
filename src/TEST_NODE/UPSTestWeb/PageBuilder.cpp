@@ -135,11 +135,12 @@ void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, 
 					 "</tr>",
 					 name, value);
 }
-void PageBuilder::sendDashboard(AsyncResponseStream* response, Logger* logger)
+void PageBuilder::sendDashboard(AsyncResponseStream* response, Logger* logger,
+								const char* classname, const char* paragraph)
 {
-	response->print("<div class=\"content\">");
+	response->printf("<div class=\"%s\">", classname);
 	response->print("<h1>Dashboard</h1>");
-	response->print("<p>This is where test reports and status will be shown.</p>");
+	response->printf("<p>%s</p>", paragraph);
 
 	this->sendLogmonitor(response, logger);
 

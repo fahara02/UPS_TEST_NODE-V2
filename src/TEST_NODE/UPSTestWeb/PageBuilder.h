@@ -75,7 +75,8 @@ class PageBuilder
 	void sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType);
 
 	void sendLogmonitor(AsyncResponseStream* response, Logger* logger);
-	void sendDashboard(AsyncResponseStream* response, Logger* logger);
+	void sendDashboard(AsyncResponseStream* response, Logger* logger,
+					   const char* classname = "content", const char* paragraph = "----------");
 	void sendSidebar(AsyncResponseStream* response);
 
 	// Utility function
