@@ -11,7 +11,7 @@
 using namespace Node_Core;
 extern Logger& logger;
 
-extern UPSTesterSetup* TesterSetup;
+extern UPSTesterSetup& TesterSetup;
 
 template<class T, typename U>
 class UPSTest
@@ -19,8 +19,8 @@ class UPSTest
   public:
 	virtual TestType getTestType() const = 0;
 	virtual const char* testTypeName() = 0;
-	static T* getInstance();
-	static void deleteInstance();
+	static T& getInstance();
+
 	// Pure virtual function to be implemented by derived classes
 	virtual void init() = 0;
 	virtual TestResult run(uint16_t testVARating, unsigned long testDuration) = 0;
@@ -38,10 +38,7 @@ class UPSTest
 	virtual void markTestAsDone() = 0;
 
   protected:
-	UPSTest(); // Protected constructor
-	virtual ~UPSTest() = default;
-
-	// Utility functions
+	UPSTest();
 	void setLoad(uint16_t testVARating);
 	void selectLoadBank(uint16_t bankNumbers);
 	void simulatePowerCut();
@@ -56,15 +53,10 @@ class UPSTest
 	virtual bool processTestImpl() = 0;
 
   private:
-	static T* instance;
-
 	// Prevent copying
 	UPSTest(const UPSTest&) = delete;
 	UPSTest& operator=(const UPSTest&) = delete;
 };
-
-template<class T, typename U>
-T* UPSTest<T, U>::instance = nullptr;
 
 // Protected Constructor
 template<class T, typename U>
@@ -74,26 +66,12 @@ UPSTest<T, U>::UPSTest()
 }
 
 template<class T, typename U>
-T* UPSTest<T, U>::getInstance()
+T& UPSTest<T, U>::getInstance()
 {
-	if(instance == nullptr)
-	{
-		instance = new T();
-		logger.log(LogLevel::SUCCESS, "new Test instance created",
-				   testTypeToString(instance->test_type));
-	}
+	static T instance;
 	return instance;
 }
 
-template<class T, typename U>
-void UPSTest<T, U>::deleteInstance()
-{
-	if(instance != nullptr)
-	{
-		delete instance;
-		instance = nullptr;
-	}
-}
 template<class T, typename U>
 int UPSTest<T, U>::getTaskPriority() const
 {
@@ -112,15 +90,15 @@ int UPSTest<T, U>::getTaskPriority() const
 template<class T, typename U>
 void UPSTest<T, U>::setTaskPriority(UBaseType_t priority)
 {
-	T* testInstance = T::getInstance();
-	if(testInstance != nullptr)
+	T& testInstance = T::getInstance();
+	if(true)
 	{
-		TaskHandle_t taskHandle = testInstance->getTaskHandle();
+		TaskHandle_t taskHandle = testInstance.getTaskHandle();
 		if(taskHandle != NULL)
 		{
 			vTaskPrioritySet(taskHandle, priority);
-			logger.log(LogLevel::INFO, "%s task new priority is: %d", testInstance->testTypeName(),
-					   testInstance->getTaskPriority());
+			logger.log(LogLevel::INFO, "%s task new priority is: %d", testInstance.testTypeName(),
+					   testInstance.getTaskPriority());
 		}
 		else
 		{
@@ -136,14 +114,14 @@ void UPSTest<T, U>::setTaskPriority(UBaseType_t priority)
 template<class T, typename U>
 void UPSTest<T, U>::logTaskState(LogLevel level) const
 {
-	T* testInstance = T::getInstance();
-	if(testInstance != nullptr)
+	T& testInstance = T::getInstance();
+	if(true)
 	{
-		TaskHandle_t taskHandle = testInstance->getTaskHandle();
+		TaskHandle_t taskHandle = testInstance.getTaskHandle();
 		if(taskHandle != NULL)
 		{
 			eTaskState estate = eTaskGetState(taskHandle);
-			logger.log(level, "%s task state: %s", testInstance->testTypeName(),
+			logger.log(level, "%s task state: %s", testInstance.testTypeName(),
 					   etaskStatetoString(estate));
 		}
 		else
@@ -160,10 +138,7 @@ void UPSTest<T, U>::logTaskState(LogLevel level) const
 template<class T, typename U>
 void UPSTest<T, U>::setLoad(uint16_t testVARating)
 {
-	if(!TesterSetup)
-		return; // Ensure TesterSetup is valid
-
-	const uint16_t maxVARating = TesterSetup->specSetup().Rating_va;
+	const uint16_t maxVARating = TesterSetup.specSetup().Rating_va;
 	uint16_t singlebankVA = maxVARating / 4;
 	uint16_t dualbankVA = (maxVARating / 4) * 2;
 	uint16_t triplebankVA = (maxVARating / 4) * 3;
@@ -177,32 +152,32 @@ void UPSTest<T, U>::setLoad(uint16_t testVARating)
 		reqbankNumbers = 1;
 		duty = (testVARating * 100) / singlebankVA;
 		pwmValue = map(testVARating, 0, singlebankVA, 0, 255);
-		adjustpwm = TesterSetup->tuningSetup().adjust_pwm_25P;
+		adjustpwm = TesterSetup.tuningSetup().adjust_pwm_25P;
 	}
 	else if(testVARating > singlebankVA && testVARating <= dualbankVA)
 	{
 		reqbankNumbers = 2;
 		duty = (testVARating * 100) / dualbankVA;
 		pwmValue = map(testVARating, 0, dualbankVA, 0, 255);
-		adjustpwm = TesterSetup->tuningSetup().adjust_pwm_50P;
+		adjustpwm = TesterSetup.tuningSetup().adjust_pwm_50P;
 	}
 	else if(testVARating > dualbankVA && testVARating <= triplebankVA)
 	{
 		reqbankNumbers = 3;
 		duty = (testVARating * 100) / triplebankVA;
 		pwmValue = map(testVARating, 0, triplebankVA, 0, 255);
-		adjustpwm = TesterSetup->tuningSetup().adjust_pwm_75P;
+		adjustpwm = TesterSetup.tuningSetup().adjust_pwm_75P;
 	}
 	else if(testVARating > triplebankVA && testVARating <= maxVARating)
 	{
 		reqbankNumbers = 4;
 		duty = (testVARating * 100) / maxVARating;
 		pwmValue = map(testVARating, 0, maxVARating, 0, 255);
-		adjustpwm = TesterSetup->tuningSetup().adjust_pwm_100P;
+		adjustpwm = TesterSetup.tuningSetup().adjust_pwm_100P;
 	}
 
 	uint16_t set_pwmValue = pwmValue + adjustpwm;
-	ledcWrite(TesterSetup->hardwareSetup().pwmchannelNo, set_pwmValue);
+	ledcWrite(TesterSetup.hardwareSetup().pwmchannelNo, set_pwmValue);
 
 	selectLoadBank(reqbankNumbers);
 }

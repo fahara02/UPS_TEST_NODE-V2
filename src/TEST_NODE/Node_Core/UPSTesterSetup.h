@@ -25,8 +25,8 @@ using OnAllSettingCallback = std::function<void(bool allsettings_updated, SetupU
 class UPSTesterSetup
 {
   public:
-	static UPSTesterSetup* getInstance();
-	static void deleteInstance();
+	static UPSTesterSetup& getInstance();
+
 	SetupSpec specSetup()
 	{
 		return _spec;
@@ -100,9 +100,8 @@ class UPSTesterSetup
 
   private:
 	UPSTesterSetup();
-	~UPSTesterSetup();
 
-	static UPSTesterSetup* instance;
+	// static UPSTesterSetup* instance;
 	bool _user_update_call = false;
 
 	SetupSpec _spec;

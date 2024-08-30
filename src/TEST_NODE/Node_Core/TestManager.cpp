@@ -4,8 +4,8 @@
 
 extern Logger& logger;
 extern TestSync& SyncTest;
-extern SwitchTest* switchTest;
-extern BackupTest* backupTest;
+extern SwitchTest& switchTest;
+extern BackupTest& backupTest;
 extern void IRAM_ATTR keyISR1(void* pvParameters);
 extern void IRAM_ATTR keyISR2(void* pvParameters);
 extern void IRAM_ATTR keyISR3(void* pvParameters);
@@ -105,14 +105,11 @@ void TestManager::init()
 
 void TestManager::UpdateSettings()
 {
-	if(TesterSetup)
-	{
-		_cfgSpec = TesterSetup->specSetup();
-		_cfgTest = TesterSetup->testSetup();
-		_cfgTask = TesterSetup->taskSetup();
-		_cfgTaskParam = TesterSetup->paramSetup();
-		_cfgHardware = TesterSetup->hardwareSetup();
-	};
+	_cfgSpec = TesterSetup.specSetup();
+	_cfgTest = TesterSetup.testSetup();
+	_cfgTask = TesterSetup.taskSetup();
+	_cfgTaskParam = TesterSetup.paramSetup();
+	_cfgHardware = TesterSetup.hardwareSetup();
 }
 
 void TestManager::addTests(RequiredTest testList[], int testNum)
@@ -136,7 +133,7 @@ void TestManager::addTests(RequiredTest testList[], int testNum)
 
 void TestManager::pauseAllTest()
 {
-	if(switchTest && switchTestTaskHandle != NULL)
+	if(switchTestTaskHandle != NULL)
 	{
 		logger.log(LogLevel::WARNING, "Pausing Switch test task");
 		vTaskSuspend(switchTestTaskHandle);
@@ -213,30 +210,25 @@ void TestManager::createISRTasks()
 }
 void TestManager::createTestTasks()
 {
-	if(switchTest)
-	{
-		logger.log(LogLevel::INFO, "Creating Switchtest task ");
+	logger.log(LogLevel::INFO, "Creating Switchtest task ");
 
-		xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
+	xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
 
-		xTaskCreatePinnedToCore(switchTest->SwitchTestTask, "MainsTestManager", 12000, NULL,
-								_cfgTask.mainTest_taskIdlePriority, &switchTestTaskHandle, 0);
+	xTaskCreatePinnedToCore(switchTest.SwitchTestTask, "MainsTestManager", 12000, NULL,
+							_cfgTask.mainTest_taskIdlePriority, &switchTestTaskHandle, 0);
 
-		eTaskState state = eTaskGetState(switchTestTaskHandle);
-		logger.log(LogLevel::INFO, "SwitchTest task state: %s", etaskStatetoString(state));
-	}
-	if(backupTest)
-	{
-		logger.log(LogLevel::INFO, "Creating Backuptest task ");
+	eTaskState state = eTaskGetState(switchTestTaskHandle);
+	logger.log(LogLevel::INFO, "SwitchTest task state: %s", etaskStatetoString(state));
 
-		xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
+	logger.log(LogLevel::INFO, "Creating Backuptest task ");
 
-		xTaskCreatePinnedToCore(backupTest->BackupTestTask, "MainsTestManager", 12000, NULL,
-								_cfgTask.mainTest_taskIdlePriority, &backupTestTaskHandle, 0);
+	xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
 
-		eTaskState state = eTaskGetState(backupTestTaskHandle);
-		logger.log(LogLevel::INFO, "BackupTest task state: %s", etaskStatetoString(state));
-	}
+	xTaskCreatePinnedToCore(backupTest.BackupTestTask, "MainsTestManager", 12000, NULL,
+							_cfgTask.mainTest_taskIdlePriority, &backupTestTaskHandle, 0);
+
+	state = eTaskGetState(backupTestTaskHandle);
+	logger.log(LogLevel::INFO, "BackupTest task state: %s", etaskStatetoString(state));
 }
 
 void TestManager::TestManagerTask(void* pvParameters)
@@ -323,19 +315,19 @@ void TestManager::onMainsPowerLossTask(void* pvParameters)
 		if(xSemaphoreTake(mainLoss, portMAX_DELAY))
 		{
 			// vTaskPrioritySet(&ISR_MAINS_POWER_LOSS, 3);
-			if(switchTest->isTestRunning())
+			if(switchTest.isTestRunning())
 			{
-				switchTest->_dataCaptureRunning_SW = true;
+				switchTest._dataCaptureRunning_SW = true;
 				logger.log(LogLevel::INTR, "mains Powerloss triggered...");
 				logger.log(LogLevel::TEST, " Switch Test DataCapture starts...");
-				switchTest->startTestCapture();
+				switchTest.startTestCapture();
 			}
-			if(backupTest->isTestRunning())
+			if(backupTest.isTestRunning())
 			{
-				backupTest->_dataCaptureRunning_BT = true;
+				backupTest._dataCaptureRunning_BT = true;
 				logger.log(LogLevel::INTR, "mains Powerloss triggered...");
 				logger.log(LogLevel::TEST, " Backup Test DataCapture starts...");
-				backupTest->startTestCapture();
+				backupTest.startTestCapture();
 			}
 
 			logger.log(LogLevel::INFO,
@@ -353,10 +345,10 @@ void TestManager::onUPSPowerGainTask(void* pvParameters)
 	{
 		if(xSemaphoreTake(upsGain, portMAX_DELAY))
 		{
-			if(switchTest->isTestRunning())
+			if(switchTest.isTestRunning())
 			{
 				logger.log(LogLevel::INTR, "UPS Power gain triggered...");
-				switchTest->stopTestCapture();
+				switchTest.stopTestCapture();
 			}
 			logger.log(LogLevel::INFO, "UPS High Water Mark:", uxTaskGetStackHighWaterMark(NULL));
 
@@ -372,11 +364,11 @@ void TestManager::onUPSPowerLossTask(void* pvParameters)
 	{
 		if(xSemaphoreTake(upsLoss, portMAX_DELAY))
 		{
-			if(backupTest->isTestRunning())
+			if(backupTest.isTestRunning())
 
 			{
 				logger.log(LogLevel::INTR, "UPS lost power triggered...");
-				backupTest->stopTestCapture();
+				backupTest.stopTestCapture();
 			}
 			logger.log(LogLevel::INFO, "UPS High Water Mark:", uxTaskGetStackHighWaterMark(NULL));
 
@@ -388,14 +380,9 @@ void TestManager::onUPSPowerLossTask(void* pvParameters)
 
 void TestManager::initializeTestInstances()
 {
-	if(switchTest)
-	{
-		switchTest->init();
-	}
-	if(backupTest)
-	{
-		backupTest->init();
-	}
+	switchTest.init();
+
+	backupTest.init();
 }
 
 bool TestManager::isTestPendingAndNotStarted(const UPSTestRun& test)
@@ -407,7 +394,7 @@ bool TestManager::isTestPendingAndNotStarted(const UPSTestRun& test)
 void TestManager::configureTest(LoadPercentage load)
 {
 	SetupTaskParams task_Param;
-	task_Param = TesterSetup->paramSetup();
+	task_Param = TesterSetup.paramSetup();
 	switch(load)
 	{
 		case LoadPercentage::LOAD_0P:
@@ -454,10 +441,10 @@ void TestManager::logPendingTest(const UPSTestRun& test)
 	logger.log(LogLevel::INFO, "SwitchTest list is updated now.");
 }
 template<typename T, typename U>
-bool TestManager::handleTestState(UPSTest<T, U>* testInstance, State managerState, int testIndex,
+bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerState, int testIndex,
 								  U* dataBuff)
 {
-	QueueHandle_t dataQueue = testInstance->getQueue();
+	QueueHandle_t dataQueue = testInstance.getQueue();
 	int i = testIndex;
 	int TestPriority = 1;
 	if(managerState == State::DEVICE_READY)
@@ -478,21 +465,21 @@ bool TestManager::handleTestState(UPSTest<T, U>* testInstance, State managerStat
 		logger.log(LogLevel::INFO, "Manager Task under test start phase");
 		LoadPercentage load = instance->_testList[i].testRequired.loadlevel;
 		instance->configureTest(load);
-		testInstance->logTaskState(LogLevel::INFO);
+		testInstance.logTaskState(LogLevel::INFO);
 		// TaskHandle_t taskHandle = testInstance->getTaskHandle();
-		testInstance->setTaskPriority(TestPriority);
+		testInstance.setTaskPriority(TestPriority);
 
-		logger.log(LogLevel::INFO, "Starting %s...", testInstance->testTypeName());
-		SyncTest.startTest(testInstance->getTestType());
+		logger.log(LogLevel::INFO, "Starting %s...", testInstance.testTypeName());
+		SyncTest.startTest(testInstance.getTestType());
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::TEST_IN_PROGRESS)
 	{
-		if(testInstance->isdataCaptureOk())
+		if(testInstance.isdataCaptureOk())
 		{
 			logger.log(LogLevel::SUCCESS, "Successful data capture.");
 		}
-		if(testInstance->isTestEnded())
+		if(testInstance.isTestEnded())
 		{
 			logger.log(LogLevel::INFO, "Test Cycle ended.");
 		}
@@ -502,11 +489,11 @@ bool TestManager::handleTestState(UPSTest<T, U>* testInstance, State managerStat
 	{
 		TestPriority = 2;
 		logger.log(LogLevel::INFO, "In check State  checking either test ended or data captured");
-		if(testInstance->isdataCaptureOk())
+		if(testInstance.isdataCaptureOk())
 		{
 			logger.log(LogLevel::SUCCESS, "Successful data capture.");
 		}
-		testInstance->setTaskPriority(TestPriority);
+		testInstance.setTaskPriority(TestPriority);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::CURRENT_TEST_OK)
@@ -517,12 +504,12 @@ bool TestManager::handleTestState(UPSTest<T, U>* testInstance, State managerStat
 		if(dataBuff && xQueueReceive(dataQueue, dataBuff, 1000) == pdTRUE)
 		{
 			logger.log(LogLevel::INFO, "Stopping SwitchTest...");
-			SyncTest.stopTest(testInstance->getTestType());
+			SyncTest.stopTest(testInstance.getTestType());
 			instance->_testList[i].testStatus.managerStatus = TestManagerStatus::DONE;
 			instance->_testList[i].testStatus.operatorStatus = TestOperatorStatus::SUCCESS;
 
-			testInstance->markTestAsDone();
-			testInstance->setTaskPriority(TestPriority);
+			testInstance.markTestAsDone();
+			testInstance.setTaskPriority(TestPriority);
 			logger.log(LogLevel::WARNING, "Triggering SAVE event from manager");
 			instance->triggerEvent(Event::SAVE);
 			vTaskDelay(pdMS_TO_TICKS(100));
@@ -531,7 +518,7 @@ bool TestManager::handleTestState(UPSTest<T, U>* testInstance, State managerStat
 		else
 		{
 			logger.log(LogLevel::ERROR, "Receive Test data timeout");
-			SyncTest.stopTest(testInstance->getTestType());
+			SyncTest.stopTest(testInstance.getTestType());
 		}
 	}
 

@@ -127,7 +127,7 @@ class TestManager
 	void configureTest(LoadPercentage load);
 
 	template<typename T, typename U>
-	bool handleTestState(UPSTest<T, U>* testInstance, State managerState, int testIndex,
+	bool handleTestState(UPSTest<T, U>& testInstance, State managerState, int testIndex,
 						 U* dataBuff = nullptr);
 
 	TestManager(const TestManager&) = delete;

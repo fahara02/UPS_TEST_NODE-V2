@@ -45,21 +45,16 @@ class BackupTest : public UPSTest<BackupTest, BackupTestData>
 	{
 		_sendTestData_BT = false;
 	}
-	static BackupTest* getInstance()
+	static BackupTest& getInstance()
 	{
 		return UPSTest<BackupTest, BackupTestData>::getInstance();
 	}
 
-	static void deleteInstance()
-	{
-		UPSTest<BackupTest, BackupTestData>::deleteInstance();
-	}
 	BackupTestData& data() override;
 	void init() override;
 	TestResult run(uint16_t testVARating = 4000, unsigned long testduration = 10000) override;
 	static void BackupTestTask(void* pvParameters);
 	void UpdateSettings();
-	~BackupTest() override;
 
   private:
 	friend class TestManager;

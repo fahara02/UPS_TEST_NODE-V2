@@ -5,7 +5,6 @@
 
 namespace Node_Core
 {
-UPSTesterSetup* UPSTesterSetup::instance = nullptr;
 
 UPSTesterSetup::UPSTesterSetup()
 {
@@ -18,28 +17,11 @@ UPSTesterSetup::UPSTesterSetup()
 	// loadSettings();
 }
 
-UPSTesterSetup::~UPSTesterSetup()
+UPSTesterSetup& UPSTesterSetup::getInstance()
 {
-	if(instance == this)
-	{
-		instance = nullptr;
-		// LittleFS.end();
-	};
-}
+	static UPSTesterSetup instance;
 
-UPSTesterSetup* UPSTesterSetup::getInstance()
-{
-	if(instance == nullptr)
-	{
-		instance = new UPSTesterSetup();
-	}
 	return instance;
-}
-
-void UPSTesterSetup::deleteInstance()
-{
-	delete instance;
-	instance = nullptr;
 }
 
 void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSetting)

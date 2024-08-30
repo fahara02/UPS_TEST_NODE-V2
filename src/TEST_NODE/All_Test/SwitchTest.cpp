@@ -7,16 +7,7 @@ extern EventGroupHandle_t eventGroupTest;
 extern QueueHandle_t TestManageQueue;
 
 using namespace Node_Core;
-extern SwitchTest* switchTest;
-
-SwitchTest::~SwitchTest()
-{
-	if(switchTestTaskHandle != NULL)
-	{
-		vTaskDelete(switchTestTaskHandle);
-		switchTestTaskHandle = NULL;
-	}
-}
+extern SwitchTest& switchTest;
 
 void SwitchTest::init()
 {
@@ -35,19 +26,17 @@ void SwitchTest::init()
 		_initialized_SW = true;
 
 		UpdateSettings();
+		logger.log(LogLevel::SUCCESS, "SwitchTest initialised ");
 	}
 }
 
 void SwitchTest::UpdateSettings()
 {
-	if(TesterSetup)
-	{
-		switchTest->_cfgSpec_SW = TesterSetup->specSetup();
-		switchTest->_cfgTest_SW = TesterSetup->testSetup();
-		switchTest->_cfgTask_SW = TesterSetup->taskSetup();
-		switchTest->_cfgTaskParam_SW = TesterSetup->paramSetup();
-		switchTest->_cfgHardware_SW = TesterSetup->hardwareSetup();
-	};
+	switchTest._cfgSpec_SW = TesterSetup.specSetup();
+	switchTest._cfgTest_SW = TesterSetup.testSetup();
+	switchTest._cfgTask_SW = TesterSetup.taskSetup();
+	switchTest._cfgTaskParam_SW = TesterSetup.paramSetup();
+	switchTest._cfgHardware_SW = TesterSetup.hardwareSetup();
 }
 
 SwitchTestData& SwitchTest::data()
@@ -71,12 +60,12 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 		if((result & sw_eventbits) != 0)
 
 		{
-			if(switchTest->_currentTestResult == TestResult::TEST_SUCCESSFUL)
+			if(switchTest._currentTestResult == TestResult::TEST_SUCCESSFUL)
 			{
-				switchTest->_sendTestData_SW = true;
+				switchTest._sendTestData_SW = true;
 			}
 
-			if(!switchTest->_sendTestData_SW)
+			if(!switchTest._sendTestData_SW)
 			{
 				xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 				logger.log(LogLevel::TEST,
@@ -84,16 +73,16 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 				logger.log(LogLevel::TEST,
 						   "Switchtask duration is: ", taskParam.task_testDuration_ms);
 
-				switchTest->_currentTestResult =
-					switchTest->run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
+				switchTest._currentTestResult =
+					switchTest.run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
 			}
-			if(switchTest->_sendTestData_SW)
+			if(switchTest._sendTestData_SW)
 			{
 				int retrySend = 0;
-				SwitchTestData testData = switchTest->data();
+				SwitchTestData testData = switchTest.data();
 				if(xQueueSend(SwitchTestDataQueue, &testData, 100) == pdTRUE)
 				{
-					switchTest->_currentTestResult = TestResult::TEST_PENDING;
+					switchTest._currentTestResult = TestResult::TEST_PENDING;
 					logger.log(LogLevel::SUCCESS, "test data sending complete");
 					retrySend = 0;
 				}
@@ -105,7 +94,7 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 				else
 				{
 					logger.log(LogLevel::ERROR, "test data sending failed");
-					switchTest->_sendTestData_SW = false;
+					switchTest._sendTestData_SW = false;
 				}
 
 				;

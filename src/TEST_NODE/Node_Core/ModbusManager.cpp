@@ -68,9 +68,9 @@ uint16_t cbHregGet(TRegister* reg, uint16_t val)
 		int index = address - HREG_START_ADDRESS_DATA;
 		if(index >= 0 && index < NUM_HOLDREGS_DATA)
 		{
-			if(switchTest)
+			if(switchTest.fillData())
 			{
-				SwitchTestData& testData = switchTest->data();
+				SwitchTestData& testData = switchTest.data();
 				int switchTestIndex = index / 11; // 11 registers per test
 				int subIndex = index % 11;
 				if(switchTestIndex < 5)

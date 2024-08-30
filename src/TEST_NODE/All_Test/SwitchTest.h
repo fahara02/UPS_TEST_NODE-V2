@@ -48,22 +48,22 @@ class SwitchTest : public UPSTest<SwitchTest, SwitchTestData>
 	{
 		_sendTestData_SW = false;
 	}
+	bool fillData()
+	{
+		return _fillHoldingRegister;
+	}
 
-	static SwitchTest* getInstance()
+	static SwitchTest& getInstance()
 	{
 		return UPSTest<SwitchTest, SwitchTestData>::getInstance();
 	}
-	static void deleteInstance()
-	{
-		UPSTest<SwitchTest, SwitchTestData>::deleteInstance();
-	}
+
 	SwitchTestData& data() override;
 	void init() override;
 	TestResult run(uint16_t testVARating = 4000, unsigned long testduration = 10000) override;
 	static void SwitchTestTask(void* pvParameters);
 
 	void UpdateSettings();
-	~SwitchTest() override;
 
   protected:
   private:
@@ -93,6 +93,7 @@ class SwitchTest : public UPSTest<SwitchTest, SwitchTestData>
 	bool _triggerValidDataEvent_SW = false;
 	bool _triggerDataSaveEvent_SW = false;
 	bool _sendTestData_SW = false;
+	bool _fillHoldingRegister = false;
 
 	void startTestCapture() override;
 	void stopTestCapture() override;

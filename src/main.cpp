@@ -26,8 +26,9 @@ using namespace Node_Core;
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
-SwitchTest* switchTest = nullptr;
-BackupTest* backupTest = nullptr;
+UPSTesterSetup& TesterSetup = UPSTesterSetup::getInstance();
+SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
+BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 
 volatile unsigned long lastMainsTriggerTime = 0;
 volatile unsigned long lastUPSTriggerTime = 0;
@@ -65,7 +66,6 @@ EventGroupHandle_t eventGroupBackupTestData = NULL;
 
 // Define the SwitchTest instance
 
-UPSTesterSetup* TesterSetup = nullptr;
 TestManager* Manager = nullptr;
 
 // Task handles
@@ -170,19 +170,9 @@ void setup()
 	logger.log(LogLevel::INFO, "creating queue");
 
 	logger.log(LogLevel::INFO, "getting TesterSetup  instance");
-	TesterSetup = UPSTesterSetup::getInstance();
+	switchTest.init();
+	backupTest.init();
 
-	if(TesterSetup)
-	{
-		logger.log(LogLevel::SUCCESS, "TesterSetup instance created!");
-	}
-	else
-	{
-		logger.log(LogLevel::ERROR, "TesterSetup instance creation failed");
-	}
-
-	switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
-	backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 	// logger.log(LogLevel::INFO, "getting manager instance");
 	// Manager = TestManager::getInstance();
 

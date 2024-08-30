@@ -7,16 +7,7 @@ extern EventGroupHandle_t eventGroupTest;
 extern QueueHandle_t TestManageQueue;
 
 using namespace Node_Core;
-extern BackupTest* backupTest;
-
-BackupTest::~BackupTest()
-{
-	if(backupTestTaskHandle != NULL)
-	{
-		vTaskDelete(backupTestTaskHandle);
-		backupTestTaskHandle = NULL;
-	}
-}
+extern BackupTest& backupTest;
 
 void BackupTest::init()
 {
@@ -35,19 +26,17 @@ void BackupTest::init()
 		_initialized_BT = true;
 
 		UpdateSettings();
+		logger.log(LogLevel::SUCCESS, "BackupTest initialised ");
 	}
 }
 
 void BackupTest::UpdateSettings()
 {
-	if(TesterSetup)
-	{
-		backupTest->_cfgSpec_BT = TesterSetup->specSetup();
-		backupTest->_cfgTest_BT = TesterSetup->testSetup();
-		backupTest->_cfgTask_BT = TesterSetup->taskSetup();
-		backupTest->_cfgTaskParam_BT = TesterSetup->paramSetup();
-		backupTest->_cfgHardware_BT = TesterSetup->hardwareSetup();
-	};
+	backupTest._cfgSpec_BT = TesterSetup.specSetup();
+	backupTest._cfgTest_BT = TesterSetup.testSetup();
+	backupTest._cfgTask_BT = TesterSetup.taskSetup();
+	backupTest._cfgTaskParam_BT = TesterSetup.paramSetup();
+	backupTest._cfgHardware_BT = TesterSetup.hardwareSetup();
 }
 
 BackupTestData& BackupTest::data()
@@ -71,12 +60,12 @@ void BackupTest::BackupTestTask(void* pvParameters)
 
 		if((result & bt_eventbits) != 0)
 		{
-			if(backupTest->_currentTestResult == TestResult::TEST_SUCCESSFUL)
+			if(backupTest._currentTestResult == TestResult::TEST_SUCCESSFUL)
 			{
-				backupTest->_sendTestData_BT = true;
+				backupTest._sendTestData_BT = true;
 			}
 
-			if(!backupTest->_sendTestData_BT)
+			if(!backupTest._sendTestData_BT)
 			{
 				xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 				logger.log(LogLevel::TEST,
@@ -84,16 +73,16 @@ void BackupTest::BackupTestTask(void* pvParameters)
 				logger.log(LogLevel::TEST,
 						   "Backuptask duration is: ", taskParam.task_testDuration_ms);
 
-				backupTest->_currentTestResult =
-					backupTest->run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
+				backupTest._currentTestResult =
+					backupTest.run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
 			}
-			if(backupTest->_sendTestData_BT)
+			if(backupTest._sendTestData_BT)
 			{
 				int retrySend = 0;
-				BackupTestData testData = backupTest->data();
+				BackupTestData testData = backupTest.data();
 				if(xQueueSend(BackupTestDataQueue, &testData, 100) == pdTRUE)
 				{
-					backupTest->_currentTestResult = TestResult::TEST_PENDING;
+					backupTest._currentTestResult = TestResult::TEST_PENDING;
 					logger.log(LogLevel::SUCCESS, "test data sending complete");
 					retrySend = 0;
 				}
@@ -105,7 +94,7 @@ void BackupTest::BackupTestTask(void* pvParameters)
 				else
 				{
 					logger.log(LogLevel::ERROR, "test data sending failed");
-					backupTest->_sendTestData_BT = false;
+					backupTest._sendTestData_BT = false;
 				}
 			}
 			logger.log(LogLevel::WARNING, "High Water mark ", uxTaskGetStackHighWaterMark(NULL));

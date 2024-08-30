@@ -7,7 +7,7 @@
 
 extern ModbusRTU mb;
 class TestManager;
-extern SwitchTest* switchTest;
+extern SwitchTest& switchTest;
 
 extern const uint16_t NUM_COILS;
 extern const uint16_t NUM_HOLDREGS_SETTING;
