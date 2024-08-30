@@ -1,23 +1,24 @@
 #include "PageBuilder.h"
 
-#define ETAG "\"" __DATE__ "" __TIME__ "\""
+#define ETAG "\"" __DATE__ " " __TIME__ "\""
 
 void PageBuilder::setupPages(WiFiManager* wm, UPSTesterSetup* testSetup, TestManager* testManager,
 							 TestSync* testSync, SetupUPSTest* allSetup, TestData* data)
 {
-	_server->on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
+	_server->on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
 		auto* response = request->beginResponseStream("text/html");
-		sendHeader(response, "UPS TESTING PANEL");
+		this->sendHeader(response, "UPS TESTING PANEL");
 		response->print("<style>");
-		sendStyle(response);
+		this->sendStyle(response);
 		response->print("</style>");
-		sendHeaderTrailer(response);
-		const char* routes[] = ["DashBoard", "Settings", "Network", "Modbus", "Report"];
-		sendNavbar(response, "WebInterface", routes[]);
-		sendSidebar(response);
-		sendDashboard(response, logger);
-		sendScript(response);
-		sendPageTrailer(response);
+		this->sendHeaderTrailer(response);
+		const char* routes[] = {"DashBoard", "Settings", "Network", "Modbus", "Report"};
+
+		this->sendNavbar(response, routes, "WebInterface");
+		this->sendSidebar(response);
+		this->sendDashboard(response, logger);
+		this->sendScript(response);
+		this->sendPageTrailer(response);
 	});
 
 	_server->on("/reboot", HTTP_POST, [](AsyncWebServerRequest* request) {
@@ -27,7 +28,7 @@ void PageBuilder::setupPages(WiFiManager* wm, UPSTesterSetup* testSetup, TestMan
 	_server->on("/favicon.ico", [](AsyncWebServerRequest* request) {
 		request->send(204); // TODO add favicon
 	});
-	_server->on("/style.css", [](AsyncWebServerRequest* request) {
+	_server->on("/style.css", [this](AsyncWebServerRequest* request) {
 		if(request->hasHeader("If-None-Match"))
 		{
 			auto header = request->getHeader("If-None-Match");
@@ -38,11 +39,11 @@ void PageBuilder::setupPages(WiFiManager* wm, UPSTesterSetup* testSetup, TestMan
 			}
 		}
 		auto* response = request->beginResponseStream("text/css");
-		sendStyle(response);
+		this->sendStyle(response);
 		response->addHeader("ETag", ETAG);
 		request->send(response);
 	});
-	server->onNotFound([](AsyncWebServerRequest* request) {
+	_server->onNotFound([](AsyncWebServerRequest* request) {
 		request->send(404, "text/plain", "404");
 	});
 }
@@ -59,46 +60,41 @@ void PageBuilder::sendHeader(AsyncResponseStream* response, const char* title)
 {
 	char buffer[HEADER_HTML_LENGTH];
 	const char* headerHtml = copyFromPROGMEM(HEADER_HTML, buffer);
-	response->printf(headerhtml, title);
+	response->printf(headerHtml, title);
 }
 
-void sendStyle(AsyncResponseStream* response)
+void PageBuilder::sendStyle(AsyncResponseStream* response)
 {
 	char buffer[CSS_LENGTH];
 	const char* CSS = copyFromPROGMEM(STYLE_BLOCK_CSS, buffer);
 	response->print(CSS);
 }
+
 void PageBuilder::sendHeaderTrailer(AsyncResponseStream* response)
 {
 	char buffer[HEADER_TRAILER_HTML_LENGTH];
 	const char* headerTrailerHtml = copyFromPROGMEM(HEADER_TRAILER_HTML, buffer);
 	response->print(headerTrailerHtml);
 }
-void PageBuilder::sendNavbar(AsyncResponseStream* response, const char* title = "",
-							 const char* routes[], const char* btn1class = "button",
-							 const char* btn2class = "button", const char* btn3class = "button")
+void PageBuilder::sendNavbar(AsyncResponseStream* response, const char* routes[], const char* title,
+							 const char* btn1class, const char* btn2class, const char* btn3class)
 {
-	// Assuming routes array contains:
-	// [0] - Dashboard route
-	// [1] - Settings route
-	// [2] - Network route
-	// [3] - Modbus route
-	// [4] - Test Report route
 	char buffer[NAVBAR_HTML_LENGTH];
 	const char* navbarHtml = copyFromPROGMEM(NAVBAR_HTML, buffer);
 
-	response->printf(NAVBAR_HTML, title,
+	response->printf(navbarHtml,
 					 routes[0], // Dashboard route
 					 routes[1], // Settings route
 					 routes[2], // Network route
 					 routes[3], // Modbus route
 					 routes[4], // Test Report route
+					 title,
 					 btn1class, // Action for Shutdown button
 					 btn2class, // CSS class for Shutdown button
 					 btn3class // Action for Restart button
-
 	);
 }
+
 void PageBuilder::sendSidebar(AsyncResponseStream* response, const char* content)
 {
 	char buffer[SIDEBAR_HTML_LENGTH];
@@ -116,11 +112,11 @@ void PageBuilder::sendDashboard(AsyncResponseStream* response, Logger& logger,
 
 	response->print("</div>");
 }
-void sendScript(AsyncResponseStream* response)
+void PageBuilder::sendScript(AsyncResponseStream* response)
 {
 	char buffer[JSS_LENGTH];
 	const char* JSS = copyFromPROGMEM(MAIN_SCRIPT_JSS, buffer);
-	response->print(CSS);
+	response->print(JSS);
 }
 
 void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
