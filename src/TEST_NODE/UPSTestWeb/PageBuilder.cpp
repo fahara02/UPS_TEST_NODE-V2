@@ -168,12 +168,12 @@ void PageBuilder::sendNavbar(AsyncResponseStream* response, const char* title, c
 					 css // CSS class for Restart button
 	);
 }
-void PageBuilder::sendSidebar(AsyncResponseStream* response)
+void PageBuilder::sendSidebar(AsyncResponseStream* response, const char* content)
 {
 	// Begin the sidebar HTML
 	char buffer[SIDEBAR_HTML_LENGTH];
 	const char* sidebarHtml = copyFromPROGMEM(SIDEBAR_HTML, buffer);
-	response->printf(sidebarHtml);
+	response->printf(sidebarHtml, content);
 
 	// Start, Stop, Pause buttons using sendButton
 	this->sendButton(response, "Start", "startTest()", "button");

@@ -1,8 +1,8 @@
 #ifndef RAWHTML_H
 #define RAWHTML_H
 
-#include <pgmspace.h> // Include for PROGMEM on Arduino
-const char header_html[] PROGMEM = R"rawliteral(
+#include <pgmspace.h>
+const char HEADER_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -37,15 +37,19 @@ const char NAVBAR_HTML[] PROGMEM = R"rawliteral(
 const char SIDEBAR_HTML[] PROGMEM = R"rawliteral(
 <div class="sidebar" id="sidebar">
   <div class="resizer" id="resizer"></div>
-  <!-- Dynamic content will be inserted here -->
+  "%s"
 </div>
 )rawliteral";
 
-const char TRAILER_HTML[] PROGMEM = R"rawliteral(
-<div class="sidebar" id="sidebar">
-  <div class="resizer" id="resizer"></div>
-  <!-- Dynamic content will be inserted here -->
-</div>
+const char HEADER_TRAILER_HTML[] PROGMEM = R"rawliteral(
+ </style>
+  </head>
+    <body>
+)rawliteral";
+const char LAST_TRAILER_HTML[] PROGMEM = R"rawliteral(
+   
+  </body>
+</html>
 )rawliteral";
 
 #endif // RAWHTML_H

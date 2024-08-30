@@ -6,7 +6,7 @@
 #include <Update.h>
 #include "vector"
 
-#include "RawHtml.h"
+#include "RawHTML.h"
 #include "Settings.h"
 #include "TestData.h"
 #include "UPSdebug.h"
@@ -18,6 +18,7 @@
 constexpr size_t SIDEBAR_HTML_LENGTH = sizeof(SIDEBAR_HTML) - 1;
 
 constexpr size_t NAVBAR_HTML_LENGTH = sizeof(NAVBAR_HTML) - 1;
+
 enum class MarginType
 {
 	Top,
@@ -60,9 +61,6 @@ class PageBuilder
 	void sendResponseTrailer(AsyncResponseStream* response);
 	void sendStyle(AsyncResponseStream* response);
 
-	void sendNavbar(AsyncResponseStream* response, const char* title, const char* action,
-					const char* css, const char* routes[]);
-
 	void sendButton(AsyncResponseStream* response, const char* title, const char* action,
 					const char* css = "");
 
@@ -83,8 +81,10 @@ class PageBuilder
 
 	void sendLogmonitor(AsyncResponseStream* response, Logger* logger);
 	void sendDashboard(AsyncResponseStream* response, Logger* logger,
-					   const char* classname = "content", const char* paragraph = "----------");
-	void sendSidebar(AsyncResponseStream* response);
+					   const char* classname = "content", const char* paragraph = "");
+	void sendNavbar(AsyncResponseStream* response, const char* title, const char* action,
+					const char* css, const char* routes[]);
+	void sendSidebar(AsyncResponseStream* response, const char* content = "");
 
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;
