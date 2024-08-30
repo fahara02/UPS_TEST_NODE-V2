@@ -3,7 +3,7 @@
 
 #include <pgmspace.h> // Include for PROGMEM on Arduino
 
-const char* const NAVBAR_HTML PROGMEM = R"rawliteral(
+const char* const NAVBAR_HTML = R"rawliteral(
 <div class="navbar">
   <div class="navbar-title">%s</div>
   <div>

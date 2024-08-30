@@ -3,9 +3,11 @@
 #include "StateMachine.h"
 #include "UPSError.h"
 #include <Arduino.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
+#include <EEPROM.h>
 #include <deque>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
 
 namespace Node_Core
 {
@@ -49,46 +51,79 @@ class Logger
 	}
 
 	// Initialize the logger
-	void init(Print* output = &Serial)
+	void init(Print* output = &Serial, LogLevel minLevel = LogLevel::INFO, size_t bufferSize = 10,
+			  bool timestampsEnabled = false, bool enableEEPROM = false)
 	{
 		_output = output;
+		_minLevel = minLevel; // Set the minimum log level
+		_bufferSize = bufferSize;
+		_timestampsEnabled = timestampsEnabled;
+		_eepromEnabled = enableEEPROM;
+
+		if(!_mutex)
+		{
+			_mutex = xSemaphoreCreateMutex();
+		}
+
+		if(_eepromEnabled)
+		{
+			EEPROM.begin(EEPROM_SIZE); // Initialize EEPROM size
+		}
 
 		xTaskCreate(logTask, "LoggerTask", 4096, nullptr, 1, nullptr);
 		this->log(LogLevel::INFO, "Logtask started");
 	}
-
-	String formatLogLevel(LogLevel level)
+	void enableEEPROM(bool enable)
 	{
-		static bool toggleColor = false;
-
-		switch(level)
+		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
 		{
-			case LogLevel::INFO:
-				toggleColor = !toggleColor;
-				return toggleColor ? "\033[34m[INFO] " :
-									 "\033[38;5;94m[INFO] "; // Alternate between Blue
-															 // and Brown text
-			case LogLevel::WARNING:
-				return "\033[33m[WARNING] "; // Yellow text
-			case LogLevel::ERROR:
-				return "\033[31m[ERROR] "; // Red text
-			case LogLevel::SUCCESS:
-				return "\033[32m[SUCCESS] "; // Green text
-			case LogLevel::TEST:
-				return "\033[33m[TEST] "; // Cyan text
-			case LogLevel::INTR:
-				return "\033[31m[INTERUUPT] "; // Red text
-			default:
-				return "\033[0m"; // Default to no color
+			_eepromEnabled = enable;
+			if(_eepromEnabled)
+			{
+				EEPROM.begin(EEPROM_SIZE); // Initialize EEPROM if enabling
+			}
+			xSemaphoreGive(_mutex);
+		}
+		log(LogLevel::INFO, "EEPROM storage %s", enable ? "enabled" : "disabled");
+	}
+	// Set minimum log level
+	void setMinLogLevel(LogLevel level)
+	{
+		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
+		{
+			_minLevel = level;
+			xSemaphoreGive(_mutex);
+		}
+		log(LogLevel::INFO, "Minimum log level set to: %s", logLevelToString(level));
+	}
+
+	// Set output target
+	void setOutput(Print* output)
+	{
+		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
+		{
+			_output = output;
+			xSemaphoreGive(_mutex);
+		}
+		log(LogLevel::INFO, "Output target changed.");
+	}
+
+	// Enable or disable timestamps
+	void enableTimestamps(bool enable)
+	{
+		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
+		{
+			_timestampsEnabled = enable;
+			xSemaphoreGive(_mutex);
 		}
 	}
 
 	// Log function with formatted output
 	void log(LogLevel level, const char* format, ...)
 	{
-		if(_output == nullptr)
+		if(level < _minLevel) // Filter out logs below the minimum level
 		{
-			return; // Ensure _output is valid
+			return; // Do nothing if log level is too low
 		}
 
 		va_list args;
@@ -98,21 +133,59 @@ class Logger
 		va_end(args);
 
 		String outputStr = formatLogLevel(level);
+		if(_timestampsEnabled)
+		{
+			outputStr += "[" + getTimestamp() + "] ";
+		}
 		outputStr += buffer;
 		outputStr += "\033[0m"; // Reset color
 
-		_output->println(outputStr);
+		if(_output)
+		{
+			_output->println(outputStr);
+		}
+
 		addToBuffer(outputStr);
+
+		// Store the log persistently if EEPROM is enabled
+		if(_eepromEnabled)
+		{
+			storeLogToEEPROM(outputStr);
+		}
 	}
+
 	String getBufferedLogs() const
 	{
 		String allLogs;
-		for(const String& log: _logBuffer)
+		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
 		{
-			allLogs += log + "\n";
+			for(const String& log: _logBuffer)
+			{
+				allLogs += log + "\n";
+			}
+			xSemaphoreGive(_mutex);
 		}
 		return allLogs;
 	}
+
+	// Register a callback function for specific errors
+	void registerErrorCallback(void (*callback)(UPSError))
+	{
+		errorCallback = callback;
+	}
+
+	// Invoke the callback when a specific error occurs
+	void triggerErrorCallback(UPSError error)
+	{
+		if(errorCallback)
+		{
+			errorCallback(error);
+		}
+	}
+
+	/*<---------------------------------------------> */
+	/*      All Overloads of log function              */
+	/*<---------------------------------------------> */
 	void log(LogLevel level, eTaskState state)
 	{
 		log(level, etaskStatetoString(state));
@@ -225,27 +298,21 @@ class Logger
 		}
 	}
 
-	// Register a callback function for specific errors
-	void registerErrorCallback(void (*callback)(UPSError))
-	{
-		errorCallback = callback;
-	}
-
-	// Invoke the callback when a specific error occurs
-	void triggerErrorCallback(UPSError error)
-	{
-		if(errorCallback)
-		{
-			errorCallback(error);
-		}
-	}
-
   private:
 	Print* _output;
+	LogLevel _minLevel; // Minimum log level
+	size_t _bufferSize;
 	static const size_t BUFFER_SIZE = 10;
+	bool _timestampsEnabled;
+	bool _eepromEnabled; // EEPROM storage flag
 	std::deque<String> _logBuffer;
-	// Private constructor for singleton pattern
-	Logger() : _output(&Serial), errorCallback(nullptr)
+	SemaphoreHandle_t _mutex;
+	void (*errorCallback)(UPSError);
+	static const int EEPROM_SIZE = 512; // Define EEPROM size
+
+	Logger() :
+		_output(&Serial), _minLevel(LogLevel::INFO), _bufferSize(BUFFER_SIZE),
+		_timestampsEnabled(false), _eepromEnabled(false), errorCallback(nullptr)
 	{
 	}
 
@@ -260,14 +327,85 @@ class Logger
 	}
 	void addToBuffer(const String& logEntry)
 	{
-		if(_logBuffer.size() >= BUFFER_SIZE)
+		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
 		{
-			_logBuffer.pop_front(); // Remove the oldest entry if buffer is full
+			if(_logBuffer.size() >= _bufferSize)
+			{
+				_logBuffer.pop_front(); // Remove the oldest entry if buffer is full
+			}
+			_logBuffer.push_back(logEntry);
+			xSemaphoreGive(_mutex);
 		}
-		_logBuffer.push_back(logEntry); // Add the new log entry
 	}
-	// Callback function pointer
-	void (*errorCallback)(UPSError);
+	// Store log entry to EEPROM
+	void storeLogToEEPROM(const String& logEntry)
+	{
+		int address = EEPROM.read(0); // Assume the first byte stores the next write address
+		if(address >= EEPROM_SIZE - logEntry.length())
+		{
+			address = 1; // Reset to the beginning if we exceed EEPROM size
+		}
+
+		for(int i = 0; i < logEntry.length(); ++i)
+		{
+			EEPROM.write(address++, logEntry[i]);
+		}
+		EEPROM.write(address, '\0'); // Mark the end of the log
+		EEPROM.write(0, address); // Save the next write address at the start
+		EEPROM.commit(); // Commit changes to EEPROM
+	}
+
+	String formatLogLevel(LogLevel level)
+	{
+		static bool toggleColor = false;
+
+		switch(level)
+		{
+			case LogLevel::INFO:
+				toggleColor = !toggleColor;
+				return toggleColor ? "\033[34m[INFO] " :
+									 "\033[38;5;94m[INFO] "; // Alternate between Blue
+															 // and Brown text
+			case LogLevel::WARNING:
+				return "\033[33m[WARNING] "; // Yellow text
+			case LogLevel::ERROR:
+				return "\033[31m[ERROR] "; // Red text
+			case LogLevel::SUCCESS:
+				return "\033[32m[SUCCESS] "; // Green text
+			case LogLevel::TEST:
+				return "\033[33m[TEST] "; // Cyan text
+			case LogLevel::INTR:
+				return "\033[31m[INTERUUPT] "; // Red text
+			default:
+				return "\033[0m"; // Default to no color
+		}
+	}
+	String getTimestamp()
+	{
+		// Replace with appropriate timestamp logic for your platform
+		return String(millis() / 1000) + "s";
+	}
+	// Convert log level to string for logging
+	const char* logLevelToString(LogLevel level)
+	{
+		switch(level)
+		{
+			case LogLevel::INFO:
+				return "INFO";
+			case LogLevel::WARNING:
+				return "WARNING";
+			case LogLevel::ERROR:
+				return "ERROR";
+			case LogLevel::SUCCESS:
+				return "SUCCESS";
+			case LogLevel::TEST:
+				return "TEST";
+			case LogLevel::INTR:
+				return "INTERRUPT";
+			default:
+				return "UNKNOWN";
+		}
+	}
 };
 
 } // namespace Node_Core

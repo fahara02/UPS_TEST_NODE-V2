@@ -136,8 +136,6 @@ void modbusRTUTask(void* pvParameters)
 void setup()
 
 {
-	Serial.begin(115200);
-
 	mainLoss = xSemaphoreCreateBinary();
 	upsGain = xSemaphoreCreateBinary();
 	upsLoss = xSemaphoreCreateBinary();
@@ -145,9 +143,9 @@ void setup()
 	TestManageQueue = xQueueCreate(messageQueueLength, sizeof(SetupTaskParams));
 	SwitchTestDataQueue = xQueueCreate(messageQueueLength, sizeof(SwitchTestData));
 	BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
-
+	Serial.begin(115200);
 	// Initialize Serial for debugging
-	logger.init();
+	logger.init(&Serial, LogLevel::INFO, 10, true);
 	logger.log(LogLevel::INFO, "Serial started........");
 
 	if(mainLoss == NULL || upsGain == NULL || upsLoss == NULL)
