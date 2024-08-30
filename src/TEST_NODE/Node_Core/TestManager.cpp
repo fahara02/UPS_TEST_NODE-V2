@@ -41,13 +41,8 @@ TestManager::TestManager() :
 
 TestManager& TestManager::getInstance()
 {
-	size_t alignment = alignof(TestManager);
-	size_t size = sizeof(TestManager);
-	logger.log(LogLevel::INFO, "TestManager class size:", size);
-	logger.log(LogLevel::INFO, "TestManager class alignment:", alignment);
-	logger.log(LogLevel::WARNING, "Trying to create the instance");
 	static TestManager instance;
-	logger.log(LogLevel::SUCCESS, "TestManager Instance created");
+
 	return instance;
 }
 

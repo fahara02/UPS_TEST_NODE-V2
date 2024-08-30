@@ -2,22 +2,24 @@
 #include "Adafruit_MAX31855.h"
 #include "SPI.h"
 #include <WiFi.h>
-
+#include <AsyncTCP.h>
+#include <WiFiManager.h>
+#include <ESPAsyncWebServer.h>
 #include <Preferences.h>
-#include "SPIFFS.h"
+#include <LittleFS.h>
 #include <Wire.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
 #include "Logger.h"
-#include "Settings.h"
-#include "UPSTesterSetup.h"
-#include "StateMachine.h"
+#include "ModbusManager.h"
 #include "TestSync.h"
-
+#include "TestManager.h"
+#include "UPSTest.h"
 #include "SwitchTest.h"
 #include "BackupTest.h"
-#include "TestManager.h"
+#include "UPSdebug.h"
+#include "PageBuilder.h"
 
 using namespace Node_Core;
 
@@ -68,6 +70,9 @@ EventGroupHandle_t eventGroupBackupTestData = NULL;
 // Task handles
 
 SemaphoreHandle_t xSemaphore;
+AsyncWebServer webServer(80);
+WiFiManager wm;
+ModbusRTU mb;
 
 #define ESP_LITTLEFS_TAG = "LFS"
 
@@ -121,7 +126,7 @@ void modbusRTUTask(void* pvParameters)
 	while(true)
 	{
 		logger.log(LogLevel::WARNING, "Resuming modbus task");
-		// mb.task();
+		mb.task();
 		vTaskDelay(pdMS_TO_TICKS(100)); // Task delay
 	}
 	vTaskDelete(NULL);
@@ -138,6 +143,19 @@ void setup()
 	SwitchTestDataQueue = xQueueCreate(messageQueueLength, sizeof(SwitchTestData));
 	BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
 	Serial.begin(115200);
+
+	WiFi.mode(WIFI_STA);
+	wm.setClass("invert");
+	auto reboot = false;
+	wm.setAPCallback([&reboot](WiFiManager* wifiManager) {
+		reboot = true;
+	});
+	wm.autoConnect();
+	if(reboot)
+	{
+		ESP.restart();
+	}
+
 	// Initialize Serial for debugging
 	logger.init(&Serial, LogLevel::INFO, 10);
 	logger.log(LogLevel::INFO, "Serial started........");
@@ -153,10 +171,10 @@ void setup()
 	}
 
 	SyncTest.init();
-	// modbusRTU_Init();
+	modbusRTU_Init();
 	Serial2.begin(9600, SERIAL_8N1);
-	// mb.begin(&Serial2);
-	// mb.slave(1);
+	mb.begin(&Serial2);
+	mb.slave(1);
 	logger.log(LogLevel::INFO, "modbus slave configured");
 
 	logger.log(LogLevel::INFO, "creating semaphores..");
