@@ -17,6 +17,7 @@
 
 #include "SwitchTest.h"
 #include "BackupTest.h"
+#include "TestManager.h"
 
 using namespace Node_Core;
 
@@ -167,48 +168,31 @@ void setup()
 	logger.log(LogLevel::INFO, "trying manager to init");
 	switchTest.init();
 	backupTest.init();
-	// Manager.init();
 
-	// logger.log(LogLevel::INFO, "getting manager instance");
-	// Manager = TestManager::getInstance();
+	logger.log(LogLevel::INFO, "getting manager instance");
+	TestManager& Manager = TestManager::getInstance();
+	logger.log(LogLevel::INFO, "getting manager init");
+	Manager.init();
 
-	// if(Manager)
-	// {
-	// 	logger.log(LogLevel::SUCCESS, "Manager instance created!");
-	// 	Manager->init();
-	// }
-	// else
-	// {
-	// 	logger.log(LogLevel::ERROR, "Manager instance creation failed");
-	// }
+	RequiredTest testlist[] = {
+		{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
+		{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
 
-	// if(Manager)
-	// {
-	// 	RequiredTest testlist[] = {
-	// 		{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
-	// 		{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
+	};
+	logger.log(LogLevel::INFO, "adding Tests");
+	Manager.addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
+	logger.log(LogLevel::INFO, "changing states");
 
-	// 	};
-	// 	logger.log(LogLevel::INFO, "adding Tests");
-	// 	Manager->addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
-	// 	logger.log(LogLevel::INFO, "changing states");
-
-	// 	Manager->triggerEvent(Event::SELF_CHECK_OK);
-	// 	vTaskDelay(pdTICKS_TO_MS(100));
-	// 	Manager->triggerEvent(Event::SETTING_LOADED);
-	// 	vTaskDelay(pdTICKS_TO_MS(100));
-	// 	Manager->triggerEvent(Event::LOAD_BANK_CHECKED);
-	// 	vTaskDelay(pdTICKS_TO_MS(100));
+	Manager.triggerEvent(Event::SELF_CHECK_OK);
+	vTaskDelay(pdTICKS_TO_MS(100));
+	Manager.triggerEvent(Event::SETTING_LOADED);
+	vTaskDelay(pdTICKS_TO_MS(100));
+	Manager.triggerEvent(Event::LOAD_BANK_CHECKED);
+	vTaskDelay(pdTICKS_TO_MS(100));
 
 	xTaskCreatePinnedToCore(modbusRTUTask, "ModbusRTUTask", 10000, NULL, 2, &modbusRTUTaskHandle,
 							0);
 }
-
-// else
-// {
-// 	logger.log(LogLevel::ERROR, "Cant create manager instance");
-// }
-//}
 void loop()
 {
 	vTaskDelete(NULL);

@@ -37,14 +37,18 @@ TestManager::TestManager() :
 	_initialized(false), _newEventTrigger(false), _setupUpdated(false), _numSwitchTest(0),
 	_numBackupTest(0), _numTest(0)
 {
-	TestManager::getInstance().UpdateSettings();
 }
 
 TestManager& TestManager::getInstance()
 {
+	size_t alignment = alignof(TestManager);
+	size_t size = sizeof(TestManager);
+	logger.log(LogLevel::INFO, "TestManager class size:", size);
+	logger.log(LogLevel::INFO, "TestManager class alignment:", alignment);
+	logger.log(LogLevel::WARNING, "Trying to create the instance");
 	static TestManager instance;
-	return instance;
 	logger.log(LogLevel::SUCCESS, "TestManager Instance created");
+	return instance;
 }
 
 void TestManager::init()
@@ -53,6 +57,7 @@ void TestManager::init()
 	{
 		return; // Already initialized, do nothing
 	}
+	UpdateSettings();
 	setupPins();
 	createISRTasks();
 	initializeTestInstances();
@@ -71,6 +76,7 @@ void TestManager::UpdateSettings()
 	_cfgTask = TesterSetup.taskSetup();
 	_cfgTaskParam = TesterSetup.paramSetup();
 	_cfgHardware = TesterSetup.hardwareSetup();
+	logger.log(LogLevel::SUCCESS, "Testmanager data updated");
 }
 
 void TestManager::addTests(RequiredTest testList[], int testNum)
@@ -130,6 +136,8 @@ void TestManager::setupPins()
 	pinMode(SENSE_MAINS_POWER_PIN, INPUT);
 	pinMode(SENSE_UPS_POWER_PIN, INPUT);
 	pinMode(SENSE_UPS_POWER_DOWN, INPUT);
+
+	logger.log(LogLevel::SUCCESS, "Testmanager sets up all pins");
 }
 
 void TestManager::configureInterrupts()
@@ -147,26 +155,32 @@ void TestManager::configureInterrupts()
 	gpio_isr_handler_add(mainpowerPin, keyISR1, NULL);
 	gpio_isr_handler_add(upspowerupPin, keyISR2, NULL);
 	gpio_isr_handler_add(upsshutdownPin, keyISR3, NULL);
+
+	logger.log(LogLevel::SUCCESS, "Testmanager configured all interrupts");
 }
 void TestManager::createManagerTasks()
 {
+	logger.log(LogLevel::INFO, "Testmanager creating its own task");
 	xTaskCreatePinnedToCore(TestManagerTask, "MainsTestManager", _cfgTask.mainTest_taskStack, NULL,
 							2, &TestManagerTaskHandle, _cfgTask.mainTest_taskCore);
+	logger.log(LogLevel::SUCCESS, "Testmanager task created");
 }
 void TestManager::createISRTasks()
 {
+	logger.log(LogLevel::INFO, "Testmanager creating its ISR task");
 	xTaskCreatePinnedToCore(onMainsPowerLossTask, "MainslossISRTask", _cfgTask.mainsISR_taskStack,
 							NULL, _cfgTask.mainsISR_taskIdlePriority, &ISR_MAINS_POWER_LOSS,
 							_cfgTask.mainsISR_taskCore);
 
+	logger.log(LogLevel::SUCCESS, "ISR1 task created");
 	xTaskCreatePinnedToCore(onUPSPowerGainTask, "UPSgainISRTask", _cfgTask.upsISR_taskStack, NULL,
 							_cfgTask.upsISR_taskIdlePriority, &ISR_UPS_POWER_GAIN,
 							_cfgTask.upsISR_taskCore);
-
+	logger.log(LogLevel::SUCCESS, "ISR2 task created");
 	xTaskCreatePinnedToCore(onUPSPowerLossTask, "UPSLossISRTask", _cfgTask.upsISR_taskStack, NULL,
 							_cfgTask.upsISR_taskIdlePriority, &ISR_UPS_POWER_LOSS,
 							_cfgTask.upsISR_taskCore);
-
+	logger.log(LogLevel::SUCCESS, "ISR3 task created");
 	logger.log(LogLevel::SUCCESS, "All ISR task Created");
 }
 void TestManager::createTestTasks()
@@ -177,6 +191,7 @@ void TestManager::createTestTasks()
 
 	xTaskCreatePinnedToCore(switchTest.SwitchTestTask, "MainsTestManager", 12000, NULL,
 							_cfgTask.mainTest_taskIdlePriority, &switchTestTaskHandle, 0);
+	logger.log(LogLevel::SUCCESS, "Switch Test task created");
 
 	eTaskState state = eTaskGetState(switchTestTaskHandle);
 	logger.log(LogLevel::INFO, "SwitchTest task state: %s", etaskStatetoString(state));
@@ -187,7 +202,7 @@ void TestManager::createTestTasks()
 
 	xTaskCreatePinnedToCore(backupTest.BackupTestTask, "MainsTestManager", 12000, NULL,
 							_cfgTask.mainTest_taskIdlePriority, &backupTestTaskHandle, 0);
-
+	logger.log(LogLevel::SUCCESS, "Switch Test task created");
 	state = eTaskGetState(backupTestTaskHandle);
 	logger.log(LogLevel::INFO, "BackupTest task state: %s", etaskStatetoString(state));
 }
