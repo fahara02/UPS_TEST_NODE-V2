@@ -15,6 +15,9 @@
 #include "StateMachine.h"
 #include "TestSync.h"
 
+#include "SwitchTest.h"
+#include "BackupTest.h"
+
 using namespace Node_Core;
 
 // Global Logger Instance
@@ -22,6 +25,8 @@ Logger& logger = Logger::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
 StateMachine& stateMachine = StateMachine::getInstance();
 UPSTesterSetup& TesterSetup = UPSTesterSetup::getInstance();
+SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
+BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 
 volatile unsigned long lastMainsTriggerTime = 0;
 volatile unsigned long lastUPSTriggerTime = 0;
@@ -160,6 +165,8 @@ void setup()
 	logger.log(LogLevel::INFO, "getting TesterSetup  instance");
 
 	logger.log(LogLevel::INFO, "trying manager to init");
+	switchTest.init();
+	backupTest.init();
 	// Manager.init();
 
 	// logger.log(LogLevel::INFO, "getting manager instance");

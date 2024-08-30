@@ -1,6 +1,6 @@
 #include "BackupTest.h"
 
-extern TestManager& Manager;
+extern TestSync& SyncTest;
 
 extern EventGroupHandle_t eventGroupTest;
 
@@ -192,7 +192,7 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 		_triggerTestEndEvent_BT = false;
 
 		logger.log(LogLevel::WARNING, "Triggering Test ongoing event from backup test");
-		Manager.triggerEvent(Event::TEST_ONGOING);
+		SyncTest.triggerEvent(Event::TEST_ONGOING);
 		vTaskDelay(pdTICKS_TO_MS(100));
 	}
 
@@ -227,7 +227,7 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 		_triggerTestEndEvent_BT = true;
 
 		logger.log(LogLevel::WARNING, "Cycle ended for single backup test");
-		Manager.triggerEvent(Event::TEST_TIME_END);
+		SyncTest.triggerEvent(Event::TEST_TIME_END);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 
@@ -240,7 +240,7 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 		{
 			_triggerDataCaptureEvent_BT = true;
 			logger.log(LogLevel::INFO, "Triggering DATA Captured event from backup test");
-			Manager.triggerEvent(Event::DATA_CAPTURED);
+			SyncTest.triggerEvent(Event::DATA_CAPTURED);
 			vTaskDelay(pdMS_TO_TICKS(100));
 		}
 
@@ -255,7 +255,7 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 				logger.log(LogLevel::TEST,
 						   "BackUp Time: ", _data_BT.backupTest[_currentTest_BT].backuptime);
 				sendEndSignal();
-				Manager.triggerEvent(Event::VALID_DATA);
+				SyncTest.triggerEvent(Event::VALID_DATA);
 				vTaskDelay(pdMS_TO_TICKS(100));
 			}
 
@@ -266,7 +266,7 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 		else
 		{
 			logger.log(LogLevel::ERROR, "Invalid timing data");
-			Manager.triggerEvent(Event::TEST_FAILED);
+			SyncTest.triggerEvent(Event::TEST_FAILED);
 			vTaskDelay(pdMS_TO_TICKS(100));
 			return TEST_FAILED;
 		}
@@ -274,13 +274,13 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 	else
 	{
 		logger.log(LogLevel::ERROR, "Data capture failed");
-		Manager.triggerEvent(Event::TEST_FAILED);
+		SyncTest.triggerEvent(Event::TEST_FAILED);
 		vTaskDelay(pdMS_TO_TICKS(100));
 		return TEST_FAILED;
 	}
 
 	logger.log(LogLevel::ERROR, "Test failed");
-	Manager.triggerEvent(Event::TEST_FAILED);
+	SyncTest.triggerEvent(Event::TEST_FAILED);
 	vTaskDelay(pdMS_TO_TICKS(100));
 	return TEST_FAILED;
 }
