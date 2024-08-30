@@ -2,8 +2,13 @@
 #include "BackupTest.h"
 #include "TesterMemory.h"
 
+extern Logger& logger;
+extern TestSync& SyncTest;
 extern SwitchTest* switchTest;
 extern BackupTest* backupTest;
+extern void IRAM_ATTR keyISR1(void* pvParameters);
+extern void IRAM_ATTR keyISR2(void* pvParameters);
+extern void IRAM_ATTR keyISR3(void* pvParameters);
 
 using namespace Node_Core;
 
@@ -447,4 +452,122 @@ void TestManager::logPendingTest(const UPSTestRun& test)
 	logger.log(LogLevel::INFO, "Pending Test Load level: %s", loadPercentageToString(load));
 	logger.log(LogLevel::INFO, "Pending Test name: %s", testTypeToString(type));
 	logger.log(LogLevel::INFO, "SwitchTest list is updated now.");
+}
+template<typename T, typename U>
+bool TestManager::handleTestState(UPSTest<T, U>* testInstance, State managerState, int testIndex,
+								  U* dataBuff)
+{
+	QueueHandle_t dataQueue = testInstance->getQueue();
+	int i = testIndex;
+	int TestPriority = 1;
+	if(managerState == State::DEVICE_READY)
+	{
+		instance->logPendingTest(instance->_testList[i]);
+		instance->triggerEvent(Event::AUTO_TEST_CMD);
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+	else if(managerState == State::AUTO_MODE)
+	{
+		vTaskDelay(pdMS_TO_TICKS(100));
+		instance->triggerEvent(Event::PENDING_TEST_FOUND);
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+	else if(managerState == State::TEST_START)
+	{
+		TestPriority = 3;
+		logger.log(LogLevel::INFO, "Manager Task under test start phase");
+		LoadPercentage load = instance->_testList[i].testRequired.loadlevel;
+		instance->configureTest(load);
+		testInstance->logTaskState(LogLevel::INFO);
+		// TaskHandle_t taskHandle = testInstance->getTaskHandle();
+		testInstance->setTaskPriority(TestPriority);
+
+		logger.log(LogLevel::INFO, "Starting %s...", testInstance->testTypeName());
+		SyncTest.startTest(testInstance->getTestType());
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+	else if(managerState == State::TEST_IN_PROGRESS)
+	{
+		if(testInstance->isdataCaptureOk())
+		{
+			logger.log(LogLevel::SUCCESS, "Successful data capture.");
+		}
+		if(testInstance->isTestEnded())
+		{
+			logger.log(LogLevel::INFO, "Test Cycle ended.");
+		}
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+	else if(managerState == State::CURRENT_TEST_CHECK)
+	{
+		TestPriority = 2;
+		logger.log(LogLevel::INFO, "In check State  checking either test ended or data captured");
+		if(testInstance->isdataCaptureOk())
+		{
+			logger.log(LogLevel::SUCCESS, "Successful data capture.");
+		}
+		testInstance->setTaskPriority(TestPriority);
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+	else if(managerState == State::CURRENT_TEST_OK)
+	{
+		TestPriority = 1;
+		logger.log(LogLevel::SUCCESS, "Received Test data");
+
+		if(dataBuff && xQueueReceive(dataQueue, dataBuff, 1000) == pdTRUE)
+		{
+			logger.log(LogLevel::INFO, "Stopping SwitchTest...");
+			SyncTest.stopTest(testInstance->getTestType());
+			instance->_testList[i].testStatus.managerStatus = TestManagerStatus::DONE;
+			instance->_testList[i].testStatus.operatorStatus = TestOperatorStatus::SUCCESS;
+
+			testInstance->markTestAsDone();
+			testInstance->setTaskPriority(TestPriority);
+			logger.log(LogLevel::WARNING, "Triggering SAVE event from manager");
+			instance->triggerEvent(Event::SAVE);
+			vTaskDelay(pdMS_TO_TICKS(100));
+			return true;
+		}
+		else
+		{
+			logger.log(LogLevel::ERROR, "Receive Test data timeout");
+			SyncTest.stopTest(testInstance->getTestType());
+		}
+	}
+
+	else if(managerState == State::READY_NEXT_TEST)
+	{
+		logger.log(LogLevel::INFO, "Checking for next pending test...");
+
+		bool pendingTestFound = false;
+
+		// Check if there are any more pending tests
+		for(int j = 0; j < instance->_numTest; ++j)
+		{
+			if(instance->isTestPendingAndNotStarted(instance->_testList[j]))
+			{
+				pendingTestFound = true;
+				break;
+			}
+		}
+
+		if(pendingTestFound)
+		{
+			logger.log(LogLevel::INFO, "Pending test found. Preparing to start next test...");
+
+			instance->triggerEvent(Event::PENDING_TEST_FOUND);
+			vTaskDelay(pdMS_TO_TICKS(200));
+		}
+		else
+		{
+			logger.log(LogLevel::INFO, "No more pending tests.");
+		}
+	}
+	else
+	{
+		logger.log(LogLevel::WARNING, "Unhandled state encountered.");
+	}
+
+	vTaskDelay(pdMS_TO_TICKS(100)); // Delay to avoid rapid state changes
+	return false;
 }
