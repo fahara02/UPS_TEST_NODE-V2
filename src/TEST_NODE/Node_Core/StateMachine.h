@@ -16,8 +16,7 @@ class StateMachine
 	EventGroupHandle_t TestState_EventGroup = nullptr;
 	EventGroupHandle_t SystemEvents_EventGroup = nullptr;
 
-	static StateMachine* getInstance();
-	static void deleteInstance();
+	static StateMachine& getInstance();
 
 	std::atomic<bool> dataCapturedFlag{false};
 
@@ -47,8 +46,9 @@ class StateMachine
 		{
 			return {Start, EventTrigger, Next,
 					[]() {
-						instance->updateStateEventGroup(Start, false);
-						instance->updateStateEventGroup(Next, true);
+						StateMachine& instance = StateMachine::getInstance();
+						instance.updateStateEventGroup(Start, false);
+						instance.updateStateEventGroup(Next, true);
 					},
 					[]() {
 						return true;
@@ -64,8 +64,7 @@ class StateMachine
   private:
 	friend class TestManager;
 	StateMachine();
-	~StateMachine();
-	static StateMachine* instance;
+
 	std::atomic<State> _old_state{State::DEVICE_ON};
 	std::atomic<State> current_state{State::DEVICE_ON};
 	std::atomic<int> retry_count{0};

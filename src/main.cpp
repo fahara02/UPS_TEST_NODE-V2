@@ -2,9 +2,7 @@
 #include "Adafruit_MAX31855.h"
 #include "SPI.h"
 #include <WiFi.h>
-#include <AsyncTCP.h>
-#include <WiFiManager.h>
-#include <ESPAsyncWebServer.h>
+
 #include <Preferences.h>
 #include "SPIFFS.h"
 #include <Wire.h>
@@ -12,23 +10,18 @@
 #include "freertos/task.h"
 #include "freertos/timers.h"
 #include "Logger.h"
-#include "ModbusManager.h"
+#include "Settings.h"
+#include "UPSTesterSetup.h"
+#include "StateMachine.h"
 #include "TestSync.h"
-#include "TestManager.h"
-#include "UPSTest.h"
-#include "SwitchTest.h"
-#include "BackupTest.h"
-#include "UPSdebug.h"
-#include "PageBuilder.h"
 
 using namespace Node_Core;
 
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
+StateMachine& stateMachine = StateMachine::getInstance();
 UPSTesterSetup& TesterSetup = UPSTesterSetup::getInstance();
-SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
-BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 
 volatile unsigned long lastMainsTriggerTime = 0;
 volatile unsigned long lastUPSTriggerTime = 0;
@@ -66,15 +59,10 @@ EventGroupHandle_t eventGroupBackupTestData = NULL;
 
 // Define the SwitchTest instance
 
-TestManager* Manager = nullptr;
-
 // Task handles
 
 SemaphoreHandle_t xSemaphore;
 
-Modbus::ResultCode err;
-
-ModbusRTU mb;
 #define ESP_LITTLEFS_TAG = "LFS"
 
 void IRAM_ATTR keyISR1(void* pvParameters)
@@ -127,7 +115,7 @@ void modbusRTUTask(void* pvParameters)
 	while(true)
 	{
 		logger.log(LogLevel::WARNING, "Resuming modbus task");
-		mb.task();
+		// mb.task();
 		vTaskDelay(pdMS_TO_TICKS(100)); // Task delay
 	}
 	vTaskDelete(NULL);
@@ -159,10 +147,10 @@ void setup()
 	}
 
 	SyncTest.init();
-	modbusRTU_Init();
+	// modbusRTU_Init();
 	Serial2.begin(9600, SERIAL_8N1);
-	mb.begin(&Serial2);
-	mb.slave(1);
+	// mb.begin(&Serial2);
+	// mb.slave(1);
 	logger.log(LogLevel::INFO, "modbus slave configured");
 
 	logger.log(LogLevel::INFO, "creating semaphores..");
@@ -170,8 +158,9 @@ void setup()
 	logger.log(LogLevel::INFO, "creating queue");
 
 	logger.log(LogLevel::INFO, "getting TesterSetup  instance");
-	switchTest.init();
-	backupTest.init();
+
+	logger.log(LogLevel::INFO, "trying manager to init");
+	// Manager.init();
 
 	// logger.log(LogLevel::INFO, "getting manager instance");
 	// Manager = TestManager::getInstance();

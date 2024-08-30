@@ -71,8 +71,7 @@ struct UPSTestRun
 class TestManager
 {
   public:
-	static TestManager* getInstance();
-	static void deleteInstance();
+	static TestManager& getInstance();
 
 	void init();
 	void addTests(RequiredTest testList[], int numTest);
@@ -91,8 +90,6 @@ class TestManager
 
   private:
 	TestManager();
-	~TestManager();
-	static TestManager* instance;
 
 	UPSTestRun _testList[MAX_TESTS];
 
@@ -110,8 +107,6 @@ class TestManager
 	SetupTask _cfgTask;
 	SetupTaskParams _cfgTaskParam;
 	SetupHardware _cfgHardware;
-
-	static TestManager* allocateInstance();
 
 	void setupPins();
 	void configureInterrupts();

@@ -10,6 +10,7 @@
 
 using namespace Node_Core;
 extern Logger& logger;
+extern StateMachine& stateMachine;
 extern EventGroupHandle_t eventGroupTest;
 constexpr int MAX_TEST = 6;
 
@@ -49,31 +50,22 @@ class TestSync
 
 	void triggerEvent(Event event)
 	{
-		if(stateMachine)
-		{
-			stateMachine->handleEvent(event);
-		}
+		stateMachine.handleEvent(event);
 	}
 
 	State getState()
 	{
-		if(stateMachine)
-		{
-			_currentState = stateMachine->getCurrentState();
+		_currentState = stateMachine.getCurrentState();
 
-			return _currentState;
-		}
+		return _currentState;
+
 		return State::DEVICE_ON;
 	}
 
   private:
 	TestSync()
 	{
-		stateMachine = StateMachine::getInstance();
-		if(stateMachine)
-		{
-			logger.log(LogLevel::SUCCESS, "State machine is on!");
-		}
+		logger.log(LogLevel::SUCCESS, "Test Sync is on!");
 	}
 
 	void resetAllBits()
@@ -83,7 +75,6 @@ class TestSync
 		logger.logBinary(LogLevel::WARNING, result);
 	}
 	State _currentState = State::DEVICE_ON;
-	StateMachine* stateMachine = nullptr;
 
 	static const EventBits_t ALL_TEST_BITS = (1 << MAX_TEST) - 1;
 

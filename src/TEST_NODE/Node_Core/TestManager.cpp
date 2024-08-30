@@ -33,57 +33,18 @@ extern QueueHandle_t BackupTestDataQueue;
 
 // extern SemaphoreHandle_t state_mutex;
 
-TestManager* TestManager::instance = nullptr;
-
-TestManager* TestManager::allocateInstance()
-{
-	size_t size = sizeof(TestManager);
-	size_t alignment = alignof(TestManager);
-	logger.log(LogLevel::WARNING, "TestManager Class Size:", size);
-	logger.log(LogLevel::WARNING, "TestManager Alignment is:", alignment);
-
-	void* buffer = safeAllocateMemory(size, alignment);
-	if(buffer)
-	{
-		return new(buffer) TestManager(); // Placement new
-	}
-
-	return nullptr; // Allocation failed
-}
-
 TestManager::TestManager() :
 	_initialized(false), _newEventTrigger(false), _setupUpdated(false), _numSwitchTest(0),
 	_numBackupTest(0), _numTest(0)
 {
-	instance->UpdateSettings();
+	TestManager::getInstance().UpdateSettings();
 }
 
-TestManager::~TestManager()
+TestManager& TestManager::getInstance()
 {
-}
-
-TestManager* TestManager::getInstance()
-{
-	if(instance == nullptr)
-	{
-		instance = allocateInstance();
-		if(instance == nullptr)
-		{
-			// Log an error if memory allocation fails
-			logger.log(LogLevel::ERROR, "Failed to allocate memory for TestManager instance");
-		}
-		else if(instance != nullptr)
-		{
-			logger.log(LogLevel::SUCCESS, "TestManager Instance created");
-		}
-	}
+	static TestManager instance;
 	return instance;
-}
-
-void TestManager::deleteInstance()
-{
-	delete instance;
-	instance = nullptr;
+	logger.log(LogLevel::SUCCESS, "TestManager Instance created");
 }
 
 void TestManager::init()
@@ -93,10 +54,10 @@ void TestManager::init()
 		return; // Already initialized, do nothing
 	}
 	setupPins();
-	// createISRTasks();
-	// initializeTestInstances();
-	// createManagerTasks();
-	// createTestTasks();
+	createISRTasks();
+	initializeTestInstances();
+	createManagerTasks();
+	createTestTasks();
 
 	// pauseAllTest();
 
@@ -234,7 +195,7 @@ void TestManager::createTestTasks()
 void TestManager::TestManagerTask(void* pvParameters)
 {
 	logger.log(LogLevel::INFO, "Resuming Test Manager task");
-
+	TestManager& instance = TestManager::getInstance();
 	while(true)
 	{
 		State managerState = SyncTest.getState();
@@ -244,21 +205,21 @@ void TestManager::TestManagerTask(void* pvParameters)
 			logger.log(LogLevel::INFO, "Device is ready. Checking pending tests...");
 		}
 
-		for(int i = 0; i < instance->_numTest; ++i)
+		for(int i = 0; i < instance._numTest; ++i)
 		{
-			if(instance->isTestPendingAndNotStarted(instance->_testList[i]))
+			if(instance.isTestPendingAndNotStarted(instance._testList[i]))
 			{
 				managerState = SyncTest.getState();
 
-				TestType testType = instance->_testList[i].testRequired.testtype;
+				TestType testType = instance._testList[i].testRequired.testtype;
 				bool success = false;
 
 				if(testType == TestType::SwitchTest)
 				{
 					managerState = SyncTest.getState();
 					SwitchTestData dataBuff1;
-					success = instance->handleTestState(SwitchTest::getInstance(), managerState, i,
-														&dataBuff1);
+					success = instance.handleTestState(SwitchTest::getInstance(), managerState, i,
+													   &dataBuff1);
 
 					if(success && managerState == State::CURRENT_TEST_OK)
 					{
@@ -280,8 +241,8 @@ void TestManager::TestManagerTask(void* pvParameters)
 				{
 					managerState = SyncTest.getState();
 					BackupTestData dataBuff2;
-					success = instance->handleTestState(BackupTest::getInstance(), managerState, i,
-														&dataBuff2);
+					success = instance.handleTestState(BackupTest::getInstance(), managerState, i,
+													   &dataBuff2);
 
 					if(success && managerState == State::CURRENT_TEST_OK)
 					{
@@ -444,27 +405,28 @@ template<typename T, typename U>
 bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerState, int testIndex,
 								  U* dataBuff)
 {
+	TestManager& instance = TestManager::getInstance();
 	QueueHandle_t dataQueue = testInstance.getQueue();
 	int i = testIndex;
 	int TestPriority = 1;
 	if(managerState == State::DEVICE_READY)
 	{
-		instance->logPendingTest(instance->_testList[i]);
-		instance->triggerEvent(Event::AUTO_TEST_CMD);
+		instance.logPendingTest(instance._testList[i]);
+		instance.triggerEvent(Event::AUTO_TEST_CMD);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::AUTO_MODE)
 	{
 		vTaskDelay(pdMS_TO_TICKS(100));
-		instance->triggerEvent(Event::PENDING_TEST_FOUND);
+		instance.triggerEvent(Event::PENDING_TEST_FOUND);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::TEST_START)
 	{
 		TestPriority = 3;
 		logger.log(LogLevel::INFO, "Manager Task under test start phase");
-		LoadPercentage load = instance->_testList[i].testRequired.loadlevel;
-		instance->configureTest(load);
+		LoadPercentage load = instance._testList[i].testRequired.loadlevel;
+		instance.configureTest(load);
 		testInstance.logTaskState(LogLevel::INFO);
 		// TaskHandle_t taskHandle = testInstance->getTaskHandle();
 		testInstance.setTaskPriority(TestPriority);
@@ -505,13 +467,13 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		{
 			logger.log(LogLevel::INFO, "Stopping SwitchTest...");
 			SyncTest.stopTest(testInstance.getTestType());
-			instance->_testList[i].testStatus.managerStatus = TestManagerStatus::DONE;
-			instance->_testList[i].testStatus.operatorStatus = TestOperatorStatus::SUCCESS;
+			instance._testList[i].testStatus.managerStatus = TestManagerStatus::DONE;
+			instance._testList[i].testStatus.operatorStatus = TestOperatorStatus::SUCCESS;
 
 			testInstance.markTestAsDone();
 			testInstance.setTaskPriority(TestPriority);
 			logger.log(LogLevel::WARNING, "Triggering SAVE event from manager");
-			instance->triggerEvent(Event::SAVE);
+			instance.triggerEvent(Event::SAVE);
 			vTaskDelay(pdMS_TO_TICKS(100));
 			return true;
 		}
@@ -529,9 +491,9 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		bool pendingTestFound = false;
 
 		// Check if there are any more pending tests
-		for(int j = 0; j < instance->_numTest; ++j)
+		for(int j = 0; j < instance._numTest; ++j)
 		{
-			if(instance->isTestPendingAndNotStarted(instance->_testList[j]))
+			if(instance.isTestPendingAndNotStarted(instance._testList[j]))
 			{
 				pendingTestFound = true;
 				break;
@@ -542,7 +504,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		{
 			logger.log(LogLevel::INFO, "Pending test found. Preparing to start next test...");
 
-			instance->triggerEvent(Event::PENDING_TEST_FOUND);
+			instance.triggerEvent(Event::PENDING_TEST_FOUND);
 			vTaskDelay(pdMS_TO_TICKS(200));
 		}
 		else

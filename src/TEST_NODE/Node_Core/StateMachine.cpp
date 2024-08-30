@@ -10,7 +10,6 @@ extern Logger& logger;
 extern xSemaphoreHandle state_mutex;
 namespace Node_Core
 {
-StateMachine* StateMachine::instance = nullptr;
 
 StateMachine::StateMachine() :
 	_old_state(State::DEVICE_ON), current_state(State::DEVICE_ON), retry_count(0), max_retest(0)
@@ -23,23 +22,10 @@ StateMachine::StateMachine() :
 	// }
 }
 
-StateMachine::~StateMachine()
+StateMachine& StateMachine::getInstance()
 {
-}
-
-StateMachine* StateMachine::getInstance()
-{
-	if(instance == nullptr)
-	{
-		instance = new StateMachine();
-	}
+	static StateMachine instance;
 	return instance;
-}
-
-void StateMachine::deleteInstance()
-{
-	delete instance;
-	instance = nullptr;
 }
 
 void StateMachine::setState(State new_state)
@@ -102,8 +88,9 @@ void StateMachine::NotifySystemEventGroup(Event event, bool set_bits)
 
 void StateMachine::handleEventbits(EventBits_t event_bits)
 {
+	StateMachine& instance = StateMachine::getInstance();
 	Event event = static_cast<Event>(event_bits);
-	instance->handleEvent(event);
+	instance.handleEvent(event);
 }
 
 void StateMachine::handleEvent(Event event)
