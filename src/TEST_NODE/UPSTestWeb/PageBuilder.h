@@ -13,6 +13,11 @@
 #include "TestSync.h"
 #include "TestManager.h"
 #include "UPSTesterSetup.h"
+#include <pgmspace.h>
+
+constexpr size_t SIDEBAR_HTML_LENGTH = sizeof(SIDEBAR_HTML) - 1;
+
+constexpr size_t NAVBAR_HTML_LENGTH = sizeof(NAVBAR_HTML) - 1;
 enum class MarginType
 {
 	Top,
@@ -44,6 +49,7 @@ class PageBuilder
 	PageBuilder(AsyncWebServer* server) : _server(server)
 	{
 	}
+	const char* copyFromPROGMEM(const char copyFrom[], char sendTo[]);
 
 	void setupPages(WiFiManager* wm, TestManager* testManager, TestSync* testSync,
 					UPSTesterSetup* testSetup, SetupUPSTest* allSetup, TestData* data);
@@ -52,6 +58,7 @@ class PageBuilder
 							bool inlineStyle = false);
 
 	void sendResponseTrailer(AsyncResponseStream* response);
+	void sendStyle(AsyncResponseStream* response);
 
 	void sendNavbar(AsyncResponseStream* response, const char* title, const char* action,
 					const char* css, const char* routes[]);

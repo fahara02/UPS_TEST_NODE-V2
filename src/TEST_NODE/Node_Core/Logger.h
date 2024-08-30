@@ -60,9 +60,9 @@ class Logger
 		_timestampsEnabled = timestampsEnabled;
 		_eepromEnabled = enableEEPROM;
 
-		if(!_mutex)
+		if(!_loggingLock)
 		{
-			_mutex = xSemaphoreCreateMutex();
+			_loggingLock = xSemaphoreCreateMutex();
 		}
 
 		if(_eepromEnabled)
@@ -75,24 +75,24 @@ class Logger
 	}
 	void enableEEPROM(bool enable)
 	{
-		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
+		if(_loggingLock && xSemaphoreTake(_loggingLock, portMAX_DELAY) == pdTRUE)
 		{
 			_eepromEnabled = enable;
 			if(_eepromEnabled)
 			{
 				EEPROM.begin(EEPROM_SIZE); // Initialize EEPROM if enabling
 			}
-			xSemaphoreGive(_mutex);
+			xSemaphoreGive(_loggingLock);
 		}
 		log(LogLevel::INFO, "EEPROM storage %s", enable ? "enabled" : "disabled");
 	}
 	// Set minimum log level
 	void setMinLogLevel(LogLevel level)
 	{
-		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
+		if(_loggingLock && xSemaphoreTake(_loggingLock, portMAX_DELAY) == pdTRUE)
 		{
 			_minLevel = level;
-			xSemaphoreGive(_mutex);
+			xSemaphoreGive(_loggingLock);
 		}
 		log(LogLevel::INFO, "Minimum log level set to: %s", logLevelToString(level));
 	}
@@ -100,10 +100,10 @@ class Logger
 	// Set output target
 	void setOutput(Print* output)
 	{
-		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
+		if(_loggingLock && xSemaphoreTake(_loggingLock, portMAX_DELAY) == pdTRUE)
 		{
 			_output = output;
-			xSemaphoreGive(_mutex);
+			xSemaphoreGive(_loggingLock);
 		}
 		log(LogLevel::INFO, "Output target changed.");
 	}
@@ -111,10 +111,10 @@ class Logger
 	// Enable or disable timestamps
 	void enableTimestamps(bool enable)
 	{
-		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
+		if(_loggingLock && xSemaphoreTake(_loggingLock, portMAX_DELAY) == pdTRUE)
 		{
 			_timestampsEnabled = enable;
-			xSemaphoreGive(_mutex);
+			xSemaphoreGive(_loggingLock);
 		}
 	}
 
@@ -157,13 +157,13 @@ class Logger
 	String getBufferedLogs() const
 	{
 		String allLogs;
-		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
+		if(_loggingLock && xSemaphoreTake(_loggingLock, portMAX_DELAY) == pdTRUE)
 		{
 			for(const String& log: _logBuffer)
 			{
 				allLogs += log + "\n";
 			}
-			xSemaphoreGive(_mutex);
+			xSemaphoreGive(_loggingLock);
 		}
 		return allLogs;
 	}
@@ -306,7 +306,7 @@ class Logger
 	bool _timestampsEnabled;
 	bool _eepromEnabled; // EEPROM storage flag
 	std::deque<String> _logBuffer;
-	SemaphoreHandle_t _mutex;
+	SemaphoreHandle_t _loggingLock;
 	void (*errorCallback)(UPSError);
 	static const int EEPROM_SIZE = 512; // Define EEPROM size
 
@@ -327,14 +327,14 @@ class Logger
 	}
 	void addToBuffer(const String& logEntry)
 	{
-		if(_mutex && xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE)
+		if(_loggingLock && xSemaphoreTake(_loggingLock, portMAX_DELAY) == pdTRUE)
 		{
 			if(_logBuffer.size() >= _bufferSize)
 			{
 				_logBuffer.pop_front(); // Remove the oldest entry if buffer is full
 			}
 			_logBuffer.push_back(logEntry);
-			xSemaphoreGive(_mutex);
+			xSemaphoreGive(_loggingLock);
 		}
 	}
 	// Store log entry to EEPROM

@@ -1,4 +1,11 @@
 #include "PageBuilder.h"
+const char* PageBuilder::copyFromPROGMEM(const char copyFrom[], char sendTo[])
+{
+	// Copy the string from PROGMEM to SRAM
+	strcpy_P(sendTo, copyFrom);
+	// Return the destination buffer
+	return sendTo;
+}
 
 void PageBuilder::sendResponseHeader(AsyncResponseStream* response, const char* title,
 									 bool inlineStyle)
@@ -28,31 +35,9 @@ void PageBuilder::sendResponseHeader(AsyncResponseStream* response, const char* 
 }
 void PageBuilder::sendResponseTrailer(AsyncResponseStream* response)
 {
-	response->print("</div></body></html>");
+	response->print("</body></html>");
 }
 
-void PageBuilder::sendNavbar(AsyncResponseStream* response, const char* title, const char* action,
-							 const char* css, const char* routes[])
-{
-	// Assuming routes array contains:
-	// [0] - Dashboard route
-	// [1] - Settings route
-	// [2] - Network route
-	// [3] - Modbus route
-	// [4] - Test Report route
-
-	response->printf(NAVBAR_HTML, title,
-					 routes[0], // Dashboard route
-					 routes[1], // Settings route
-					 routes[2], // Network route
-					 routes[3], // Modbus route
-					 routes[4], // Test Report route
-					 action, // Action for Shutdown button
-					 css, // CSS class for Shutdown button
-					 action, // Action for Restart button
-					 css // CSS class for Restart button
-	);
-}
 void PageBuilder::sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType)
 {
 	// Open the <div> tag
@@ -159,11 +144,36 @@ void PageBuilder::sendLogmonitor(AsyncResponseStream* response, Logger* logger)
 
 	response->print("</div>");
 }
+void PageBuilder::sendNavbar(AsyncResponseStream* response, const char* title, const char* action,
+							 const char* css, const char* routes[])
+{
+	// Assuming routes array contains:
+	// [0] - Dashboard route
+	// [1] - Settings route
+	// [2] - Network route
+	// [3] - Modbus route
+	// [4] - Test Report route
+	char buffer[NAVBAR_HTML_LENGTH];
+	const char* navbarHtml = copyFromPROGMEM(NAVBAR_HTML, buffer);
 
+	response->printf(NAVBAR_HTML, title,
+					 routes[0], // Dashboard route
+					 routes[1], // Settings route
+					 routes[2], // Network route
+					 routes[3], // Modbus route
+					 routes[4], // Test Report route
+					 action, // Action for Shutdown button
+					 css, // CSS class for Shutdown button
+					 action, // Action for Restart button
+					 css // CSS class for Restart button
+	);
+}
 void PageBuilder::sendSidebar(AsyncResponseStream* response)
 {
 	// Begin the sidebar HTML
-	response->print(FPSTR(SIDEBAR_HTML_PROGMEM)); // Use FPSTR to read from PROGMEM
+	char buffer[SIDEBAR_HTML_LENGTH];
+	const char* sidebarHtml = copyFromPROGMEM(SIDEBAR_HTML, buffer);
+	response->printf(sidebarHtml);
 
 	// Start, Stop, Pause buttons using sendButton
 	this->sendButton(response, "Start", "startTest()", "button");
