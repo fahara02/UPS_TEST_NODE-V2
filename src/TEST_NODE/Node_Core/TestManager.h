@@ -119,6 +119,8 @@ class TestManager
 	SetupTaskParams _cfgTaskParam;
 	SetupHardware _cfgHardware;
 
+	static TestManager* allocateInstance();
+
 	void setupPins();
 	void configureInterrupts();
 	void createISRTasks();

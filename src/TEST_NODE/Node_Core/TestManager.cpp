@@ -1,5 +1,6 @@
 #include "SwitchTest.h"
 #include "BackupTest.h"
+#include "TesterMemory.h"
 
 extern SwitchTest* switchTest;
 extern BackupTest* backupTest;
@@ -29,7 +30,25 @@ extern QueueHandle_t BackupTestDataQueue;
 
 TestManager* TestManager::instance = nullptr;
 
-TestManager::TestManager() : _initialized(false), _newEventTrigger(false), _setupUpdated(false)
+TestManager* TestManager::allocateInstance()
+{
+	size_t size = sizeof(TestManager);
+	size_t alignment = alignof(TestManager);
+	logger.log(LogLevel::WARNING, "TestManager Class Size:", size);
+	logger.log(LogLevel::WARNING, "TestManager Alignment is:", alignment);
+
+	void* buffer = safeAllocateMemory(size, alignment);
+	if(buffer)
+	{
+		return new(buffer) TestManager(); // Placement new
+	}
+
+	return nullptr; // Allocation failed
+}
+
+TestManager::TestManager() :
+	_initialized(false), _newEventTrigger(false), _setupUpdated(false), _numSwitchTest(0),
+	_numBackupTest(0), _numTest(0)
 {
 	instance->UpdateSettings();
 }
@@ -42,7 +61,16 @@ TestManager* TestManager::getInstance()
 {
 	if(instance == nullptr)
 	{
-		instance = new TestManager();
+		instance = allocateInstance();
+		if(instance == nullptr)
+		{
+			// Log an error if memory allocation fails
+			logger.log(LogLevel::ERROR, "Failed to allocate memory for TestManager instance");
+		}
+		else if(instance != nullptr)
+		{
+			logger.log(LogLevel::SUCCESS, "TestManager Instance created");
+		}
 	}
 	return instance;
 }
@@ -60,10 +88,10 @@ void TestManager::init()
 		return; // Already initialized, do nothing
 	}
 	setupPins();
-	createISRTasks();
-	initializeTestInstances();
-	createManagerTasks();
-	createTestTasks();
+	// createISRTasks();
+	// initializeTestInstances();
+	// createManagerTasks();
+	// createTestTasks();
 
 	// pauseAllTest();
 

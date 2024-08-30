@@ -79,6 +79,8 @@ T* UPSTest<T, U>::getInstance()
 	if(instance == nullptr)
 	{
 		instance = new T();
+		logger.log(LogLevel::SUCCESS, "new Test instance created",
+				   testTypeToString(instance->test_type));
 	}
 	return instance;
 }

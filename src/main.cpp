@@ -6,7 +6,7 @@
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
 #include <Preferences.h>
-#include <LittleFS.h>
+#include "SPIFFS.h"
 #include <Wire.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -26,8 +26,8 @@ using namespace Node_Core;
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
-SwitchTest* switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
-BackupTest* backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
+SwitchTest* switchTest = nullptr;
+BackupTest* backupTest = nullptr;
 
 volatile unsigned long lastMainsTriggerTime = 0;
 volatile unsigned long lastUPSTriggerTime = 0;
@@ -126,9 +126,9 @@ void modbusRTUTask(void* pvParameters)
 {
 	while(true)
 	{
-		logger.log(LogLevel::INFO, "Resuming modbus task");
+		logger.log(LogLevel::WARNING, "Resuming modbus task");
 		mb.task();
-		vTaskDelay(pdMS_TO_TICKS(500)); // Task delay
+		vTaskDelay(pdMS_TO_TICKS(100)); // Task delay
 	}
 	vTaskDelete(NULL);
 }
@@ -145,7 +145,7 @@ void setup()
 	BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
 	Serial.begin(115200);
 	// Initialize Serial for debugging
-	logger.init(&Serial, LogLevel::INFO, 10, true);
+	logger.init(&Serial, LogLevel::INFO, 10);
 	logger.log(LogLevel::INFO, "Serial started........");
 
 	if(mainLoss == NULL || upsGain == NULL || upsLoss == NULL)
@@ -180,47 +180,50 @@ void setup()
 	{
 		logger.log(LogLevel::ERROR, "TesterSetup instance creation failed");
 	}
-	logger.log(LogLevel::INFO, "getting manager instance");
-	Manager = TestManager::getInstance();
 
-	if(Manager)
-	{
-		logger.log(LogLevel::SUCCESS, "Manager instance created!");
-		Manager->init();
-	}
-	else
-	{
-		logger.log(LogLevel::ERROR, "Manager instance creation failed");
-	}
+	switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
+	backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
+	// logger.log(LogLevel::INFO, "getting manager instance");
+	// Manager = TestManager::getInstance();
 
-	if(Manager)
-	{
-		RequiredTest testlist[] = {
-			{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
-			{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
+	// if(Manager)
+	// {
+	// 	logger.log(LogLevel::SUCCESS, "Manager instance created!");
+	// 	Manager->init();
+	// }
+	// else
+	// {
+	// 	logger.log(LogLevel::ERROR, "Manager instance creation failed");
+	// }
 
-		};
-		logger.log(LogLevel::INFO, "adding Tests");
-		Manager->addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
-		logger.log(LogLevel::INFO, "changing states");
+	// if(Manager)
+	// {
+	// 	RequiredTest testlist[] = {
+	// 		{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
+	// 		{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
 
-		Manager->triggerEvent(Event::SELF_CHECK_OK);
-		vTaskDelay(pdTICKS_TO_MS(100));
-		Manager->triggerEvent(Event::SETTING_LOADED);
-		vTaskDelay(pdTICKS_TO_MS(100));
-		Manager->triggerEvent(Event::LOAD_BANK_CHECKED);
-		vTaskDelay(pdTICKS_TO_MS(100));
+	// 	};
+	// 	logger.log(LogLevel::INFO, "adding Tests");
+	// 	Manager->addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
+	// 	logger.log(LogLevel::INFO, "changing states");
 
-		xTaskCreatePinnedToCore(modbusRTUTask, "ModbusRTUTask", 10000, NULL, 1,
-								&modbusRTUTaskHandle, 0);
-	}
+	// 	Manager->triggerEvent(Event::SELF_CHECK_OK);
+	// 	vTaskDelay(pdTICKS_TO_MS(100));
+	// 	Manager->triggerEvent(Event::SETTING_LOADED);
+	// 	vTaskDelay(pdTICKS_TO_MS(100));
+	// 	Manager->triggerEvent(Event::LOAD_BANK_CHECKED);
+	// 	vTaskDelay(pdTICKS_TO_MS(100));
 
-	else
-	{
-		logger.log(LogLevel::ERROR, "Cant create manager instance");
-	}
+	xTaskCreatePinnedToCore(modbusRTUTask, "ModbusRTUTask", 10000, NULL, 2, &modbusRTUTaskHandle,
+							0);
 }
+
+// else
+// {
+// 	logger.log(LogLevel::ERROR, "Cant create manager instance");
+// }
+//}
 void loop()
 {
-	// The scheduler will handle tasks; loop should remain empty
+	vTaskDelete(NULL);
 }

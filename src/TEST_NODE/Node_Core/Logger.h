@@ -139,6 +139,8 @@ class Logger
 		}
 		outputStr += buffer;
 		outputStr += "\033[0m"; // Reset color
+		// outputStr += "\x1B[0m"; // Reset color2
+		//   outputStr += "\e[34m"; // Reset color3
 
 		if(_output)
 		{
@@ -367,15 +369,15 @@ class Logger
 									 "\033[38;5;94m[INFO] "; // Alternate between Blue
 															 // and Brown text
 			case LogLevel::WARNING:
-				return "\033[33m[WARNING] "; // Yellow text
+				return "\33[33m[WARNING] "; // Yellow text
 			case LogLevel::ERROR:
 				return "\033[31m[ERROR] "; // Red text
 			case LogLevel::SUCCESS:
 				return "\033[32m[SUCCESS] "; // Green text
 			case LogLevel::TEST:
-				return "\033[33m[TEST] "; // Cyan text
+				return "\033[36m[TEST] "; // cyan text
 			case LogLevel::INTR:
-				return "\033[31m[INTERUUPT] "; // Red text
+				return "\033[35m[INTERUUPT] "; // Magenta text
 			default:
 				return "\033[0m"; // Default to no color
 		}

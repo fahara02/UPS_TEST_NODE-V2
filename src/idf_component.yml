@@ -2,8 +2,8 @@ dependencies:
   # Required IDF version
   idf: ">=4.4"
 
-  esp_littlefs:
-    git: https://github.com/joltwallet/esp_littlefs.git
+  #esp_littlefs:
+   # git: https://github.com/joltwallet/esp_littlefs.git
 
 
   # nghttp: "^1.50.0"
