@@ -1,23 +1,33 @@
 #ifndef PAGE_BUILDER_H
 #define PAGE_BUILDER_H
 
+#include <pgmspace.h>
+#include <Update.h>
+#include <vector>
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
-#include <Update.h>
-#include "vector"
-
-#include "RawHTML.h"
 #include "Settings.h"
 #include "TestData.h"
 #include "UPSdebug.h"
 #include "TestSync.h"
 #include "TestManager.h"
 #include "UPSTesterSetup.h"
-#include <pgmspace.h>
 
+#include "Logger.h"
+#include "RawHTML.h"
+#include "RawCSS.h"
+#include "RawJSS.h"
+
+using namespace Node_Core;
+extern Logger& logger;
+
+constexpr size_t HEADER_HTML_LENGTH = sizeof(HEADER_HTM) - 1;
 constexpr size_t SIDEBAR_HTML_LENGTH = sizeof(SIDEBAR_HTML) - 1;
-
 constexpr size_t NAVBAR_HTML_LENGTH = sizeof(NAVBAR_HTML) - 1;
+constexpr size_t HEADER_TRAILER_HTML_LENGTH = sizeof(HEADER_TRAILER_HTML) - 1;
+constexpr size_t LAST_TRAILER_HTML_LENGTH = sizeof(LAST_TRAILER_HTML) - 1;
+constexpr size_t CSS_LENGTH = sizeof(STYLE_BLOCK_CSS) - 1;
+constexpr size_t JSS_LENGTH = sizeof(MAIN_SCRIPT_JSS) - 1;
 
 enum class MarginType
 {
@@ -50,16 +60,17 @@ class PageBuilder
 	PageBuilder(AsyncWebServer* server) : _server(server)
 	{
 	}
+
+	void setupPages(WiFiManager* wm, UPSTesterSetup* testSetup, TestManager* testManager,
+					TestSync* testSync, SetupUPSTest* allSetup, TestData* data);
 	const char* copyFromPROGMEM(const char copyFrom[], char sendTo[]);
 
-	void setupPages(WiFiManager* wm, TestManager* testManager, TestSync* testSync,
-					UPSTesterSetup* testSetup, SetupUPSTest* allSetup, TestData* data);
+	void sendHeader(AsyncResponseStream* response, const char* title);
 
-	void sendResponseHeader(AsyncResponseStream* response, const char* title,
-							bool inlineStyle = false);
-
-	void sendResponseTrailer(AsyncResponseStream* response);
+	void sendHeaderTrailer(AsyncResponseStream* response);
+	void sendPageTrailer(AsyncResponseStream* response);
 	void sendStyle(AsyncResponseStream* response);
+	void sendScript(AsyncResponseStream* response);
 
 	void sendButton(AsyncResponseStream* response, const char* title, const char* action,
 					const char* css = "");
@@ -79,15 +90,21 @@ class PageBuilder
 					  const std::vector<const char*>& options, const char* selected = nullptr);
 	void sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType);
 
-	void sendLogmonitor(AsyncResponseStream* response, Logger* logger);
-	void sendDashboard(AsyncResponseStream* response, Logger* logger,
+	void sendLogmonitor(AsyncResponseStream* response, Logger& logger);
+	void sendDashboard(AsyncResponseStream* response, Logger& logger,
 					   const char* classname = "content", const char* paragraph = "");
-	void sendNavbar(AsyncResponseStream* response, const char* title, const char* action,
-					const char* css, const char* routes[]);
+	void sendNavbar(AsyncResponseStream* response, const char* title = "", const char* routes[],
+					const char* btn1class = "button", const char* btn2class = "button",
+					const char* btn3class = "button");
 	void sendSidebar(AsyncResponseStream* response, const char* content = "");
 
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;
+
+	AsyncWebServer* serve()
+	{
+		return _server;
+	}
 
   private:
 	AsyncWebServer* _server;

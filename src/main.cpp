@@ -5,6 +5,7 @@
 #include <AsyncTCP.h>
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
+
 #include <Preferences.h>
 #include <LittleFS.h>
 #include <Wire.h>
@@ -18,7 +19,7 @@
 #include "UPSTest.h"
 #include "SwitchTest.h"
 #include "BackupTest.h"
-#include "UPSdebug.h"
+
 #include "PageBuilder.h"
 
 using namespace Node_Core;
@@ -71,6 +72,7 @@ EventGroupHandle_t eventGroupBackupTestData = NULL;
 
 SemaphoreHandle_t xSemaphore;
 AsyncWebServer webServer(80);
+
 WiFiManager wm;
 ModbusRTU mb;
 
@@ -210,6 +212,8 @@ void setup()
 
 	xTaskCreatePinnedToCore(modbusRTUTask, "ModbusRTUTask", 10000, NULL, 2, &modbusRTUTaskHandle,
 							0);
+
+	webServer.begin();
 }
 void loop()
 {

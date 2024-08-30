@@ -1,4 +1,52 @@
 #include "PageBuilder.h"
+
+#define ETAG "\"" __DATE__ "" __TIME__ "\""
+
+void PageBuilder::setupPages(WiFiManager* wm, UPSTesterSetup* testSetup, TestManager* testManager,
+							 TestSync* testSync, SetupUPSTest* allSetup, TestData* data)
+{
+	_server->on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
+		auto* response = request->beginResponseStream("text/html");
+		sendHeader(response, "UPS TESTING PANEL");
+		response->print("<style>");
+		sendStyle(response);
+		response->print("</style>");
+		sendHeaderTrailer(response);
+		const char* routes[] = ["DashBoard", "Settings", "Network", "Modbus", "Report"];
+		sendNavbar(response, "WebInterface", routes[]);
+		sendSidebar(response);
+		sendDashboard(response, logger);
+		sendScript(response);
+		sendPageTrailer(response);
+	});
+
+	_server->on("/reboot", HTTP_POST, [](AsyncWebServerRequest* request) {
+		request->redirect("/");
+	});
+
+	_server->on("/favicon.ico", [](AsyncWebServerRequest* request) {
+		request->send(204); // TODO add favicon
+	});
+	_server->on("/style.css", [](AsyncWebServerRequest* request) {
+		if(request->hasHeader("If-None-Match"))
+		{
+			auto header = request->getHeader("If-None-Match");
+			if(header->value() == String(ETAG))
+			{
+				request->send(304);
+				return;
+			}
+		}
+		auto* response = request->beginResponseStream("text/css");
+		sendStyle(response);
+		response->addHeader("ETag", ETAG);
+		request->send(response);
+	});
+	server->onNotFound([](AsyncWebServerRequest* request) {
+		request->send(404, "text/plain", "404");
+	});
+}
+
 const char* PageBuilder::copyFromPROGMEM(const char copyFrom[], char sendTo[])
 {
 	// Copy the string from PROGMEM to SRAM
@@ -7,35 +55,79 @@ const char* PageBuilder::copyFromPROGMEM(const char copyFrom[], char sendTo[])
 	return sendTo;
 }
 
-void PageBuilder::sendResponseHeader(AsyncResponseStream* response, const char* title,
-									 bool inlineStyle)
+void PageBuilder::sendHeader(AsyncResponseStream* response, const char* title)
 {
-	response->print("<!DOCTYPE html>"
-					"<html lang=\"en\" class=\"\">"
-					"<head>"
-					"<meta charset='utf-8'>"
-					"<meta name=\"viewport\" "
-					"content=\"width=device-width,initial-scale=1,user-scalable=no\"/>");
-	response->printf("<title>UPS Testing Panel - %s</title>", title);
-	if(inlineStyle)
-	{
-		response->print("<style>");
-		sendMinCss(response);
-		response->print("</style>");
-	}
-	else
-	{
-		response->print("<link rel=\"stylesheet\" href=\"style.css\">");
-	}
-	response->print("</head>"
-					"<body>"
-					"<h2>UPS Testing Panel</h2>");
-	response->printf("<h3>%s</h3>", title);
-	response->print("<div id=\"content\">");
+	char buffer[HEADER_HTML_LENGTH];
+	const char* headerHtml = copyFromPROGMEM(HEADER_HTML, buffer);
+	response->printf(headerhtml, title);
 }
-void PageBuilder::sendResponseTrailer(AsyncResponseStream* response)
+
+void sendStyle(AsyncResponseStream* response)
 {
-	response->print("</body></html>");
+	char buffer[CSS_LENGTH];
+	const char* CSS = copyFromPROGMEM(STYLE_BLOCK_CSS, buffer);
+	response->print(CSS);
+}
+void PageBuilder::sendHeaderTrailer(AsyncResponseStream* response)
+{
+	char buffer[HEADER_TRAILER_HTML_LENGTH];
+	const char* headerTrailerHtml = copyFromPROGMEM(HEADER_TRAILER_HTML, buffer);
+	response->print(headerTrailerHtml);
+}
+void PageBuilder::sendNavbar(AsyncResponseStream* response, const char* title = "",
+							 const char* routes[], const char* btn1class = "button",
+							 const char* btn2class = "button", const char* btn3class = "button")
+{
+	// Assuming routes array contains:
+	// [0] - Dashboard route
+	// [1] - Settings route
+	// [2] - Network route
+	// [3] - Modbus route
+	// [4] - Test Report route
+	char buffer[NAVBAR_HTML_LENGTH];
+	const char* navbarHtml = copyFromPROGMEM(NAVBAR_HTML, buffer);
+
+	response->printf(NAVBAR_HTML, title,
+					 routes[0], // Dashboard route
+					 routes[1], // Settings route
+					 routes[2], // Network route
+					 routes[3], // Modbus route
+					 routes[4], // Test Report route
+					 btn1class, // Action for Shutdown button
+					 btn2class, // CSS class for Shutdown button
+					 btn3class // Action for Restart button
+
+	);
+}
+void PageBuilder::sendSidebar(AsyncResponseStream* response, const char* content)
+{
+	char buffer[SIDEBAR_HTML_LENGTH];
+	const char* sidebarHtml = copyFromPROGMEM(SIDEBAR_HTML, buffer);
+	response->printf(sidebarHtml, content);
+}
+void PageBuilder::sendDashboard(AsyncResponseStream* response, Logger& logger,
+								const char* classname, const char* paragraph)
+{
+	response->printf("<div class=\"%s\">", classname);
+	response->print("<h1>Dashboard</h1>");
+	response->printf("<p>%s</p>", paragraph);
+
+	this->sendLogmonitor(response, logger);
+
+	response->print("</div>");
+}
+void sendScript(AsyncResponseStream* response)
+{
+	char buffer[JSS_LENGTH];
+	const char* JSS = copyFromPROGMEM(MAIN_SCRIPT_JSS, buffer);
+	response->print(CSS);
+}
+
+void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
+{
+	char buffer[LAST_TRAILER_HTML_LENGTH];
+	const char* pageTrailerHtml = copyFromPROGMEM(LAST_TRAILER_HTML, buffer);
+	response->print(pageTrailerHtml);
 }
 
 void PageBuilder::sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType)
@@ -120,19 +212,8 @@ void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, 
 					 "</tr>",
 					 name, value);
 }
-void PageBuilder::sendDashboard(AsyncResponseStream* response, Logger* logger,
-								const char* classname, const char* paragraph)
-{
-	response->printf("<div class=\"%s\">", classname);
-	response->print("<h1>Dashboard</h1>");
-	response->printf("<p>%s</p>", paragraph);
 
-	this->sendLogmonitor(response, logger);
-
-	response->print("</div>");
-}
-
-void PageBuilder::sendLogmonitor(AsyncResponseStream* response, Logger* logger)
+void PageBuilder::sendLogmonitor(AsyncResponseStream* response, Logger& logger)
 {
 	response->print("<div class=\"log-monitor\" id=\"logMonitor\">");
 
@@ -140,69 +221,7 @@ void PageBuilder::sendLogmonitor(AsyncResponseStream* response, Logger* logger)
 	response->print("<!-- UPS TESTING PANEL LOGS-->");
 
 	// Example: Sending some initial log messages
-	response->printf("<p>%s</p>", logger->getBufferedLogs().c_str());
+	response->printf("<p>%s</p>", logger.getBufferedLogs().c_str());
 
-	response->print("</div>");
-}
-void PageBuilder::sendNavbar(AsyncResponseStream* response, const char* title, const char* action,
-							 const char* css, const char* routes[])
-{
-	// Assuming routes array contains:
-	// [0] - Dashboard route
-	// [1] - Settings route
-	// [2] - Network route
-	// [3] - Modbus route
-	// [4] - Test Report route
-	char buffer[NAVBAR_HTML_LENGTH];
-	const char* navbarHtml = copyFromPROGMEM(NAVBAR_HTML, buffer);
-
-	response->printf(NAVBAR_HTML, title,
-					 routes[0], // Dashboard route
-					 routes[1], // Settings route
-					 routes[2], // Network route
-					 routes[3], // Modbus route
-					 routes[4], // Test Report route
-					 action, // Action for Shutdown button
-					 css, // CSS class for Shutdown button
-					 action, // Action for Restart button
-					 css // CSS class for Restart button
-	);
-}
-void PageBuilder::sendSidebar(AsyncResponseStream* response, const char* content)
-{
-	// Begin the sidebar HTML
-	char buffer[SIDEBAR_HTML_LENGTH];
-	const char* sidebarHtml = copyFromPROGMEM(SIDEBAR_HTML, buffer);
-	response->printf(sidebarHtml, content);
-
-	// Start, Stop, Pause buttons using sendButton
-	this->sendButton(response, "Start", "startTest()", "button");
-	this->sendButton(response, "Stop", "stopTest()", "button");
-	this->sendButton(response, "Pause", "pauseTest()", "button");
-
-	// Add Test dropdown using sendDropdown
-	std::vector<const char*> addTestOptions = {"Switch Test",	  "Backup Test",
-											   "Efficiency Test", "Input Voltage Test",
-											   "Waveform Test",	  "Tune PWM Test"};
-	this->sendDropdown(response, "Add Test:", addTestOptions, "1");
-
-	// Load Level dropdown using sendDropdown
-	std::vector<const char*> loadLevelOptions = {"0%", "25%", "50%", "75%", "100%"};
-	this->sendDropdown(response, "Load Level:", loadLevelOptions, "0");
-	this->sendMargin(response, 10, MarginType::Top);
-	// Add Test and Delete Test buttons using sendButton
-	this->sendButton(response, "Add Test", "addTest()", "button");
-	this->sendButton(response, "Delete Test", "deleteTest()", "button");
-	this->sendMargin(response, 10, MarginType::Top);
-	// Mode toggler using custom HTML
-	response->print("<div class=\"toggler\">");
-	response->print("<label for=\"mode\">Mode:</label>");
-	response->print("<input type=\"radio\" id=\"auto\" name=\"mode\" value=\"AUTO\" />");
-	response->print("<label for=\"auto\">Auto</label>");
-	response->print("<input type=\"radio\" id=\"manual\" name=\"mode\" value=\"MANUAL\" />");
-	response->print("<label for=\"manual\">Manual</label>");
-	response->print("</div>");
-
-	// Close the sidebar HTML
 	response->print("</div>");
 }

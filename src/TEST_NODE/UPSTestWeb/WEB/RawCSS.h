@@ -2,8 +2,7 @@
 #define RAW_CSS_H
 #include <pgmspace.h>
 const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
-   <style>
-      body {
+    body {
         font-family: Arial, sans-serif;
         background-color: #f0f0f0;
         margin: 0;
@@ -35,26 +34,21 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         position: fixed;
         top: 0;
         left: 0;
-        transition: width 0.3s;
+        transition: transform 0.3s ease;
+        transform: translateX(0);
         overflow: hidden;
       }
-
-      .resizer {
-        width: 10px;
-        height: 100%;
-        background-color: #aaa;
-        position: fixed;
-        left: 200px; /* Initial position right after the sidebar */
-        top: 0;
-        cursor: ew-resize; /* Left-right drag cursor */
+      .sidebar.hidden {
+        transform: translateX(-100%);
       }
-
       .content {
-        margin-left: 210px; /* Adjusted to match resizer position */
+        margin-left: 210px;
         padding: 20px;
-        transition: margin-left 0.3s;
+        transition: margin-left 0.3s ease;
       }
-
+      .content.full-width {
+        margin-left: 10px;
+      }
       .sidebar button {
         display: block;
         width: 100%;
@@ -68,7 +62,6 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
       .sidebar button:hover {
         background-color: red;
       }
-
       .dropdown {
         background-color: white;
         color: black;
@@ -85,6 +78,7 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         padding: 10px 20px;
         border: none;
         cursor: pointer;
+        margin-left: 10px;
       }
       .button:hover {
         background-color: blue;
