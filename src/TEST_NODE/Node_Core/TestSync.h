@@ -21,12 +21,13 @@ extern EventGroupHandle_t eventGroupUser;
 enum class UserCommand : EventBits_t
 {
 	NEW_TEST = (1 << 0),
-	TEST_DELETED = (1 << 1),
-	PROCEED = (1 << 2),
-	PAUSE = (1 << 3),
-	RESUME = (1 << 4),
-	AUTO = (1 << 5),
-	MANUAL = (1 << 6),
+	DELETE_TEST = (1 << 1),
+	PAUSE = (1 << 2),
+	RESUME = (1 << 3),
+	AUTO = (1 << 4),
+	MANUAL = (1 << 5),
+	START = (1 << 6),
+	STOP = (1 << 7)
 };
 
 class TestSync
@@ -80,18 +81,10 @@ class TestSync
 	// 				{
 	// 					// Process the JSON object
 	// 					parseTestJson(jsonObj);
-
-	// 					// Log the parsed data
-	// 					const char* testName = jsonObj["testName"];
-	// 					const char* loadLevel = jsonObj["loadLevel"];
-	// 					logger.log(LogLevel::SUCCESS, "Test Name: ", testName);
-	// 					logger.log(LogLevel::SUCCESS, "Load Level: ", loadLevel);
-	// 					logger.log(LogLevel::SUCCESS, "Primary parsing in test Sync");
 	// 				}
 	// 				else
 	// 				{
-	// 					logger.log(LogLevel::ERROR,
-	// 							   "Required fields missing in JSON: testName or loadLevel");
+	// 					logger.log(LogLevel::ERROR, "field missing:testName or loadLevel");
 	// 				}
 	// 			}
 	// 			else
@@ -145,29 +138,16 @@ class TestSync
 			// Validate required fields
 			if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
 			{
-				// Process the JSON object
-
-				// Log the parsed data
-				const char* testName = jsonObj["testName"];
-				const char* loadLevel = jsonObj["loadLevel"];
-				// logger.log(LogLevel::SUCCESS, "Test Name: ", testName);
-				// logger.log(LogLevel::SUCCESS, "Load Level: ", loadLevel);
-				Serial.print("testName");
-				Serial.println(testName);
-				Serial.print("LoadLevel");
-				Serial.println(loadLevel);
-				logger.log(LogLevel::SUCCESS, "Primary parsing in test Sync");
 				parseTestJson(jsonObj);
 			}
 			else
 			{
-				logger.log(LogLevel::ERROR,
-						   "Required fields missing in JSON: testName or loadLevel");
+				logger.log(LogLevel::ERROR, "Required fields missing : testName or loadLevel");
 			}
 		}
 		else
 		{
-			logger.log(LogLevel::ERROR, "Asunchandler lamda function not sending JsonObject!!!");
+			logger.log(LogLevel::ERROR, "UNKnown JSON format!!!");
 		}
 	}
 
@@ -200,34 +180,16 @@ class TestSync
 		logger.log(LogLevel::WARNING, "test %s will be stopped", testTypeToString(test));
 		vTaskDelay(pdMS_TO_TICKS(50));
 	};
-	void handleUserCommand(UserCommand command)
-	{
-		EventBits_t commandBits = static_cast<EventBits_t>(command);
-		xEventGroupSetBits(eventGroupTest, commandBits);
-		logger.log(LogLevel::INFO, "User command %d triggered", static_cast<int>(command));
-	}
-
-	void clearUserCommand(UserCommand command)
-	{
-		EventBits_t commandBits = static_cast<EventBits_t>(command);
-		xEventGroupClearBits(eventGroupTest, commandBits);
-		logger.log(LogLevel::INFO, "User command %d cleared", static_cast<int>(command));
-	}
 
 	void parseTestJson(JsonObject jsonObj)
 	{
 		bool isExistingTest = false;
-
-		// Extract testName and loadLevel as const char*
 		String testName = jsonObj["testName"];
 		String loadLevel = jsonObj["loadLevel"];
-
-		// Convert to enums using the updated functions
 		TestType testType = getTestTypeFromString(testName);
 		LoadPercentage loadPercentage = getLoadLevelFromString(loadLevel);
 
-		// Check for invalid enums and log accordingly
-		if(testType == static_cast<TestType>(0)) // Assuming 0 is an invalid TestType
+		if(testType == static_cast<TestType>(0))
 		{
 			logger.log(LogLevel::ERROR, "Unknown testName: ", testName);
 			return;
@@ -246,6 +208,7 @@ class TestSync
 			if(_testList[i].testType == testType)
 			{
 				isExistingTest = true;
+
 				_testList[i].loadLevel = loadPercentage;
 				_testList[i].isActive = true; // Mark as active
 
@@ -284,7 +247,6 @@ class TestSync
 	{
 		bool testDeleted = false;
 
-		// Loop through the test list and check for inactive tests
 		for(int i = 0; i < MAX_TEST; i++)
 		{
 			if(!_testList[i].isActive && _testList[i].testId != 0)
@@ -301,12 +263,50 @@ class TestSync
 
 		if(testDeleted)
 		{
-			handleUserCommand(UserCommand::TEST_DELETED);
+			handleUserCommand(UserCommand::DELETE_TEST);
 		}
-		else
+	}
+	void handleUserCommand(UserCommand command)
+	{
+		EventBits_t commandBits = static_cast<EventBits_t>(command);
+
+		// Clear opposite commands automatically
+		switch(command)
 		{
-			clearUserCommand(UserCommand::TEST_DELETED);
+			case UserCommand::NEW_TEST:
+				xEventGroupClearBits(eventGroupUser,
+									 static_cast<EventBits_t>(UserCommand::DELETE_TEST));
+				break;
+			case UserCommand::DELETE_TEST:
+				xEventGroupClearBits(eventGroupUser,
+									 static_cast<EventBits_t>(UserCommand::NEW_TEST));
+				break;
+			case UserCommand::PAUSE:
+				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::RESUME));
+				break;
+			case UserCommand::RESUME:
+				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::PAUSE));
+				break;
+			case UserCommand::AUTO:
+				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::MANUAL));
+				break;
+			case UserCommand::MANUAL:
+				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::AUTO));
+				break;
+			case UserCommand::START:
+				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::STOP));
+				break;
+			case UserCommand::STOP:
+				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::START));
+				break;
+			default:
+				// No need to clear anything for unknown commands
+				break;
 		}
+
+		// Set the current command
+		xEventGroupSetBits(eventGroupUser, commandBits);
+		logger.log(LogLevel::INFO, "User command %d triggered", static_cast<int>(command));
 	}
 
 	TestSync(const TestSync&) = delete;
