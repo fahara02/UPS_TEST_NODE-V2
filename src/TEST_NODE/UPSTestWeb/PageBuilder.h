@@ -62,7 +62,7 @@ class PageBuilder
 	PageBuilder(AsyncWebServer* server) : _server(server)
 	{
 	}
-	void setupPages();
+	void setupPages(TestSync& testSync);
 	const char* copyFromPROGMEM(const char copyFrom[], char sendTo[]);
 
 	void sendHeader(AsyncResponseStream* response);

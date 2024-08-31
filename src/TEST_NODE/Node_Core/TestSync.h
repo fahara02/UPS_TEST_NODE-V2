@@ -57,7 +57,77 @@ class TestSync
 		return _currentState.load();
 	}
 
-	void parseIncomingJson(JsonObject json)
+	// void parseIncomingJson(JsonVariant json)
+	// {
+	// 	// Reset all tests as inactive
+	// 	for(int i = 0; i < MAX_TEST; i++)
+	// 	{
+	// 		_testList[i].isActive = false;
+	// 	}
+
+	// 	// Check if JSON is an array
+	// 	if(json.is<JsonArray>())
+	// 	{
+	// 		JsonArray testArray = json.as<JsonArray>();
+	// 		for(JsonVariant value: testArray)
+	// 		{
+	// 			if(value.is<JsonObject>())
+	// 			{
+	// 				JsonObject jsonObj = value.as<JsonObject>();
+
+	// 				// Validate required fields
+	// 				if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
+	// 				{
+	// 					// Process the JSON object
+	// 					parseTestJson(jsonObj);
+
+	// 					// Log the parsed data
+	// 					const char* testName = jsonObj["testName"];
+	// 					const char* loadLevel = jsonObj["loadLevel"];
+	// 					logger.log(LogLevel::SUCCESS, "Test Name: ", testName);
+	// 					logger.log(LogLevel::SUCCESS, "Load Level: ", loadLevel);
+	// 					logger.log(LogLevel::SUCCESS, "Primary parsing in test Sync");
+	// 				}
+	// 				else
+	// 				{
+	// 					logger.log(LogLevel::ERROR,
+	// 							   "Required fields missing in JSON: testName or loadLevel");
+	// 				}
+	// 			}
+	// 			else
+	// 			{
+	// 				logger.log(LogLevel::ERROR, "Expected JSON objects in array.");
+	// 			}
+	// 		}
+
+	// 		// Check for any deleted tests
+	// 		checkForDeletedTests();
+	// 	}
+	// 	else if(json.is<JsonObject>())
+	// 	{
+	// 		JsonObject jsonObj = json.as<JsonObject>();
+	// 		if(jsonObj.containsKey("startCommand"))
+	// 		{
+	// 			// Handle startCommand if needed
+	// 			// parseStartJson(jsonObj);
+	// 		}
+	// 		else if(jsonObj.containsKey("stopCommand"))
+	// 		{
+	// 			// Handle stopCommand if needed
+	// 			// parseStopJson(jsonObj);
+	// 		}
+	// 		else
+	// 		{
+	// 			logger.log(LogLevel::ERROR, "Unknown JSON format");
+	// 		}
+	// 	}
+	// 	else
+	// 	{
+	// 		logger.log(LogLevel::ERROR, "Error: Invalid JSON format.");
+	// 	}
+	// }
+
+	void parseIncomingJson(JsonVariant json)
 	{
 		// Reset all tests as inactive
 		for(int i = 0; i < MAX_TEST; i++)
@@ -65,42 +135,33 @@ class TestSync
 			_testList[i].isActive = false;
 		}
 
-		if(json.containsKey("tests") && json["tests"].is<JsonArray>())
+		// If the incoming JSON is an array (already handled by the lambda function)
+		if(json.is<JsonObject>())
 		{
-			JsonArray testArray = json["tests"].as<JsonArray>();
-			for(JsonVariant value: testArray)
+			JsonObject jsonObj = json.as<JsonObject>();
+
+			// Validate required fields
+			if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
 			{
-				if(value.is<JsonObject>())
-				{
-					JsonObject jsonObj = value.as<JsonObject>();
+				// Process the JSON object
+				parseTestJson(jsonObj);
 
-					// Validate and delegate processing to parseTestJson
-					if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
-					{
-						parseTestJson(jsonObj);
-					}
-					else
-					{
-						logger.log(LogLevel::ERROR,
-								   "Required fields missing in JSON: testName or loadLevel");
-					}
-				}
+				// Log the parsed data
+				const char* testName = jsonObj["testName"];
+				const char* loadLevel = jsonObj["loadLevel"];
+				logger.log(LogLevel::SUCCESS, "Test Name: ", testName);
+				logger.log(LogLevel::SUCCESS, "Load Level: ", loadLevel);
+				logger.log(LogLevel::SUCCESS, "Primary parsing in test Sync");
 			}
-
-			// Check for any deleted tests
-			checkForDeletedTests();
-		}
-		else if(json.containsKey("startCommand"))
-		{
-			// parseStartJson(json);
-		}
-		else if(json.containsKey("stopCommand"))
-		{
-			// parseStopJson(json);
+			else
+			{
+				logger.log(LogLevel::ERROR,
+						   "Required fields missing in JSON: testName or loadLevel");
+			}
 		}
 		else
 		{
-			logger.log(LogLevel::ERROR, "Unknown JSON format");
+			logger.log(LogLevel::ERROR, "Asunchandler lamda function not sending JsonObject!!!");
 		}
 	}
 
@@ -108,10 +169,10 @@ class TestSync
 	TestSync() : _currentState{State::DEVICE_ON}
 	{
 	}
-	std::atomic<State> _currentState{State::DEVICE_ON};
 
 	static const EventBits_t ALL_TEST_BITS = (1 << MAX_TEST) - 1;
 	static const EventBits_t ALL_CMD_BITS = (1 << MAX_USER_COMMAND) - 1;
+	std::atomic<State> _currentState{State::DEVICE_ON};
 	RequiredTest _testList[MAX_TEST];
 
 	void resetAllBits()
@@ -155,18 +216,23 @@ class TestSync
 		const char* testName = jsonObj["testName"];
 		const char* loadLevel = jsonObj["loadLevel"];
 
+		// Log the extracted values
+		logger.log(LogLevel::INFO, "Parsing Test: ", testName);
+		logger.log(LogLevel::INFO, "Parsing Load Level: ", loadLevel);
+
 		// Convert to enums using the updated functions
 		TestType testType = getTestTypeFromString(testName);
 		LoadPercentage loadPercentage = getLoadLevelFromString(loadLevel);
 
-		// Check for invalid enums
-		if(testType == static_cast<TestType>(0))
+		// Check for invalid enums and log accordingly
+		if(testType == static_cast<TestType>(0)) // Assuming 0 is an invalid TestType
 		{
 			logger.log(LogLevel::ERROR, "Unknown testName: ", testName);
 			return;
 		}
 
-		if(loadPercentage == static_cast<LoadPercentage>(-1))
+		if(loadPercentage ==
+		   static_cast<LoadPercentage>(-1)) // Assuming -1 is an invalid LoadPercentage
 		{
 			logger.log(LogLevel::ERROR, "Invalid loadLevel: ", loadLevel);
 			return;
@@ -180,6 +246,7 @@ class TestSync
 				isExistingTest = true;
 				_testList[i].loadLevel = loadPercentage;
 				_testList[i].isActive = true; // Mark as active
+
 				break;
 			}
 		}
@@ -196,6 +263,11 @@ class TestSync
 					_testList[i].testType = testType;
 					_testList[i].loadLevel = loadPercentage;
 					_testList[i].isActive = true;
+					logger.log(LogLevel::SUCCESS, "Received new test requirement");
+					logger.log(LogLevel::INFO,
+							   "TestName:", testTypeToString(_testList[i].testType));
+					logger.log(LogLevel::INFO, "LoadLevel percent:",
+							   loadPercentageToString(_testList[i].loadLevel));
 
 					handleUserCommand(UserCommand::NEW_TEST); // Trigger NEW_TEST command
 					return; // Exit after adding the new test
@@ -216,8 +288,10 @@ class TestSync
 			if(!_testList[i].isActive && _testList[i].testId != 0)
 			{
 				// Clear the test entry
-				Serial.printf("Removing Test %d: Type = %s\n", _testList[i].testId,
-							  testTypeToString(_testList[i].testType));
+				logger.log(LogLevel::WARNING, "Removing test requirement");
+				logger.log(LogLevel::INFO, "TestName:", testTypeToString(_testList[i].testType));
+				logger.log(LogLevel::INFO,
+						   "LoadLevel percent:", loadPercentageToString(_testList[i].loadLevel));
 				_testList[i] = {}; // Reset the test entry
 				testDeleted = true;
 			}

@@ -2,9 +2,11 @@
 #include "AsyncJson.h"
 #include "ArduinoJson.h"
 
+extern TestSync& SyncTest;
+
 #define ETAG "\"" __DATE__ " " __TIME__ "\""
 
-void PageBuilder::setupPages()
+void PageBuilder::setupPages(TestSync& testSync)
 {
 	// Handle the main page
 	_server->on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
@@ -35,54 +37,57 @@ void PageBuilder::setupPages()
 		}
 	});
 
-	// Handle POST request for updating test data
 	auto* testDataHandler = new AsyncCallbackJsonWebHandler(
-		"/updateTestData", [](AsyncWebServerRequest* request, JsonVariant& json) {
-			// Print the received JSON to the serial monitor for debugging
-			Serial.println("Received JSON Data:");
-			serializeJsonPretty(json, Serial);
+		"/updateTestData", [this, &testSync](AsyncWebServerRequest* request, JsonVariant& json) {
+			logger.log(LogLevel::SUCCESS, "Received Json HTTP_POST");
+
+			// Serialize and log the received JSON data
+			String jsonString;
+			serializeJsonPretty(json, jsonString);
+			logger.log(LogLevel::SUCCESS, jsonString.c_str());
 
 			// Check if the JSON data is an array
 			if(json.is<JsonArray>())
 			{
 				JsonArray jsonArray = json.as<JsonArray>();
 
-				// Iterate through the array and process each JSON object
+				// Process each JSON object in the array
 				for(JsonVariant value: jsonArray)
 				{
 					if(value.is<JsonObject>())
 					{
 						JsonObject jsonObj = value.as<JsonObject>();
 
-						// Validate and process the expected fields
+						// Validate required fields
 						if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
 						{
 							const char* testName = jsonObj["testName"];
 							const char* loadLevel = jsonObj["loadLevel"];
 
-							Serial.print("testName: ");
-							Serial.println(testName);
-							Serial.print("loadLevel: ");
-							Serial.println(loadLevel);
+							logger.log(LogLevel::SUCCESS, "Test Name: ", testName);
+							logger.log(LogLevel::SUCCESS, "Load Level: ", loadLevel);
+							logger.log(LogLevel::SUCCESS, "Initial parsing success");
 
-							// Optionally call parseTestJson(jsonObj) here if you want to process
-							// the test immediately
+							// Process the JSON object
+							SyncTest.parseIncomingJson(jsonObj);
 						}
 						else
 						{
-							Serial.println("Error: Required fields missing in JSON.");
+							logger.log(LogLevel::ERROR,
+									   "Error: Required fields missing in JSON object.");
 						}
 					}
 					else
 					{
-						Serial.println("Error: Expected JSON objects in array.");
+						logger.log(LogLevel::ERROR, "Error: Expected JSON object in array.");
 					}
 				}
 				request->send(200, "application/json", "{\"status\":\"success\"}");
 			}
 			else
 			{
-				Serial.println("Error: Invalid JSON format.");
+				logger.log(LogLevel::ERROR, "Error: Invalid JSON format, expected an array.");
+
 				request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
 			}
 		});

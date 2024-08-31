@@ -152,13 +152,10 @@ void setup()
 		// {
 		ESP.restart();
 
-	PageBuilder builder(&server);
-	builder.setupPages();
-
 	// Initialize Serial for debugging
 	logger.init(&Serial, LogLevel::INFO, 40);
 	logger.log(LogLevel::INFO, "Serial started........");
-	server.begin();
+
 	logger.log(LogLevel::INFO, "creating semaphores..");
 	mainLoss = xSemaphoreCreateBinary();
 	upsGain = xSemaphoreCreateBinary();
@@ -198,6 +195,10 @@ void setup()
 	vTaskDelay(pdTICKS_TO_MS(100));
 	Manager.triggerEvent(Event::LOAD_BANK_CHECKED);
 	vTaskDelay(pdTICKS_TO_MS(100));
+
+	PageBuilder builder(&server);
+	builder.setupPages(SyncTest);
+	server.begin();
 }
 void loop()
 {
