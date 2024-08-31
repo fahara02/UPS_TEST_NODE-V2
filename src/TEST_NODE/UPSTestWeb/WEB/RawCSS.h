@@ -41,7 +41,7 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
     }
     .sidebar {
         width: 220px;
-        background-color: #333;
+        background-color: #2c3e50; /* Darker blue-gray for sidebar */
         color: white;
         padding: 20px;
         position: fixed;
@@ -50,9 +50,52 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         height: 100%;
         transition: transform 0.3s ease;
         transform: translateX(0);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
     }
     .sidebar.hidden {
         transform: translateX(-100%);
+    }
+    .sidebar button,
+    .sidebar label,
+    .sidebar select,
+    .sidebar p {
+        color: white;
+        background-color: #34495e; /* Dark blue for sidebar elements */
+        border: none;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 10px;
+        width: 100%;
+    }
+    .sidebar button:hover,
+    .sidebar select:hover {
+        background-color: #3b5998; /* Lighter blue on hover */
+    }
+    .sidebar select {
+        width: 100%;
+        padding: 8px;
+        border-radius: 5px;
+    }
+    .dropdown {
+        margin-bottom: 10px;
+    }
+    .dropdown label {
+        margin-bottom: 5px; /* Small margin between label and select */
+        display: block;
+    }
+    .dropdown:first-of-type {
+        margin-top: 10px; /* Margin between the first dropdown and the element above it */
+    }
+    .toggler {
+        margin-bottom: 10px;
+    }
+    .toggler label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    .toggler input[type="radio"] {
+        margin-right: 10px;
     }
     .container {
         display: flex;
@@ -61,6 +104,9 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         margin: 30px;
         margin-left: 250px;
         transition: margin-left 0.3s ease;
+    }
+     .sidebar.hidden {
+        transform: translateX(-100%);
     }
     .sidebar.hidden ~ .container {
         margin-left: 50px;

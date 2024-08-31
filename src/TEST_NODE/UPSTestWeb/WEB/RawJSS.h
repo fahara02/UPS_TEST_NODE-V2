@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const sidebar = document.getElementById('sidebar');
     const content = document.getElementById('content');
     const toggleButton = document.getElementById('toggleSidebar');
+ 
 
     if (toggleButton && sidebar && content) {
         toggleButton.addEventListener('click', () => {

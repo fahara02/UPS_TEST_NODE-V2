@@ -155,7 +155,7 @@ void setup()
 	builder.setupPages();
 
 	// Initialize Serial for debugging
-	logger.init(&Serial, LogLevel::INFO, 15);
+	logger.init(&Serial, LogLevel::INFO, 40);
 	logger.log(LogLevel::INFO, "Serial started........");
 	server.begin();
 	logger.log(LogLevel::INFO, "creating semaphores..");

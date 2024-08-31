@@ -20,9 +20,12 @@ const char HEADER_TRAILER_HTML[] PROGMEM = R"rawliteral(
 
 // Navbar HTML
 const char NAVBAR_HTML[] PROGMEM = R"rawliteral(
-<header style="display: flex; align-items: center; padding: 10px; background-color: #333; color: white;">
-    <img src="/Logo-Full.svg" alt="Logo" style="height: 50px; margin-right: 20px;">
-    <h1 style="margin: 0;">"%s"</h1>
+<header style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #333; color: white;">
+    <div style="display: flex; align-items: center;">
+        <img src="/Logo-Full.svg" alt="Logo" style="height: 50px; margin-right: 20px;">
+    </div>
+    <h1 style="margin: 0; flex-grow: 1; text-align: center;">%s</h1>
+    <div style="width: 70px;"></div> 
 </header>
 <div class="navbar">
     <div class="navbar-title">WebInterface</div>
@@ -42,12 +45,12 @@ const char NAVBAR_HTML[] PROGMEM = R"rawliteral(
 // Sidebar HTML
 const char SIDEBAR_HTML[] PROGMEM = R"rawliteral(
 <div class="sidebar" id="sidebar">
-    <p>Sidebar content here</p>
+    <p>Test Commands</p>
     <button onclick="startTest()">Start</button>
     <button onclick="stopTest()">Stop</button>
     <button onclick="pauseTest()">Pause</button>
     <div class="dropdown">
-        <label for="addTest">Add Test:</label>
+        <label for="addTest">UPS Tests:</label>
         <select id="addTest">
             <option value="1">Switch Test</option>
             <option value="2">Backup Test</option>

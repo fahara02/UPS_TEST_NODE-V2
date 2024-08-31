@@ -304,7 +304,7 @@ class Logger
 	Print* _output;
 	LogLevel _minLevel; // Minimum log level
 	size_t _bufferSize;
-	static const size_t BUFFER_SIZE = 10;
+	static const size_t BUFFER_SIZE = 40;
 	bool _timestampsEnabled;
 	bool _eepromEnabled; // EEPROM storage flag
 	std::deque<String> _logBuffer;
@@ -377,7 +377,7 @@ class Logger
 			_logBuffer.push_back(strippedLog); // Add the new log entry
 
 			// Clear content after 15 logs
-			if(_logBuffer.size() == 15)
+			if(_logBuffer.size() == BUFFER_SIZE)
 			{
 				_logBuffer.clear(); // Clear the buffer
 				Logger::getInstance()
