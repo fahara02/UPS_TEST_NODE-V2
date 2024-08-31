@@ -57,10 +57,16 @@ void PageBuilder::setupPages()
 						// Validate and process the expected fields
 						if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
 						{
+							const char* testName = jsonObj["testName"];
+							const char* loadLevel = jsonObj["loadLevel"];
+
 							Serial.print("testName: ");
-							Serial.println(jsonObj["testName"].as<String>());
+							Serial.println(testName);
 							Serial.print("loadLevel: ");
-							Serial.println(jsonObj["loadLevel"].as<String>());
+							Serial.println(loadLevel);
+
+							// Optionally call parseTestJson(jsonObj) here if you want to process
+							// the test immediately
 						}
 						else
 						{
@@ -90,8 +96,11 @@ void PageBuilder::setupPages()
 			return;
 		}
 
-		String status = request->getParam("body", true)->value();
-		request->send(200, "text/plain", "Status received: " + status);
+		const char* status = request->getParam("body", true)->value().c_str();
+		String response = "Status received: ";
+		response += status;
+
+		request->send(200, "text/plain", response);
 	});
 
 	// Handle 404 errors

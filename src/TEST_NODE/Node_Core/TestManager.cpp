@@ -95,9 +95,9 @@ void TestManager::addTests(RequiredTest testList[], int testNum)
 		_testList[_numTest].testRequired = testList[i];
 		_testList[_numTest].testStatus.managerStatus = TestManagerStatus::PENDING;
 		_testList[_numTest].testStatus.operatorStatus = TestOperatorStatus::NOT_STARTED;
-		logger.log(LogLevel::SUCCESS, "Added test", testTypeToString(testList[i].testtype));
-		logger.log(LogLevel::INFO, "Test No: ", testList[i].TestNo);
-		logger.log(LogLevel::INFO, "Load Level: ", loadPercentageToString(testList[i].loadlevel));
+		logger.log(LogLevel::SUCCESS, "Added test", testTypeToString(testList[i].testType));
+		logger.log(LogLevel::INFO, "Test No: ", testList[i].testId);
+		logger.log(LogLevel::INFO, "Load Level: ", loadPercentageToString(testList[i].loadLevel));
 		_numTest++;
 	}
 }
@@ -231,7 +231,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 			{
 				managerState = instance.loadState();
 
-				TestType testType = instance._testList[i].testRequired.testtype;
+				TestType testType = instance._testList[i].testRequired.testType;
 				bool success = false;
 
 				if(testType == TestType::SwitchTest)
@@ -414,8 +414,8 @@ void TestManager::configureTest(LoadPercentage load)
 
 void TestManager::logPendingTest(const UPSTestRun& test)
 {
-	LoadPercentage load = test.testRequired.loadlevel;
-	TestType type = test.testRequired.testtype;
+	LoadPercentage load = test.testRequired.loadLevel;
+	TestType type = test.testRequired.testType;
 
 	logger.log(LogLevel::INFO, "Pending Test Load level: %s", loadPercentageToString(load));
 	logger.log(LogLevel::INFO, "Pending Test name: %s", testTypeToString(type));
@@ -445,14 +445,14 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 	{
 		TestPriority = 3;
 		logger.log(LogLevel::INFO, "Manager Task under test start phase");
-		LoadPercentage load = instance._testList[i].testRequired.loadlevel;
+		LoadPercentage load = instance._testList[i].testRequired.loadLevel;
 		instance.configureTest(load);
 		testInstance.logTaskState(LogLevel::INFO);
 		// TaskHandle_t taskHandle = testInstance->getTaskHandle();
 		testInstance.setTaskPriority(TestPriority);
 
 		logger.log(LogLevel::INFO, "Starting %s...", testInstance.testTypeName());
-		SyncTest.startTest(testInstance.getTestType());
+		// SyncTest.startTest(testInstance.getTestType());
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::TEST_IN_PROGRESS)
@@ -486,7 +486,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		if(dataBuff && xQueueReceive(dataQueue, dataBuff, 1000) == pdTRUE)
 		{
 			logger.log(LogLevel::INFO, "Stopping SwitchTest...");
-			SyncTest.stopTest(testInstance.getTestType());
+			// SyncTest.stopTest(testInstance.getTestType());
 			instance._testList[i].testStatus.managerStatus = TestManagerStatus::DONE;
 			instance._testList[i].testStatus.operatorStatus = TestOperatorStatus::SUCCESS;
 
@@ -500,7 +500,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		else
 		{
 			logger.log(LogLevel::ERROR, "Receive Test data timeout");
-			SyncTest.stopTest(testInstance.getTestType());
+			//	SyncTest.stopTest(testInstance.getTestType());
 		}
 	}
 

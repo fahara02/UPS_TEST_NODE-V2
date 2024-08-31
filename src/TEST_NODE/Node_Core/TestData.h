@@ -1,6 +1,23 @@
 #ifndef TEST_DATA_H
 #define TEST_DATA_H
+
 #include <stdint.h>
+#include <cctype>
+
+static int caseInsensitiveCompare(const char* str1, const char* str2)
+{
+	while(*str1 && *str2)
+	{
+		if(tolower(*str1) != tolower(*str2))
+		{
+			return *str1 - *str2;
+		}
+		str1++;
+		str2++;
+	}
+	return *str1 - *str2;
+}
+
 enum TestResult
 {
 	TEST_FAILED = 0,
@@ -55,17 +72,17 @@ struct TestStatus
 // for outside use of  the class
 struct RequiredTest
 {
-	int TestNo; // Unique test number
-	TestType testtype;
-	LoadPercentage loadlevel;
-	bool addTest = true;
+	int testId; // Unique test number
+	TestType testType;
+	LoadPercentage loadLevel;
+	bool isActive = false;
 	RequiredTest() :
-		TestNo(0), testtype(TestType::SwitchTest), loadlevel(LoadPercentage::LOAD_25P),
-		addTest(true)
+		testId(0), testType(TestType::SwitchTest), loadLevel(LoadPercentage::LOAD_25P),
+		isActive(true)
 	{
 	}
-	RequiredTest(int testNo, TestType type, LoadPercentage level, bool add) :
-		TestNo(testNo), testtype(type), loadlevel(level), addTest(add)
+	RequiredTest(int Id, TestType type, LoadPercentage level, bool active) :
+		testId(Id), testType(type), loadLevel(level), isActive(active)
 	{
 	}
 };
@@ -183,6 +200,40 @@ static const char* loadPercentageToString(LoadPercentage load)
 		default:
 			return "Unknown";
 	}
+}
+
+static TestType getTestTypeFromString(const char* testName)
+{
+	if(caseInsensitiveCompare(testName, "SwitchTest") == 0)
+		return TestType::SwitchTest;
+	else if(caseInsensitiveCompare(testName, "BackupTest") == 0)
+		return TestType::BackupTest;
+	else if(caseInsensitiveCompare(testName, "EfficiencyTest") == 0)
+		return TestType::EfficiencyTest;
+	else if(caseInsensitiveCompare(testName, "InputVoltageTest") == 0)
+		return TestType::InputVoltageTest;
+	else if(caseInsensitiveCompare(testName, "WaveformTest") == 0)
+		return TestType::WaveformTest;
+	else if(caseInsensitiveCompare(testName, "TunePWMTest") == 0)
+		return TestType::TunePWMTest;
+
+	return static_cast<TestType>(0);
+}
+
+static LoadPercentage getLoadLevelFromString(const char* loadLevel)
+{
+	if(caseInsensitiveCompare(loadLevel, "0") == 0)
+		return LoadPercentage::LOAD_0P;
+	else if(caseInsensitiveCompare(loadLevel, "25") == 0)
+		return LoadPercentage::LOAD_25P;
+	else if(caseInsensitiveCompare(loadLevel, "50") == 0)
+		return LoadPercentage::LOAD_50P;
+	else if(caseInsensitiveCompare(loadLevel, "75") == 0)
+		return LoadPercentage::LOAD_75P;
+	else if(caseInsensitiveCompare(loadLevel, "100") == 0)
+		return LoadPercentage::LOAD_100P;
+
+	return static_cast<LoadPercentage>(-1); // -1 indicates an invalid load level
 }
 
 #endif
