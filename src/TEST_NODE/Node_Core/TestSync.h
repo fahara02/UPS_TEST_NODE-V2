@@ -70,6 +70,7 @@ class TestSync
 	void parseIncomingJson(JsonVariant json);
 	void handleUserCommand(UserCommand command);
 	void handleSyncCommand(SyncCommand command);
+	void handlelocalEvent(Event event);
 
   private:
 	TestSync();

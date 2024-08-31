@@ -180,9 +180,11 @@ void TestSync::handleUserCommand(UserCommand command)
 			break;
 		case UserCommand::PAUSE:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::RESUME));
+			instance.reportEvent(Event::USER_RESUME);
 			break;
 		case UserCommand::RESUME:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::PAUSE));
+			instance.reportEvent(Event::USER_PAUSED);
 			break;
 		case UserCommand::AUTO:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::MANUAL));
@@ -276,7 +278,6 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 		{
 			instance.refreshState();
 			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
-			instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
 			instance.acknowledgeCMD();
 		}
 		else if((allCMD & cmdManual) != 0)
@@ -288,7 +289,7 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 		else if((allCMD & cmdStart) != 0)
 		{
 			instance.refreshState();
-			// have to link to manager
+			instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
 			instance.acknowledgeCMD();
 		}
 		else if((allCMD & cmdStop) != 0)
@@ -296,6 +297,20 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			instance.refreshState();
 			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
 			instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
+			instance.acknowledgeCMD();
+		}
+		else if((allCMD & cmdPause) != 0)
+		{
+			instance.refreshState();
+			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
+			instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
+			instance.acknowledgeCMD();
+		}
+		else if((allCMD & cmdResume) != 0)
+		{
+			instance.refreshState();
+			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
+			instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
 			instance.acknowledgeCMD();
 		}
 		vTaskDelay(pdMS_TO_TICKS(200));
