@@ -1,6 +1,7 @@
 #ifndef RAW_CSS_H
 #define RAW_CSS_H
 #include <pgmspace.h>
+
 const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
    <style>
     body {
@@ -48,12 +49,15 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         top: 0;
         left: 0;
         height: 100%;
-        transition: transform 0.3s ease;
+        transition: transform 0.3s ease, visibility 0.3s ease;
         transform: translateX(0);
+        visibility: visible;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden; /* Prevent content overflow */
     }
     .sidebar.hidden {
         transform: translateX(-100%);
+        visibility: hidden; /* Completely hide the sidebar when it's off-screen */
     }
     .sidebar button,
     .sidebar label,
@@ -87,7 +91,7 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         margin-top: 10px; /* Margin between the first dropdown and the element above it */
     }
     .toggler {
-        margin-bottom: 10px;
+        margin-bottom: 15px; /* Add margin between toggler groups */
     }
     .toggler label {
         display: block;
@@ -104,9 +108,6 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         margin: 30px;
         margin-left: 250px;
         transition: margin-left 0.3s ease;
-    }
-     .sidebar.hidden {
-        transform: translateX(-100%);
     }
     .sidebar.hidden ~ .container {
         margin-left: 50px;

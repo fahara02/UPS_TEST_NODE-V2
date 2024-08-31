@@ -182,13 +182,13 @@ void setup()
 	logger.log(LogLevel::INFO, "getting manager init");
 	Manager.init();
 
-	RequiredTest testlist[] = {
-		{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
-		{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
+	// RequiredTest testlist[] = {
+	// 	{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
+	// 	{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
 
-	};
-	logger.log(LogLevel::INFO, "adding Tests");
-	Manager.addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
+	// };
+	// logger.log(LogLevel::INFO, "adding Tests");
+	// Manager.addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
 	logger.log(LogLevel::INFO, "changing states");
 
 	Manager.triggerEvent(Event::SELF_CHECK_OK);

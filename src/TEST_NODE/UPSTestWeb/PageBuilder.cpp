@@ -33,6 +33,28 @@ void PageBuilder::setupPages()
 		}
 	});
 
+	_server->on("/updateTestData", HTTP_POST, [logger](AsyncWebServerRequest* request) {
+		String json;
+		if(request->hasParam("body", true))
+		{
+			json = request->getParam("body", true)->value();
+		}
+
+		logger.log(LogLevel::SUCCESS, "Received New Test: ", json);
+		request->send(200, "text/plain", "New Test received");
+	});
+
+	// Handle POST request to update status
+	_server->on("/updateStatus", HTTP_POST, [logger](AsyncWebServerRequest* request) {
+		String status;
+		if(request->hasParam("body", true))
+		{
+			status = request->getParam("body", true)->value();
+		}
+		logger.log(LogLevel::SUCCESS, "Received Status: ", status);
+		request->send(200, "text/plain", "Status received");
+	});
+
 	_server->onNotFound([](AsyncWebServerRequest* request) {
 		request->send(404, "text/plain", "404");
 	});
@@ -92,17 +114,7 @@ void PageBuilder::sendSidebar(AsyncResponseStream* response, const char* content
 	const char* sidebarHtml = copyFromPROGMEM(SIDEBAR_HTML, buffer);
 	response->printf(sidebarHtml, content);
 }
-void PageBuilder::sendLog(AsyncResponseStream* response, Logger& logger, const char* classname,
-						  const char* paragraph)
-{
-	response->printf("<div class=\"%s\">", classname);
-	response->print("<h1>Dashboard</h1>");
-	response->printf("<p>%s</p>", paragraph);
 
-	this->sendLogmonitor(response, logger);
-
-	response->print("</div>");
-}
 void PageBuilder::sendScript(AsyncResponseStream* response)
 {
 	char buffer[JSS_LENGTH];
@@ -200,18 +212,6 @@ void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, 
 					 name, value);
 }
 
-void PageBuilder::sendLogmonitor(AsyncResponseStream* response, Logger& logger)
-{
-	response->print("<div class=\"log-monitor\" id=\"logMonitor\">");
-
-	// Optionally, you can inject initial log data here
-	response->print("<!-- UPS TESTING PANEL LOGS-->");
-
-	// Example: Sending some initial log messages
-	response->printf("<p>%s</p>", logger.getBufferedLogs().c_str());
-
-	response->print("</div>");
-}
 
 void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
 {

@@ -91,9 +91,6 @@ class PageBuilder
 					  const std::vector<const char*>& options, const char* selected = nullptr);
 	void sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType);
 
-	void sendLogmonitor(AsyncResponseStream* response, Logger& logger);
-	void sendLog(AsyncResponseStream* response, Logger& logger, const char* classname = "content",
-				 const char* paragraph = "");
 	void sendNavbar(AsyncResponseStream* response, const char* title, const char* routes[],
 					const char* btn1class = "button", const char* btn2class = "button",
 					const char* btn3class = "button");
