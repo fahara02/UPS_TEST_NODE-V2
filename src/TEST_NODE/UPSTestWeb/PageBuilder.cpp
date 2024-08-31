@@ -219,9 +219,9 @@ void PageBuilder::sendMainContent(AsyncResponseStream* response, const char* con
 	String logs = logger.getBufferedLogs();
 	if(logs.length() > 0)
 	{
-		response->print("<p style=\"color:green;\" id=\"logs\">");
+		response->print("<pre style=\"color:green;\" id=\"logs\">");
 		response->printf("%s", logs.c_str());
-		response->print("</p>");
+		response->print("</pre>");
 	}
 	else
 	{
@@ -234,7 +234,7 @@ void PageBuilder::sendMainContent(AsyncResponseStream* response, const char* con
 	response->print(R"(<script>
         function refreshLogs() {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/log', true); // Replace '/get-logs' with your actual log URL
+            xhr.open('GET', '/log', true);
             xhr.onload = function() {
                 if (xhr.status === 200) {
                     document.getElementById('logs').innerHTML = xhr.responseText;
@@ -242,7 +242,7 @@ void PageBuilder::sendMainContent(AsyncResponseStream* response, const char* con
             };
             xhr.send();
         }
-        setInterval(refreshLogs, 2000); // Refresh every 2 seconds
+        setInterval(refreshLogs, 2000);
     </script>)");
 
 	char buffer[CONTENT_HTML_LENGTH];
