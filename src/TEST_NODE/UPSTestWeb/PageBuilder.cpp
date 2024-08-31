@@ -257,6 +257,6 @@ void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* con
     </script>)");
 
 	char buffer[CONTENT_HTML_LENGTH];
-	const char* contentHtml = copyFromPROGMEM(USER_COMMAND_HTML, buffer);
+	const char* contentHtml = copyFromPROGMEM(USER_COMMAND_AND_LOG_HTML, buffer);
 	response->print(contentHtml);
 }

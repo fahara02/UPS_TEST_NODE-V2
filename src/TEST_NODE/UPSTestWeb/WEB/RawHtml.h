@@ -91,12 +91,6 @@ const char USER_COMMAND_AND_LOG_HTML[] PROGMEM = R"rawliteral(
 </div>
 )rawliteral";
 
-// Main Content and Footer HTML
-const char USER_COMMAND_HTML[] PROGMEM = R"rawliteral(
-<pre id="testCommand"></pre>
-</body>
-</html>
-)rawliteral";
 const char LAST_TRAILER_HTML[] PROGMEM = R"rawliteral(
    
   </body>
