@@ -6,7 +6,7 @@ extern TestSync& SyncTest;
 
 #define ETAG "\"" __DATE__ " " __TIME__ "\""
 
-void PageBuilder::setupPages(TestSync& testSync)
+void PageBuilder::setupPages(TestSync& syncTest)
 {
 	// Handle the main page
 	_server->on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
@@ -37,57 +37,49 @@ void PageBuilder::setupPages(TestSync& testSync)
 		}
 	});
 
+	// Handle POST request for updating test data
 	auto* testDataHandler = new AsyncCallbackJsonWebHandler(
-		"/updateTestData", [this, &testSync](AsyncWebServerRequest* request, JsonVariant& json) {
-			logger.log(LogLevel::SUCCESS, "Received Json HTTP_POST");
-
-			// Serialize and log the received JSON data
-			String jsonString;
-			serializeJsonPretty(json, jsonString);
-			logger.log(LogLevel::SUCCESS, jsonString.c_str());
+		"/updateTestData", [](AsyncWebServerRequest* request, JsonVariant& json) {
+			// Print the received JSON to the serial monitor for debugging
+			Serial.println("Received JSON Data:");
+			serializeJsonPretty(json, Serial);
 
 			// Check if the JSON data is an array
 			if(json.is<JsonArray>())
 			{
 				JsonArray jsonArray = json.as<JsonArray>();
 
-				// Process each JSON object in the array
+				// Iterate through the array and process each JSON object
 				for(JsonVariant value: jsonArray)
 				{
 					if(value.is<JsonObject>())
 					{
 						JsonObject jsonObj = value.as<JsonObject>();
 
-						// Validate required fields
+						// Validate and process the expected fields
 						if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
 						{
-							const char* testName = jsonObj["testName"];
-							const char* loadLevel = jsonObj["loadLevel"];
-
-							logger.log(LogLevel::SUCCESS, "Test Name: ", testName);
-							logger.log(LogLevel::SUCCESS, "Load Level: ", loadLevel);
-							logger.log(LogLevel::SUCCESS, "Initial parsing success");
-
-							// Process the JSON object
+							Serial.print("testName: ");
+							Serial.println(jsonObj["testName"].as<String>());
+							Serial.print("loadLevel: ");
+							Serial.println(jsonObj["loadLevel"].as<String>());
 							SyncTest.parseIncomingJson(jsonObj);
 						}
 						else
 						{
-							logger.log(LogLevel::ERROR,
-									   "Error: Required fields missing in JSON object.");
+							Serial.println("Error: Required fields missing in JSON.");
 						}
 					}
 					else
 					{
-						logger.log(LogLevel::ERROR, "Error: Expected JSON object in array.");
+						Serial.println("Error: Expected JSON objects in array.");
 					}
 				}
 				request->send(200, "application/json", "{\"status\":\"success\"}");
 			}
 			else
 			{
-				logger.log(LogLevel::ERROR, "Error: Invalid JSON format, expected an array.");
-
+				Serial.println("Error: Invalid JSON format.");
 				request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
 			}
 		});
@@ -101,11 +93,8 @@ void PageBuilder::setupPages(TestSync& testSync)
 			return;
 		}
 
-		const char* status = request->getParam("body", true)->value().c_str();
-		String response = "Status received: ";
-		response += status;
-
-		request->send(200, "text/plain", response);
+		String status = request->getParam("body", true)->value();
+		request->send(200, "text/plain", "Status received: " + status);
 	});
 
 	// Handle 404 errors
@@ -113,6 +102,113 @@ void PageBuilder::setupPages(TestSync& testSync)
 		request->send(404, "text/plain", "404 Not Found");
 	});
 }
+
+// void PageBuilder::setupPages(TestSync& testSync)
+// {
+// 	// Handle the main page
+// 	_server->on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
+// 		auto* response = request->beginResponseStream("text/html");
+// 		this->sendHeader(response);
+// 		this->sendStyle(response);
+// 		this->sendHeaderTrailer(response);
+
+// 		const char* routes[] = {"/", "/settings", "/network", "/modbus", "/report"};
+// 		this->sendNavbar(response, "UPS TESTING PANEL", routes);
+// 		this->sendSidebar(response);
+// 		this->sendUserCommand(response);
+// 		this->sendScript(response);
+// 		this->sendPageTrailer(response);
+// 		request->send(response);
+// 	});
+
+// 	// Handle GET request for logs
+// 	_server->on("/log", HTTP_GET, [](AsyncWebServerRequest* request) {
+// 		String logs = logger.getBufferedLogs();
+// 		if(logs.length() > 0)
+// 		{
+// 			request->send(200, "text/plain", logs);
+// 		}
+// 		else
+// 		{
+// 			request->send(200, "text/plain", "No logs available.");
+// 		}
+// 	});
+
+// 	auto* testDataHandler = new AsyncCallbackJsonWebHandler(
+// 		"/updateTestData", [this, &testSync](AsyncWebServerRequest* request, JsonVariant& json) {
+// 			logger.log(LogLevel::SUCCESS, "Received Json HTTP_POST");
+
+// 			// Serialize and log the received JSON data
+// 			String jsonString;
+// 			serializeJsonPretty(json, jsonString);
+// 			logger.log(LogLevel::SUCCESS, jsonString.c_str());
+
+// 			// Create a StaticJsonDocument for deserialization
+// 			StaticJsonDocument<200> doc;
+// 			DeserializationError error = deserializeJson(doc, jsonString);
+
+// 			if(error)
+// 			{
+// 				logger.log(LogLevel::ERROR, "Deserialization failed: ", error.c_str());
+// 				request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+// 				return;
+// 			}
+
+// 			// Extract values from the deserialized JSON
+// 			String testName = doc["testName"].as<String>();
+// 			String loadLevel = doc["loadLevel"].as<String>();
+
+// 			// Check and log values
+// 			if(testName.isEmpty())
+// 			{
+// 				logger.log(LogLevel::ERROR, "testName is empty");
+// 			}
+// 			else
+// 			{
+// 				logger.log(LogLevel::SUCCESS, "Test Name: ", testName.c_str());
+// 				Serial.print("Direct serial");
+// 				Serial.println(testName.c_str());
+// 			}
+
+// 			if(loadLevel.isEmpty())
+// 			{
+// 				logger.log(LogLevel::ERROR, "loadLevel is empty");
+// 			}
+// 			else
+// 			{
+// 				logger.log(LogLevel::SUCCESS, "Load Level: ", loadLevel.c_str());
+// 				Serial.print("Direct serial");
+// 				Serial.println(loadLevel.c_str());
+// 			}
+
+// 			logger.log(LogLevel::SUCCESS, "Initial parsing success");
+
+// 			// Process the JSON object
+// 			testSync.parseIncomingJson(doc.as<JsonObject>());
+// 			request->send(200, "application/json", "{\"status\":\"success\"}");
+// 		});
+// 	_server->addHandler(testDataHandler);
+
+// 	// Handle POST request to update status
+// 	_server->on("/updateStatus", HTTP_POST, [](AsyncWebServerRequest* request) {
+// 		if(!request->hasParam("body", true))
+// 		{
+// 			request->send(400, "text/plain", "Invalid request: No body found.");
+// 			return;
+// 		}
+
+// 		const char* status = request->getParam("body", true)->value().c_str();
+// 		String response = "Status received: ";
+// 		response += status;
+
+// 		request->send(200, "text/plain", response);
+// 	});
+
+// 	// Handle 404 errors
+// 	_server->onNotFound([](AsyncWebServerRequest* request) {
+// 		request->send(404, "text/plain", "404 Not Found");
+// 	});
+// }
 
 // void PageBuilder::handleJsonPost(AsyncWebServerRequest* request, JsonVariant& json)
 // {

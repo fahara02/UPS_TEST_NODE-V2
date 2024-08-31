@@ -138,20 +138,26 @@ class TestSync
 		// If the incoming JSON is an array (already handled by the lambda function)
 		if(json.is<JsonObject>())
 		{
+			logger.log(LogLevel::TEST, "TEST SYNC FUNCTION RECEIVING THIS");
+			serializeJsonPretty(json, Serial);
 			JsonObject jsonObj = json.as<JsonObject>();
 
 			// Validate required fields
 			if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
 			{
 				// Process the JSON object
-				parseTestJson(jsonObj);
 
 				// Log the parsed data
 				const char* testName = jsonObj["testName"];
 				const char* loadLevel = jsonObj["loadLevel"];
-				logger.log(LogLevel::SUCCESS, "Test Name: ", testName);
-				logger.log(LogLevel::SUCCESS, "Load Level: ", loadLevel);
+				// logger.log(LogLevel::SUCCESS, "Test Name: ", testName);
+				// logger.log(LogLevel::SUCCESS, "Load Level: ", loadLevel);
+				Serial.print("testName");
+				Serial.println(testName);
+				Serial.print("LoadLevel");
+				Serial.println(loadLevel);
 				logger.log(LogLevel::SUCCESS, "Primary parsing in test Sync");
+				parseTestJson(jsonObj);
 			}
 			else
 			{
@@ -213,12 +219,8 @@ class TestSync
 		bool isExistingTest = false;
 
 		// Extract testName and loadLevel as const char*
-		const char* testName = jsonObj["testName"];
-		const char* loadLevel = jsonObj["loadLevel"];
-
-		// Log the extracted values
-		logger.log(LogLevel::INFO, "Parsing Test: ", testName);
-		logger.log(LogLevel::INFO, "Parsing Load Level: ", loadLevel);
+		String testName = jsonObj["testName"];
+		String loadLevel = jsonObj["loadLevel"];
 
 		// Convert to enums using the updated functions
 		TestType testType = getTestTypeFromString(testName);

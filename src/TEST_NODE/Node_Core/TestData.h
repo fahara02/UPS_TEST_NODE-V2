@@ -2,7 +2,10 @@
 #define TEST_DATA_H
 
 #include <stdint.h>
+#include <algorithm>
 #include <cctype>
+#include <string>
+#include "Arduino.h"
 
 static int caseInsensitiveCompare(const char* str1, const char* str2)
 {
@@ -202,35 +205,52 @@ static const char* loadPercentageToString(LoadPercentage load)
 	}
 }
 
-static TestType getTestTypeFromString(const char* testName)
+static TestType getTestTypeFromString(const String& testName)
 {
-	if(caseInsensitiveCompare(testName, "SwitchTest") == 0)
+	// Create a copy of the testName to trim
+	std::string tName = "";
+	tName = static_cast<std::string>(testName.c_str());
+	tName.erase(std::remove_if(tName.begin(), tName.end(), ::isspace), tName.end());
+
+	const char* trimmedTestNameCStr = tName.c_str();
+
+	if(caseInsensitiveCompare(trimmedTestNameCStr, "SwitchTest") == 0)
 		return TestType::SwitchTest;
-	else if(caseInsensitiveCompare(testName, "BackupTest") == 0)
+	else if(caseInsensitiveCompare(trimmedTestNameCStr, "BackupTest") == 0)
 		return TestType::BackupTest;
-	else if(caseInsensitiveCompare(testName, "EfficiencyTest") == 0)
+	else if(caseInsensitiveCompare(trimmedTestNameCStr, "EfficiencyTest") == 0)
 		return TestType::EfficiencyTest;
-	else if(caseInsensitiveCompare(testName, "InputVoltageTest") == 0)
+	else if(caseInsensitiveCompare(trimmedTestNameCStr, "InputVoltageTest") == 0)
 		return TestType::InputVoltageTest;
-	else if(caseInsensitiveCompare(testName, "WaveformTest") == 0)
+	else if(caseInsensitiveCompare(trimmedTestNameCStr, "WaveformTest") == 0)
 		return TestType::WaveformTest;
-	else if(caseInsensitiveCompare(testName, "TunePWMTest") == 0)
+	else if(caseInsensitiveCompare(trimmedTestNameCStr, "TunePWMTest") == 0)
 		return TestType::TunePWMTest;
 
 	return static_cast<TestType>(0);
 }
 
-static LoadPercentage getLoadLevelFromString(const char* loadLevel)
+static LoadPercentage getLoadLevelFromString(const String& loadLevel)
+
 {
-	if(caseInsensitiveCompare(loadLevel, "0") == 0)
+	Serial.println("Before convertion");
+	Serial.print(loadLevel);
+	std::string tload = "";
+	tload = static_cast<std::string>(loadLevel.c_str());
+	tload.erase(std::remove_if(tload.begin(), tload.end(), ::isspace), tload.end());
+	const char* load = tload.c_str();
+
+	Serial.println("After convertion");
+	Serial.print(load);
+	if(caseInsensitiveCompare(load, "0%") == 0)
 		return LoadPercentage::LOAD_0P;
-	else if(caseInsensitiveCompare(loadLevel, "25") == 0)
+	else if(caseInsensitiveCompare(load, "25%") == 0)
 		return LoadPercentage::LOAD_25P;
-	else if(caseInsensitiveCompare(loadLevel, "50") == 0)
+	else if(caseInsensitiveCompare(load, "50%") == 0)
 		return LoadPercentage::LOAD_50P;
-	else if(caseInsensitiveCompare(loadLevel, "75") == 0)
+	else if(caseInsensitiveCompare(load, "75%") == 0)
 		return LoadPercentage::LOAD_75P;
-	else if(caseInsensitiveCompare(loadLevel, "100") == 0)
+	else if(caseInsensitiveCompare(load, "100%") == 0)
 		return LoadPercentage::LOAD_100P;
 
 	return static_cast<LoadPercentage>(-1); // -1 indicates an invalid load level
