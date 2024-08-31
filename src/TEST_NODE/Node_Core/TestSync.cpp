@@ -20,7 +20,7 @@ void TestSync::init()
 	logger.log(LogLevel::INFO, "testSync initialization");
 }
 
-void TestSync::triggerEvent(Event event)
+void TestSync::reportEvent(Event event)
 {
 	stateMachine.handleEvent(event);
 }
@@ -167,6 +167,7 @@ void TestSync::checkForDeletedTests()
 void TestSync::handleUserCommand(UserCommand command)
 {
 	EventBits_t commandBits = static_cast<EventBits_t>(command);
+	TestSync& instance = TestSync::getInstance();
 
 	switch(command)
 	{
@@ -185,9 +186,13 @@ void TestSync::handleUserCommand(UserCommand command)
 			break;
 		case UserCommand::AUTO:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::MANUAL));
+			instance.reportEvent(Event::AUTO_TEST_CMD);
+			instance.refreshState();
 			break;
 		case UserCommand::MANUAL:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::AUTO));
+			instance.reportEvent(Event::MANUAL_OVERRIDE);
+			instance.refreshState();
 			break;
 		case UserCommand::START:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::STOP));
@@ -209,15 +214,14 @@ void TestSync::handleSyncCommand(SyncCommand command)
 
 	switch(command)
 	{
-		case SyncCommand::WAIT:
+		case SyncCommand::MANAGER_WAIT:
 			xEventGroupClearBits(eventGroupSync,
-								 static_cast<EventBits_t>(SyncCommand::ACTIVATE) |
-									 static_cast<EventBits_t>(SyncCommand::START_TEST) |
-									 static_cast<EventBits_t>(SyncCommand::STOP_TEST));
+								 static_cast<EventBits_t>(SyncCommand::MANAGER_ACTIVE));
 			break;
-		case SyncCommand::ACTIVATE:
+		case SyncCommand::MANAGER_ACTIVE:
 			// Clear WAIT when ACTIVATE is issued
-			xEventGroupClearBits(eventGroupSync, static_cast<EventBits_t>(SyncCommand::WAIT));
+			xEventGroupClearBits(eventGroupSync,
+								 static_cast<EventBits_t>(SyncCommand::MANAGER_WAIT));
 			break;
 		case SyncCommand::RE_TEST:
 			// Clear SKIP_TEST if RE_TEST is issued
@@ -227,13 +231,15 @@ void TestSync::handleSyncCommand(SyncCommand command)
 			// Clear RE_TEST if SKIP_TEST is issued
 			xEventGroupClearBits(eventGroupSync, static_cast<EventBits_t>(SyncCommand::RE_TEST));
 			break;
-		case SyncCommand::START_TEST:
+		case SyncCommand::START_OBSERVER:
 			// Clear STOP_TEST when starting the test
-			xEventGroupClearBits(eventGroupSync, static_cast<EventBits_t>(SyncCommand::STOP_TEST));
+			xEventGroupClearBits(eventGroupSync,
+								 static_cast<EventBits_t>(SyncCommand::STOP_OBSERVER));
 			break;
-		case SyncCommand::STOP_TEST:
-			// Clear START_TEST when stopping the test
-			xEventGroupClearBits(eventGroupSync, static_cast<EventBits_t>(SyncCommand::START_TEST));
+		case SyncCommand::STOP_OBSERVER:
+
+			xEventGroupClearBits(eventGroupSync,
+								 static_cast<EventBits_t>(SyncCommand::START_OBSERVER));
 			break;
 		default:
 			// No conflicting commands to clear for SAVE or IGNORE
@@ -245,21 +251,64 @@ void TestSync::handleSyncCommand(SyncCommand command)
 	logger.log(LogLevel::INFO, "Sync command %d triggered", static_cast<int>(command));
 }
 
-void TesSync::userCommandObserverTask(void* pvParameters)
+void TestSync::userCommandObserverTask(void* pvParameters)
 {
-	while(true)
+	while(xEventGroupWaitBits(eventGroupUser, static_cast<EventBits_t>(ALL_CMD_BITS), pdFALSE,
+							  pdTRUE, portMAX_DELAY))
 	{
 		logger.log(LogLevel::SUCCESS, "New User Command Received");
+		TestSync& instance = TestSync::getInstance();
+		if(instance.iscmdAcknowledged())
+		{
+			vTaskDelete(NULL);
+			return;
+		}
+
+		int allCMD = xEventGroupGetBits(eventGroupUser);
+		EventBits_t cmdAuto = static_cast<EventBits_t>(UserCommand::AUTO);
+		EventBits_t cmdManual = static_cast<EventBits_t>(UserCommand::MANUAL);
+		EventBits_t cmdStart = static_cast<EventBits_t>(UserCommand::START);
+		EventBits_t cmdStop = static_cast<EventBits_t>(UserCommand::STOP);
+		EventBits_t cmdPause = static_cast<EventBits_t>(UserCommand::PAUSE);
+		EventBits_t cmdResume = static_cast<EventBits_t>(UserCommand::RESUME);
+
+		if((allCMD & cmdAuto) != 0)
+		{
+			instance.refreshState();
+			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
+			instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
+			instance.acknowledgeCMD();
+		}
+		else if((allCMD & cmdManual) != 0)
+		{
+			instance.refreshState();
+			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
+			instance.acknowledgeCMD();
+		}
+		else if((allCMD & cmdStart) != 0)
+		{
+			instance.refreshState();
+			// have to link to manager
+			instance.acknowledgeCMD();
+		}
+		else if((allCMD & cmdStop) != 0)
+		{
+			instance.refreshState();
+			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
+			instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
+			instance.acknowledgeCMD();
+		}
 		vTaskDelay(pdMS_TO_TICKS(200));
 	}
 	vTaskDelete(NULL);
 }
 
-void TesSync::testSyncTask(void* pvParameters)
+void TestSync::testSyncTask(void* pvParameters)
 {
-	while(true)
+	while(xEventGroupWaitBits(eventGroupSync, static_cast<EventBits_t>(SyncCommand::START_OBSERVER),
+							  pdFALSE, pdTRUE, portMAX_DELAY))
 	{
-		logger.log(LogLevel::SUCCESS, "Observing Test");
+		logger.log(LogLevel::SUCCESS, "test Observer awaken ");
 		vTaskDelay(pdMS_TO_TICKS(200));
 	}
 	vTaskDelete(NULL);

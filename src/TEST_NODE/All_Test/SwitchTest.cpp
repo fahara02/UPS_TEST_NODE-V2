@@ -193,7 +193,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 		_triggerTestEndEvent_SW = false;
 
 		logger.log(LogLevel::WARNING, "Triggering Test ongoing event from switch test");
-		SyncTest.triggerEvent(Event::TEST_ONGOING);
+		SyncTest.reportEvent(Event::TEST_ONGOING);
 		vTaskDelay(pdTICKS_TO_MS(100));
 	}
 
@@ -229,7 +229,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 		_triggerTestEndEvent_SW = true;
 
 		logger.log(LogLevel::WARNING, "Cycle ended for single switch test");
-		SyncTest.triggerEvent(Event::TEST_TIME_END);
+		SyncTest.reportEvent(Event::TEST_TIME_END);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 
@@ -242,7 +242,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 		{
 			_triggerDataCaptureEvent_SW = true;
 			logger.log(LogLevel::INFO, "Triggering DATA Captured event from switch test");
-			SyncTest.triggerEvent(Event::DATA_CAPTURED);
+			SyncTest.reportEvent(Event::DATA_CAPTURED);
 			vTaskDelay(pdMS_TO_TICKS(100));
 		}
 
@@ -257,7 +257,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 				logger.log(LogLevel::TEST,
 						   "Switching Time: ", _data_SW.switchTest[_currentTest_SW].switchtime);
 				sendEndSignal();
-				SyncTest.triggerEvent(Event::VALID_DATA);
+				SyncTest.reportEvent(Event::VALID_DATA);
 				vTaskDelay(pdMS_TO_TICKS(100));
 			}
 
@@ -268,7 +268,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 		else
 		{
 			logger.log(LogLevel::ERROR, "Invalid timing data");
-			SyncTest.triggerEvent(Event::TEST_FAILED);
+			SyncTest.reportEvent(Event::TEST_FAILED);
 			vTaskDelay(pdMS_TO_TICKS(100));
 			return TEST_FAILED;
 		}
@@ -276,13 +276,13 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 	else
 	{
 		logger.log(LogLevel::ERROR, "Data capture failed");
-		SyncTest.triggerEvent(Event::TEST_FAILED);
+		SyncTest.reportEvent(Event::TEST_FAILED);
 		vTaskDelay(pdMS_TO_TICKS(100));
 		return TEST_FAILED;
 	}
 
 	logger.log(LogLevel::ERROR, "Test failed");
-	SyncTest.triggerEvent(Event::TEST_FAILED);
+	SyncTest.reportEvent(Event::TEST_FAILED);
 	vTaskDelay(pdMS_TO_TICKS(100));
 	return TEST_FAILED;
 }

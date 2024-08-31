@@ -37,14 +37,14 @@ enum class UserCommand : EventBits_t
 
 enum class SyncCommand : EventBits_t
 {
-	WAIT = (1 << 0),
-	ACTIVATE = (1 << 1),
+	MANAGER_WAIT = (1 << 0),
+	MANAGER_ACTIVE = (1 << 1),
 	RE_TEST = (1 << 2),
 	SKIP_TEST = (1 << 3),
 	SAVE = (1 << 4),
 	IGNORE = (1 << 5),
-	START_TEST = (1 << 6),
-	STOP_TEST = (1 << 7)
+	START_OBSERVER = (1 << 6),
+	STOP_OBSERVER = (1 << 7)
 };
 
 class TestSync
@@ -52,8 +52,21 @@ class TestSync
   public:
 	static TestSync& getInstance();
 	void init();
-	void triggerEvent(Event event);
+	void reportEvent(Event event);
 	State refreshState();
+
+	bool iscmdAcknowledged()
+	{
+		return _cmdAcknowledged;
+	}
+	void acknowledgeCMD()
+	{
+		_cmdAcknowledged = true;
+	}
+	void acknowledgeCMDReset()
+	{
+		_cmdAcknowledged = false;
+	}
 	void parseIncomingJson(JsonVariant json);
 	void handleUserCommand(UserCommand command);
 	void handleSyncCommand(SyncCommand command);
@@ -62,11 +75,13 @@ class TestSync
 	TestSync();
 	static const EventBits_t ALL_TEST_BITS;
 	static const EventBits_t ALL_CMD_BITS;
+	bool _cmdAcknowledged = false;
 	std::atomic<State> _currentState;
 	RequiredTest _testList[MAX_TEST];
 
 	void resetAllBits();
 	void createSynctask();
+
 	static void userCommandObserverTask(void* pvParameters);
 	static void testSyncTask(void* pvParameters);
 

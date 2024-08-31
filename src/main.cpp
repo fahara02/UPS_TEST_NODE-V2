@@ -190,11 +190,11 @@ void setup()
 	// Manager.addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
 	logger.log(LogLevel::INFO, "changing states");
 
-	Manager.triggerEvent(Event::SELF_CHECK_OK);
+	Manager.passEvent(Event::SELF_CHECK_OK);
 	vTaskDelay(pdTICKS_TO_MS(100));
-	Manager.triggerEvent(Event::SETTING_LOADED);
+	Manager.passEvent(Event::SETTING_LOADED);
 	vTaskDelay(pdTICKS_TO_MS(100));
-	Manager.triggerEvent(Event::LOAD_BANK_CHECKED);
+	Manager.passEvent(Event::LOAD_BANK_CHECKED);
 	vTaskDelay(pdTICKS_TO_MS(100));
 
 	PageBuilder builder(&server);

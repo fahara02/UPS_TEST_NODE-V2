@@ -110,9 +110,9 @@ void TestManager::pauseAllTest()
 		vTaskSuspend(switchTestTaskHandle);
 	}
 }
-void TestManager::triggerEvent(Event event)
+void TestManager::passEvent(Event event)
 {
-	SyncTest.triggerEvent(event);
+	SyncTest.reportEvent(event);
 }
 
 void TestManager::setupPins()
@@ -432,13 +432,13 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 	if(managerState == State::DEVICE_READY)
 	{
 		instance.logPendingTest(instance._testList[i]);
-		instance.triggerEvent(Event::AUTO_TEST_CMD);
+		instance.passEvent(Event::AUTO_TEST_CMD);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::AUTO_MODE)
 	{
 		vTaskDelay(pdMS_TO_TICKS(100));
-		instance.triggerEvent(Event::PENDING_TEST_FOUND);
+		instance.passEvent(Event::PENDING_TEST_FOUND);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::TEST_START)
@@ -493,7 +493,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 			testInstance.markTestAsDone();
 			testInstance.setTaskPriority(TestPriority);
 			logger.log(LogLevel::WARNING, "Triggering SAVE event from manager");
-			instance.triggerEvent(Event::SAVE);
+			instance.passEvent(Event::SAVE);
 			vTaskDelay(pdMS_TO_TICKS(100));
 			return true;
 		}
@@ -524,7 +524,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		{
 			logger.log(LogLevel::INFO, "Pending test found. Preparing to start next test...");
 
-			instance.triggerEvent(Event::PENDING_TEST_FOUND);
+			instance.passEvent(Event::PENDING_TEST_FOUND);
 			vTaskDelay(pdMS_TO_TICKS(200));
 		}
 		else

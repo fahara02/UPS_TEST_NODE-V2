@@ -26,7 +26,7 @@ class TestManager
 	void runTests();
 	void manageTests();
 	void terminateTest();
-	void triggerEvent(Event event);
+	void passEvent(Event event);
 
 	static void TestManagerTask(void* pvParameters);
 	static void onMainsPowerLossTask(void* pvParameters);
