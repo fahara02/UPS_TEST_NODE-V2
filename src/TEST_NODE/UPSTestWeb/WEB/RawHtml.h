@@ -2,14 +2,17 @@
 #define RAWHTML_H
 
 #include <pgmspace.h>
+
 const char HEADER_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   )rawliteral";
-//-------------here CSS PART WILL GO----------------//
+)rawliteral";
+
+// CSS PART WILL GO HERE
+
 const char HEADER_TRAILER_HTML[] PROGMEM = R"rawliteral(
  </head>
   <body>
@@ -75,6 +78,8 @@ const char SIDEBAR_HTML[] PROGMEM = R"rawliteral(
     </div>
 </div>
 )rawliteral";
+
+// User Command and Log HTML
 const char USER_COMMAND_AND_LOG_HTML[] PROGMEM = R"rawliteral(
 <div class="container">
     <!-- Left side: User commands -->
@@ -97,4 +102,4 @@ const char LAST_TRAILER_HTML[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-#endif
+#endif // RAWHTML_H

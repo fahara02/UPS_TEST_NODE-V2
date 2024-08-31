@@ -7,9 +7,9 @@ void PageBuilder::setupPages()
 	_server->on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
 		auto* response = request->beginResponseStream("text/html");
 		this->sendHeader(response);
-		response->print("<style>");
+
 		this->sendStyle(response);
-		response->print("</style>");
+
 		this->sendHeaderTrailer(response);
 		const char* routes[] = {"/", "/settings", "/network", "/modbus", "/report"};
 
