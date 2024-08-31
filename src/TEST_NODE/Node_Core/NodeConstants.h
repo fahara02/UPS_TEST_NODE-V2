@@ -16,6 +16,7 @@ constexpr int UPS_MIN_BACKUP_TIME_MS_SANITY_CHECK = 1;
 //---------DEFAULTS----------------//
 constexpr int MAX_TEST = 6;
 constexpr int MAX_USER_COMMAND = 8;
+constexpr int MAX_SYNC_COMMAND = 8;
 
 enum class validTaskStackSize
 {

@@ -17,6 +17,7 @@ extern Logger& logger;
 extern StateMachine& stateMachine;
 extern EventGroupHandle_t eventGroupTest;
 extern EventGroupHandle_t eventGroupUser;
+extern EventGroupHandle_t eventGroupSync;
 
 enum class UserCommand : EventBits_t
 {
@@ -29,7 +30,17 @@ enum class UserCommand : EventBits_t
 	START = (1 << 6),
 	STOP = (1 << 7)
 };
-
+enum class SyncCommand : EventBits_t
+{
+	WAIT = (1 << 0),
+	ACTIVATE = (1 << 1),
+	RE_TEST = (1 << 2),
+	SKIP_TEST = (1 << 3),
+	SAVE = (1 << 4),
+	IGNORE = (1 << 5),
+	START_TEST = (1 << 6),
+	STOP_TEST = (1 << 7)
+};
 class TestSync
 {
   public:
@@ -43,6 +54,7 @@ class TestSync
 		refreshState();
 		eventGroupTest = xEventGroupCreate();
 		eventGroupUser = xEventGroupCreate();
+		eventGroupSync = xEventGroupCreate();
 		resetAllBits();
 		logger.log(LogLevel::INFO, "testSync initialisation");
 	}
@@ -52,73 +64,11 @@ class TestSync
 		stateMachine.handleEvent(event);
 	}
 
-	const State refreshState()
+	State refreshState()
 	{
 		_currentState.store(stateMachine.getCurrentState());
 		return _currentState.load();
 	}
-
-	// void parseIncomingJson(JsonVariant json)
-	// {
-	// 	// Reset all tests as inactive
-	// 	for(int i = 0; i < MAX_TEST; i++)
-	// 	{
-	// 		_testList[i].isActive = false;
-	// 	}
-
-	// 	// Check if JSON is an array
-	// 	if(json.is<JsonArray>())
-	// 	{
-	// 		JsonArray testArray = json.as<JsonArray>();
-	// 		for(JsonVariant value: testArray)
-	// 		{
-	// 			if(value.is<JsonObject>())
-	// 			{
-	// 				JsonObject jsonObj = value.as<JsonObject>();
-
-	// 				// Validate required fields
-	// 				if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
-	// 				{
-	// 					// Process the JSON object
-	// 					parseTestJson(jsonObj);
-	// 				}
-	// 				else
-	// 				{
-	// 					logger.log(LogLevel::ERROR, "field missing:testName or loadLevel");
-	// 				}
-	// 			}
-	// 			else
-	// 			{
-	// 				logger.log(LogLevel::ERROR, "Expected JSON objects in array.");
-	// 			}
-	// 		}
-
-	// 		// Check for any deleted tests
-	// 		checkForDeletedTests();
-	// 	}
-	// 	else if(json.is<JsonObject>())
-	// 	{
-	// 		JsonObject jsonObj = json.as<JsonObject>();
-	// 		if(jsonObj.containsKey("startCommand"))
-	// 		{
-	// 			// Handle startCommand if needed
-	// 			// parseStartJson(jsonObj);
-	// 		}
-	// 		else if(jsonObj.containsKey("stopCommand"))
-	// 		{
-	// 			// Handle stopCommand if needed
-	// 			// parseStopJson(jsonObj);
-	// 		}
-	// 		else
-	// 		{
-	// 			logger.log(LogLevel::ERROR, "Unknown JSON format");
-	// 		}
-	// 	}
-	// 	else
-	// 	{
-	// 		logger.log(LogLevel::ERROR, "Error: Invalid JSON format.");
-	// 	}
-	// }
 
 	void parseIncomingJson(JsonVariant json)
 	{
@@ -128,7 +78,7 @@ class TestSync
 			_testList[i].isActive = false;
 		}
 
-		// If the incoming JSON is an array (already handled by the lambda function)
+		// If the incoming JSON is an object (already handled by the lambda function)
 		if(json.is<JsonObject>())
 		{
 			logger.log(LogLevel::TEST, "TEST SYNC FUNCTION RECEIVING THIS");
@@ -140,14 +90,20 @@ class TestSync
 			{
 				parseTestJson(jsonObj);
 			}
+			else if(jsonObj.containsKey("startCommand") || jsonObj.containsKey("stopCommand") ||
+					jsonObj.containsKey("autoCommand") || jsonObj.containsKey("manualCommand") ||
+					jsonObj.containsKey("pauseCommand") || jsonObj.containsKey("resumeCommand"))
+			{
+				// parseUserCommandJson(jsonObj);
+			}
 			else
 			{
-				logger.log(LogLevel::ERROR, "Required fields missing : testName or loadLevel");
+				logger.log(LogLevel::ERROR, "Required fields missing");
 			}
 		}
 		else
 		{
-			logger.log(LogLevel::ERROR, "UNKnown JSON format!!!");
+			logger.log(LogLevel::ERROR, "Unknown JSON format!!!");
 		}
 	}
 
@@ -307,6 +263,53 @@ class TestSync
 		// Set the current command
 		xEventGroupSetBits(eventGroupUser, commandBits);
 		logger.log(LogLevel::INFO, "User command %d triggered", static_cast<int>(command));
+	}
+	void handleSyncCommand(SyncCommand command)
+	{
+		EventBits_t commandBits = static_cast<EventBits_t>(command);
+
+		// Handle exclusive commands if necessary
+		switch(command)
+		{
+			case SyncCommand::WAIT:
+				// Example: Clear commands that shouldn't be active when in WAIT mode
+				xEventGroupClearBits(eventGroupSync,
+									 static_cast<EventBits_t>(SyncCommand::ACTIVATE) |
+										 static_cast<EventBits_t>(SyncCommand::START_TEST) |
+										 static_cast<EventBits_t>(SyncCommand::STOP_TEST));
+				break;
+			case SyncCommand::ACTIVATE:
+				// Clear WAIT when ACTIVATE is issued
+				xEventGroupClearBits(eventGroupSync, static_cast<EventBits_t>(SyncCommand::WAIT));
+				break;
+			case SyncCommand::RE_TEST:
+				// Clear SKIP_TEST if RE_TEST is issued
+				xEventGroupClearBits(eventGroupSync,
+									 static_cast<EventBits_t>(SyncCommand::SKIP_TEST));
+				break;
+			case SyncCommand::SKIP_TEST:
+				// Clear RE_TEST if SKIP_TEST is issued
+				xEventGroupClearBits(eventGroupSync,
+									 static_cast<EventBits_t>(SyncCommand::RE_TEST));
+				break;
+			case SyncCommand::START_TEST:
+				// Clear STOP_TEST when starting the test
+				xEventGroupClearBits(eventGroupSync,
+									 static_cast<EventBits_t>(SyncCommand::STOP_TEST));
+				break;
+			case SyncCommand::STOP_TEST:
+				// Clear START_TEST when stopping the test
+				xEventGroupClearBits(eventGroupSync,
+									 static_cast<EventBits_t>(SyncCommand::START_TEST));
+				break;
+			default:
+				// No conflicting commands to clear for SAVE or IGNORE
+				break;
+		}
+
+		// Set the current sync command
+		xEventGroupSetBits(eventGroupSync, commandBits);
+		logger.log(LogLevel::INFO, "Sync command %d triggered", static_cast<int>(command));
 	}
 
 	TestSync(const TestSync&) = delete;
