@@ -6,13 +6,26 @@
 #include "TestData.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
+#include <atomic>
 #include "StateMachine.h"
+#include "NodeConstants.h"
 
 using namespace Node_Core;
 extern Logger& logger;
 extern StateMachine& stateMachine;
 extern EventGroupHandle_t eventGroupTest;
-constexpr int MAX_TEST = 6;
+extern EventGroupHandle_t eventGroupUser;
+
+enum class UserCommand : EventBits_t
+{
+	NEW_TEST = (1 << 0),
+	TEST_DELETED = (1 << 1),
+	PROCEED = (1 << 2),
+	PAUSE = (1 << 3),
+	RESUME = (1 << 4),
+	AUTO = (1 << 5),
+	MANUAL = (1 << 6),
+};
 
 class TestSync
 {
@@ -24,27 +37,24 @@ class TestSync
 	}
 	void init()
 	{
+		refreshState();
 		eventGroupTest = xEventGroupCreate();
-		resetAllBits(); // Clear all event bits after creating the event group
+		eventGroupUser = xEventGroupCreate();
+		resetAllBits();
 		logger.log(LogLevel::INFO, "testSync initialisation");
 	}
 	void startTest(TestType test)
 	{
 		EventBits_t test_eventbits = static_cast<EventBits_t>(test);
 		xEventGroupSetBits(eventGroupTest, test_eventbits);
-		logger.log(LogLevel::SUCCESS, "for test %s got Start Command,bit set to->",
-				   testTypeToString(test));
-		int result = xEventGroupGetBits(eventGroupTest);
-		// logger.logBinary(LogLevel::WARNING, result);
+		logger.log(LogLevel::WARNING, "test %s will be started", testTypeToString(test));
 	};
+
 	void stopTest(TestType test)
 	{
 		EventBits_t test_eventbits = static_cast<EventBits_t>(test);
 		xEventGroupClearBits(eventGroupTest, test_eventbits);
-		logger.log(LogLevel::SUCCESS, "for test %s got Stop Command,bit cleared to->",
-				   testTypeToString(test));
-		int result = xEventGroupGetBits(eventGroupTest);
-		// logger.logBinary(LogLevel::WARNING, result);
+		logger.log(LogLevel::WARNING, "test %s will be stopped", testTypeToString(test));
 		vTaskDelay(pdMS_TO_TICKS(50));
 	};
 
@@ -53,30 +63,38 @@ class TestSync
 		stateMachine.handleEvent(event);
 	}
 
-	State getState()
+	const State refreshState()
 	{
-		_currentState = stateMachine.getCurrentState();
-
-		return _currentState;
-
-		return State::DEVICE_ON;
+		_currentState.store(stateMachine.getCurrentState());
+		return _currentState.load();
 	}
 
   private:
-	TestSync()
+	TestSync() : _currentState{State::DEVICE_ON}
 	{
 	}
+	std::atomic<State> _currentState{State::DEVICE_ON};
 
+	static const EventBits_t ALL_TEST_BITS = (1 << MAX_TEST) - 1;
+	static const EventBits_t ALL_CMD_BITS = (1 << MAX_USER_COMMAND) - 1;
 	void resetAllBits()
 	{
 		xEventGroupClearBits(eventGroupTest, ALL_TEST_BITS);
-		int result = xEventGroupGetBits(eventGroupTest);
-		// logger.logBinary(LogLevel::WARNING, result);
+		xEventGroupClearBits(eventGroupUser, ALL_CMD_BITS);
 	}
-	State _currentState = State::DEVICE_ON;
+	void handleUserCommand(UserCommand command)
+	{
+		EventBits_t commandBits = static_cast<EventBits_t>(command);
+		xEventGroupSetBits(eventGroupTest, commandBits);
+		logger.log(LogLevel::INFO, "User command %d triggered", static_cast<int>(command));
+	}
 
-	static const EventBits_t ALL_TEST_BITS = (1 << MAX_TEST) - 1;
-
+	void clearUserCommand(UserCommand command)
+	{
+		EventBits_t commandBits = static_cast<EventBits_t>(command);
+		xEventGroupClearBits(eventGroupTest, commandBits);
+		logger.log(LogLevel::INFO, "User command %d cleared", static_cast<int>(command));
+	}
 	TestSync(const TestSync&) = delete;
 	TestSync& operator=(const TestSync&) = delete;
 };

@@ -12,7 +12,8 @@ constexpr int UPS_MIN_BACKUP_TIME_MS = 30000;
 constexpr int UPS_MIN_SWITCHING_TIME_MS_SANITY_CHECK = 1;
 constexpr int UPS_MAX_SWITCHING_TIME_MS_SANITY_CHECK = UPS_MAX_SWITCHING_TIME_MS;
 constexpr int UPS_MIN_BACKUP_TIME_MS_SANITY_CHECK = 1;
-
+constexpr int MAX_TEST = 6;
+constexpr int MAX_USER_COMMAND = 7;
 enum class validTaskStackSize
 {
 	LOWEST_STACK = 1024,

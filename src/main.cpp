@@ -64,6 +64,7 @@ QueueHandle_t BackupTestDataQueue = NULL;
 static const uint8_t messageQueueLength = 10;
 
 EventGroupHandle_t eventGroupTest = NULL;
+EventGroupHandle_t eventGroupUser = NULL;
 EventGroupHandle_t eventGroupSwitchTestData = NULL;
 EventGroupHandle_t eventGroupBackupTestData = NULL;
 

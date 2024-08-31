@@ -34,8 +34,7 @@ extern QueueHandle_t BackupTestDataQueue;
 // extern SemaphoreHandle_t state_mutex;
 
 TestManager::TestManager() :
-	_initialized(false), _newEventTrigger(false), _setupUpdated(false), _numSwitchTest(0),
-	_numBackupTest(0), _numTest(0)
+	_initialized(false), _newEventTrigger(false), _setupUpdated(false), _numTest(0)
 {
 }
 
@@ -74,11 +73,21 @@ void TestManager::UpdateSettings()
 	logger.log(LogLevel::SUCCESS, "Testmanager data updated");
 }
 
+void TestManager::refreshState()
+{
+	_currentState.store(SyncTest.refreshState());
+}
+State TestManager::loadState()
+{
+	_currentState.store(SyncTest.refreshState());
+	return _currentState.load();
+}
+
 void TestManager::addTests(RequiredTest testList[], int testNum)
 {
-	if(testNum > MAX_TESTS)
+	if(testNum > MAX_TEST)
 	{
-		logger.log(LogLevel::ERROR, "Maximum Test Limit exeeded", MAX_TESTS);
+		logger.log(LogLevel::ERROR, "Maximum Test Limit exeeded", MAX_TEST);
 		return;
 	}
 	for(int i = 0; i < testNum; ++i)
@@ -209,7 +218,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 	vTaskDelay(pdMS_TO_TICKS(1000));
 	while(true)
 	{
-		State managerState = SyncTest.getState();
+		State managerState = instance.loadState();
 
 		if(managerState == State::DEVICE_READY)
 		{
@@ -220,14 +229,14 @@ void TestManager::TestManagerTask(void* pvParameters)
 		{
 			if(instance.isTestPendingAndNotStarted(instance._testList[i]))
 			{
-				managerState = SyncTest.getState();
+				managerState = instance.loadState();
 
 				TestType testType = instance._testList[i].testRequired.testtype;
 				bool success = false;
 
 				if(testType == TestType::SwitchTest)
 				{
-					managerState = SyncTest.getState();
+					managerState = instance.loadState();
 					SwitchTestData dataBuff1;
 					success = instance.handleTestState(SwitchTest::getInstance(), managerState, i,
 													   &dataBuff1);
@@ -250,7 +259,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 				}
 				else if(testType == TestType::BackupTest)
 				{
-					managerState = SyncTest.getState();
+					managerState = instance.loadState();
 					BackupTestData dataBuff2;
 					success = instance.handleTestState(BackupTest::getInstance(), managerState, i,
 													   &dataBuff2);
