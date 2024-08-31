@@ -207,7 +207,6 @@ static const char* loadPercentageToString(LoadPercentage load)
 
 static TestType getTestTypeFromString(const String& testName)
 {
-	// Create a copy of the testName to trim
 	std::string tName = "";
 	tName = static_cast<std::string>(testName.c_str());
 	tName.erase(std::remove_if(tName.begin(), tName.end(), ::isspace), tName.end());
@@ -233,15 +232,11 @@ static TestType getTestTypeFromString(const String& testName)
 static LoadPercentage getLoadLevelFromString(const String& loadLevel)
 
 {
-	Serial.println("Before convertion");
-	Serial.print(loadLevel);
 	std::string tload = "";
 	tload = static_cast<std::string>(loadLevel.c_str());
 	tload.erase(std::remove_if(tload.begin(), tload.end(), ::isspace), tload.end());
 	const char* load = tload.c_str();
 
-	Serial.println("After convertion");
-	Serial.print(load);
 	if(caseInsensitiveCompare(load, "0%") == 0)
 		return LoadPercentage::LOAD_0P;
 	else if(caseInsensitiveCompare(load, "25%") == 0)

@@ -19,6 +19,10 @@ extern EventGroupHandle_t eventGroupTest;
 extern EventGroupHandle_t eventGroupUser;
 extern EventGroupHandle_t eventGroupSync;
 
+const EventBits_t ALL_TEST_BITS = (1 << MAX_TEST) - 1;
+const EventBits_t ALL_CMD_BITS = (1 << MAX_USER_COMMAND) - 1;
+const EventBits_t ALL_SYNC_BITS = (1 << MAX_SYNC_COMMAND) - 1;
+
 enum class UserCommand : EventBits_t
 {
 	NEW_TEST = (1 << 0),
@@ -30,6 +34,7 @@ enum class UserCommand : EventBits_t
 	START = (1 << 6),
 	STOP = (1 << 7)
 };
+
 enum class SyncCommand : EventBits_t
 {
 	WAIT = (1 << 0),
@@ -41,276 +46,34 @@ enum class SyncCommand : EventBits_t
 	START_TEST = (1 << 6),
 	STOP_TEST = (1 << 7)
 };
+
 class TestSync
 {
   public:
-	static TestSync& getInstance()
-	{
-		static TestSync instance;
-		return instance;
-	}
-	void init()
-	{
-		refreshState();
-		eventGroupTest = xEventGroupCreate();
-		eventGroupUser = xEventGroupCreate();
-		eventGroupSync = xEventGroupCreate();
-		resetAllBits();
-		logger.log(LogLevel::INFO, "testSync initialisation");
-	}
-
-	void triggerEvent(Event event)
-	{
-		stateMachine.handleEvent(event);
-	}
-
-	State refreshState()
-	{
-		_currentState.store(stateMachine.getCurrentState());
-		return _currentState.load();
-	}
-
-	void parseIncomingJson(JsonVariant json)
-	{
-		// Reset all tests as inactive
-		for(int i = 0; i < MAX_TEST; i++)
-		{
-			_testList[i].isActive = false;
-		}
-
-		// If the incoming JSON is an object (already handled by the lambda function)
-		if(json.is<JsonObject>())
-		{
-			logger.log(LogLevel::TEST, "TEST SYNC FUNCTION RECEIVING THIS");
-			serializeJsonPretty(json, Serial);
-			JsonObject jsonObj = json.as<JsonObject>();
-
-			// Validate required fields
-			if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
-			{
-				parseTestJson(jsonObj);
-			}
-			else if(jsonObj.containsKey("startCommand") || jsonObj.containsKey("stopCommand") ||
-					jsonObj.containsKey("autoCommand") || jsonObj.containsKey("manualCommand") ||
-					jsonObj.containsKey("pauseCommand") || jsonObj.containsKey("resumeCommand"))
-			{
-				// parseUserCommandJson(jsonObj);
-			}
-			else
-			{
-				logger.log(LogLevel::ERROR, "Required fields missing");
-			}
-		}
-		else
-		{
-			logger.log(LogLevel::ERROR, "Unknown JSON format!!!");
-		}
-	}
+	static TestSync& getInstance();
+	void init();
+	void triggerEvent(Event event);
+	State refreshState();
+	void parseIncomingJson(JsonVariant json);
+	void handleUserCommand(UserCommand command);
+	void handleSyncCommand(SyncCommand command);
 
   private:
-	TestSync() : _currentState{State::DEVICE_ON}
-	{
-	}
-
-	static const EventBits_t ALL_TEST_BITS = (1 << MAX_TEST) - 1;
-	static const EventBits_t ALL_CMD_BITS = (1 << MAX_USER_COMMAND) - 1;
-	std::atomic<State> _currentState{State::DEVICE_ON};
+	TestSync();
+	static const EventBits_t ALL_TEST_BITS;
+	static const EventBits_t ALL_CMD_BITS;
+	std::atomic<State> _currentState;
 	RequiredTest _testList[MAX_TEST];
 
-	void resetAllBits()
-	{
-		xEventGroupClearBits(eventGroupTest, ALL_TEST_BITS);
-		xEventGroupClearBits(eventGroupUser, ALL_CMD_BITS);
-	}
-	void startTest(TestType test)
-	{
-		EventBits_t test_eventbits = static_cast<EventBits_t>(test);
-		xEventGroupSetBits(eventGroupTest, test_eventbits);
-		logger.log(LogLevel::WARNING, "test %s will be started", testTypeToString(test));
-	};
+	void resetAllBits();
+	void createSynctask();
+	static void userCommandObserverTask(void* pvParameters);
+	static void testSyncTask(void* pvParameters);
 
-	void stopTest(TestType test)
-	{
-		EventBits_t test_eventbits = static_cast<EventBits_t>(test);
-		xEventGroupClearBits(eventGroupTest, test_eventbits);
-		logger.log(LogLevel::WARNING, "test %s will be stopped", testTypeToString(test));
-		vTaskDelay(pdMS_TO_TICKS(50));
-	};
-
-	void parseTestJson(JsonObject jsonObj)
-	{
-		bool isExistingTest = false;
-		String testName = jsonObj["testName"];
-		String loadLevel = jsonObj["loadLevel"];
-		TestType testType = getTestTypeFromString(testName);
-		LoadPercentage loadPercentage = getLoadLevelFromString(loadLevel);
-
-		if(testType == static_cast<TestType>(0))
-		{
-			logger.log(LogLevel::ERROR, "Unknown testName: ", testName);
-			return;
-		}
-
-		if(loadPercentage ==
-		   static_cast<LoadPercentage>(-1)) // Assuming -1 is an invalid LoadPercentage
-		{
-			logger.log(LogLevel::ERROR, "Invalid loadLevel: ", loadLevel);
-			return;
-		}
-
-		// Check if the test already exists in the list
-		for(int i = 0; i < MAX_TEST; i++)
-		{
-			if(_testList[i].testType == testType)
-			{
-				isExistingTest = true;
-
-				_testList[i].loadLevel = loadPercentage;
-				_testList[i].isActive = true; // Mark as active
-
-				break;
-			}
-		}
-
-		// Add new test if it doesn't exist
-		if(!isExistingTest)
-		{
-			// Find the first available slot for a new test
-			for(int i = 0; i < MAX_TEST; i++)
-			{
-				if(!_testList[i].isActive)
-				{
-					_testList[i].testId = i + 1; // Assuming testId is sequential
-					_testList[i].testType = testType;
-					_testList[i].loadLevel = loadPercentage;
-					_testList[i].isActive = true;
-					logger.log(LogLevel::SUCCESS, "Received new test requirement");
-					logger.log(LogLevel::INFO,
-							   "TestName:", testTypeToString(_testList[i].testType));
-					logger.log(LogLevel::INFO, "LoadLevel percent:",
-							   loadPercentageToString(_testList[i].loadLevel));
-
-					handleUserCommand(UserCommand::NEW_TEST); // Trigger NEW_TEST command
-					return; // Exit after adding the new test
-				}
-			}
-
-			logger.log(LogLevel::WARNING, "Test list is full, unable to add new test.");
-		}
-	}
-
-	void checkForDeletedTests()
-	{
-		bool testDeleted = false;
-
-		for(int i = 0; i < MAX_TEST; i++)
-		{
-			if(!_testList[i].isActive && _testList[i].testId != 0)
-			{
-				// Clear the test entry
-				logger.log(LogLevel::WARNING, "Removing test requirement");
-				logger.log(LogLevel::INFO, "TestName:", testTypeToString(_testList[i].testType));
-				logger.log(LogLevel::INFO,
-						   "LoadLevel percent:", loadPercentageToString(_testList[i].loadLevel));
-				_testList[i] = {}; // Reset the test entry
-				testDeleted = true;
-			}
-		}
-
-		if(testDeleted)
-		{
-			handleUserCommand(UserCommand::DELETE_TEST);
-		}
-	}
-	void handleUserCommand(UserCommand command)
-	{
-		EventBits_t commandBits = static_cast<EventBits_t>(command);
-
-		// Clear opposite commands automatically
-		switch(command)
-		{
-			case UserCommand::NEW_TEST:
-				xEventGroupClearBits(eventGroupUser,
-									 static_cast<EventBits_t>(UserCommand::DELETE_TEST));
-				break;
-			case UserCommand::DELETE_TEST:
-				xEventGroupClearBits(eventGroupUser,
-									 static_cast<EventBits_t>(UserCommand::NEW_TEST));
-				break;
-			case UserCommand::PAUSE:
-				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::RESUME));
-				break;
-			case UserCommand::RESUME:
-				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::PAUSE));
-				break;
-			case UserCommand::AUTO:
-				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::MANUAL));
-				break;
-			case UserCommand::MANUAL:
-				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::AUTO));
-				break;
-			case UserCommand::START:
-				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::STOP));
-				break;
-			case UserCommand::STOP:
-				xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::START));
-				break;
-			default:
-				// No need to clear anything for unknown commands
-				break;
-		}
-
-		// Set the current command
-		xEventGroupSetBits(eventGroupUser, commandBits);
-		logger.log(LogLevel::INFO, "User command %d triggered", static_cast<int>(command));
-	}
-	void handleSyncCommand(SyncCommand command)
-	{
-		EventBits_t commandBits = static_cast<EventBits_t>(command);
-
-		// Handle exclusive commands if necessary
-		switch(command)
-		{
-			case SyncCommand::WAIT:
-				// Example: Clear commands that shouldn't be active when in WAIT mode
-				xEventGroupClearBits(eventGroupSync,
-									 static_cast<EventBits_t>(SyncCommand::ACTIVATE) |
-										 static_cast<EventBits_t>(SyncCommand::START_TEST) |
-										 static_cast<EventBits_t>(SyncCommand::STOP_TEST));
-				break;
-			case SyncCommand::ACTIVATE:
-				// Clear WAIT when ACTIVATE is issued
-				xEventGroupClearBits(eventGroupSync, static_cast<EventBits_t>(SyncCommand::WAIT));
-				break;
-			case SyncCommand::RE_TEST:
-				// Clear SKIP_TEST if RE_TEST is issued
-				xEventGroupClearBits(eventGroupSync,
-									 static_cast<EventBits_t>(SyncCommand::SKIP_TEST));
-				break;
-			case SyncCommand::SKIP_TEST:
-				// Clear RE_TEST if SKIP_TEST is issued
-				xEventGroupClearBits(eventGroupSync,
-									 static_cast<EventBits_t>(SyncCommand::RE_TEST));
-				break;
-			case SyncCommand::START_TEST:
-				// Clear STOP_TEST when starting the test
-				xEventGroupClearBits(eventGroupSync,
-									 static_cast<EventBits_t>(SyncCommand::STOP_TEST));
-				break;
-			case SyncCommand::STOP_TEST:
-				// Clear START_TEST when stopping the test
-				xEventGroupClearBits(eventGroupSync,
-									 static_cast<EventBits_t>(SyncCommand::START_TEST));
-				break;
-			default:
-				// No conflicting commands to clear for SAVE or IGNORE
-				break;
-		}
-
-		// Set the current sync command
-		xEventGroupSetBits(eventGroupSync, commandBits);
-		logger.log(LogLevel::INFO, "Sync command %d triggered", static_cast<int>(command));
-	}
+	void startTest(TestType test);
+	void stopTest(TestType test);
+	void parseTestJson(JsonObject jsonObj);
+	void checkForDeletedTests();
 
 	TestSync(const TestSync&) = delete;
 	TestSync& operator=(const TestSync&) = delete;
