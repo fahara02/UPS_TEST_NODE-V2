@@ -44,9 +44,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.appendLog = function(message) { // Define appendLog globally
-        var logMonitor = document.getElementById('logMonitor');
-        logMonitor.innerHTML += message + '\\n';
-        logMonitor.scrollTop = logMonitor.scrollHeight;
+        var testCommand = document.getElementById('testCommand');
+        testCommand.innerHTML += message + '\\n';
+        testCommand.scrollTop = logMonitor.scrollHeight;
     }
 
     window.startTest = function() { // Define startTest globally

@@ -376,8 +376,8 @@ class Logger
 
 			_logBuffer.push_back(strippedLog); // Add the new log entry
 
-			// Clear content after 10 logs
-			if(_logBuffer.size() == 10)
+			// Clear content after 15 logs
+			if(_logBuffer.size() == 15)
 			{
 				_logBuffer.clear(); // Clear the buffer
 				Logger::getInstance()

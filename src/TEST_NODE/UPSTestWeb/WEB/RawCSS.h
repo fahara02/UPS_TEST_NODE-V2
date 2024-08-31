@@ -12,7 +12,7 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
             display: none;
         }
         .full-width {
-            width: 100%;
+            width: 50%;
         }
 
 
@@ -104,5 +104,30 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         white-space: pre-wrap;
         background-color: #f5f5f5;
       }
+      .container {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px; /* Creates the gap between the two sections */
+        margin: 20px;
+    }
+    .user-command {
+        width: 45%;
+        background-color: white;
+        border: 1px solid #ccc;
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+     .log-output {
+        width: 45%;
+        background-color: black;
+        color: white;
+        border: 1px solid #ccc;
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        font-family: monospace;
+        white-space: pre-wrap; /* Ensures logs are displayed properly */
+        overflow-y: auto; /* Adds scroll if the content overflows */
+        max-height: 400px; /* Adjust height as needed */
+    }
 )rawliteral";
 #endif

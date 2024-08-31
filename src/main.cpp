@@ -155,7 +155,7 @@ void setup()
 	builder.setupPages();
 
 	// Initialize Serial for debugging
-	logger.init(&Serial, LogLevel::INFO, 10);
+	logger.init(&Serial, LogLevel::INFO, 15);
 	logger.log(LogLevel::INFO, "Serial started........");
 	server.begin();
 	logger.log(LogLevel::INFO, "creating semaphores..");
@@ -191,7 +191,7 @@ void setup()
 	Manager.addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
 	logger.log(LogLevel::INFO, "changing states");
 
-	// Manager.triggerEvent(Event::SELF_CHECK_OK);
+	Manager.triggerEvent(Event::SELF_CHECK_OK);
 	vTaskDelay(pdTICKS_TO_MS(100));
 	Manager.triggerEvent(Event::SETTING_LOADED);
 	vTaskDelay(pdTICKS_TO_MS(100));

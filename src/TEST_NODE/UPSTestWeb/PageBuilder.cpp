@@ -13,10 +13,10 @@ void PageBuilder::setupPages()
 		this->sendHeaderTrailer(response);
 		const char* routes[] = {"/", "/settings", "/network", "/modbus", "/report"};
 
-		this->sendNavbar(response, routes, "UPS TESTING PANEL");
+		this->sendNavbar(response, "UPS TESTING PANEL", routes);
 		this->sendSidebar(response);
-		this->sendMainContent(response, "HELLO");
-		// this->sendDashboard(response, logger);
+		this->sendUserCommand(response);
+
 		this->sendScript(response);
 		this->sendPageTrailer(response);
 		request->send(response);
@@ -66,19 +66,20 @@ void PageBuilder::sendHeaderTrailer(AsyncResponseStream* response)
 	const char* headerTrailerHtml = copyFromPROGMEM(HEADER_TRAILER_HTML, buffer);
 	response->print(headerTrailerHtml);
 }
-void PageBuilder::sendNavbar(AsyncResponseStream* response, const char* routes[], const char* title,
+void PageBuilder::sendNavbar(AsyncResponseStream* response, const char* title, const char* routes[],
 							 const char* btn1class, const char* btn2class, const char* btn3class)
 {
 	char buffer[NAVBAR_HTML_LENGTH];
 	const char* navbarHtml = copyFromPROGMEM(NAVBAR_HTML, buffer);
 
 	response->printf(navbarHtml,
+					 title, // title
 					 routes[0], // Dashboard route
 					 routes[1], // Settings route
 					 routes[2], // Network route
 					 routes[3], // Modbus route
 					 routes[4], // Test Report route
-					 title,
+
 					 btn1class, // Action for Shutdown button
 					 btn2class, // CSS class for Shutdown button
 					 btn3class // Action for Restart button
@@ -212,11 +213,20 @@ void PageBuilder::sendLogmonitor(AsyncResponseStream* response, Logger& logger)
 	response->print("</div>");
 }
 
-void PageBuilder::sendMainContent(AsyncResponseStream* response, const char* content)
+void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
 {
-	response->print("<div class=\"full-width\" id=\"content\">");
+	response->print("<div class=\"container\" id=\"content\">");
 
+	// Left side: User commands
+	response->print("<div class=\"user-command\">");
+	response->print("<h2>User Commands</h2>");
+	response->print("<pre id=\"testCommand\"></pre>");
+	response->print("</div>");
+
+	// Right side: Log output
 	String logs = logger.getBufferedLogs();
+	response->print("<div class=\"log-output\">");
+	response->print("<h2>Log Output</h2>");
 	if(logs.length() > 0)
 	{
 		response->print("<pre style=\"color:green;\" id=\"logs\">");
@@ -227,8 +237,9 @@ void PageBuilder::sendMainContent(AsyncResponseStream* response, const char* con
 	{
 		response->print("<p id=\"logs\">No logs available.</p>");
 	}
-
 	response->print("</div>");
+
+	response->print("</div>"); // Closing container div
 
 	// JavaScript for auto-refresh
 	response->print(R"(<script>
@@ -246,6 +257,6 @@ void PageBuilder::sendMainContent(AsyncResponseStream* response, const char* con
     </script>)");
 
 	char buffer[CONTENT_HTML_LENGTH];
-	const char* contentHtml = copyFromPROGMEM(MAIN_CONTENT_HTML, buffer);
+	const char* contentHtml = copyFromPROGMEM(USER_COMMAND_HTML, buffer);
 	response->print(contentHtml);
 }
