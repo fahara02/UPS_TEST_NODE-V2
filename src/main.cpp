@@ -129,7 +129,7 @@ void modbusRTUTask(void* pvParameters)
 	while(true)
 	{
 		logger.log(LogLevel::WARNING, "Resuming modbus task");
-		//  mb.task();
+		// mb.task();
 		vTaskDelay(pdMS_TO_TICKS(2000)); // Task delay
 	}
 	vTaskDelete(NULL);
@@ -138,13 +138,6 @@ void modbusRTUTask(void* pvParameters)
 void setup()
 
 {
-	// mainLoss = xSemaphoreCreateBinary();
-	// upsGain = xSemaphoreCreateBinary();
-	// upsLoss = xSemaphoreCreateBinary();
-
-	// TestManageQueue = xQueueCreate(messageQueueLength, sizeof(SetupTaskParams));
-	// SwitchTestDataQueue = xQueueCreate(messageQueueLength, sizeof(SwitchTestData));
-	// BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
 	Serial.begin(115200);
 
 	WiFi.mode(WIFI_STA);
@@ -164,58 +157,46 @@ void setup()
 	// Initialize Serial for debugging
 	logger.init(&Serial, LogLevel::INFO, 10);
 	logger.log(LogLevel::INFO, "Serial started........");
-
-	// if(mainLoss == NULL || upsGain == NULL || upsLoss == NULL)
-	// {
-	// 	logger.log(LogLevel::ERROR, "Failed to create one or more ISR semaphores");
-	// 	// Handle error
-	// }
-	// else
-	// {
-	// 	logger.log(LogLevel::SUCCESS, "Successfully created ISR semaphores");
-	// }
-
-	// SyncTest.init();
-	// modbusRTU_Init();
-	// Serial2.begin(9600, SERIAL_8N1);
-	// mb.begin(&Serial2);
-	// mb.slave(1);
-	// logger.log(LogLevel::INFO, "modbus slave configured");
-
-	// logger.log(LogLevel::INFO, "creating semaphores..");
-
-	// logger.log(LogLevel::INFO, "creating queue");
-
-	// logger.log(LogLevel::INFO, "getting TesterSetup  instance");
-
-	// logger.log(LogLevel::INFO, "trying manager to init");
-	// switchTest.init();
-	// backupTest.init();
-
-	// logger.log(LogLevel::INFO, "getting manager instance");
-	// TestManager& Manager = TestManager::getInstance();
-	// logger.log(LogLevel::INFO, "getting manager init");
-	// Manager.init();
-
-	// RequiredTest testlist[] = {
-	// 	{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
-	// 	{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
-
-	// };
-	// logger.log(LogLevel::INFO, "adding Tests");
-	// Manager.addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
-	// logger.log(LogLevel::INFO, "changing states");
-
-	// //Manager.triggerEvent(Event::SELF_CHECK_OK);
-	// vTaskDelay(pdTICKS_TO_MS(100));
-	// Manager.triggerEvent(Event::SETTING_LOADED);
-	// vTaskDelay(pdTICKS_TO_MS(100));
-	// Manager.triggerEvent(Event::LOAD_BANK_CHECKED);
-	// vTaskDelay(pdTICKS_TO_MS(100));
-
-	xTaskCreate(modbusRTUTask, "ModbusRTUTask", 4096, NULL, 1, &modbusRTUTaskHandle);
-
 	server.begin();
+	logger.log(LogLevel::INFO, "creating semaphores..");
+	mainLoss = xSemaphoreCreateBinary();
+	upsGain = xSemaphoreCreateBinary();
+	upsLoss = xSemaphoreCreateBinary();
+	logger.log(LogLevel::INFO, "creating queue");
+	TestManageQueue = xQueueCreate(messageQueueLength, sizeof(SetupTaskParams));
+	SwitchTestDataQueue = xQueueCreate(messageQueueLength, sizeof(SwitchTestData));
+	BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
+
+	logger.log(LogLevel::INFO, "initiating test sync");
+	SyncTest.init();
+	logger.log(LogLevel::INFO, "initiating modbus");
+	modbusRTU_Init();
+	Serial2.begin(9600, SERIAL_8N1);
+	mb.begin(&Serial2);
+	mb.slave(1);
+	xTaskCreate(modbusRTUTask, "ModbusRTUTask", 4096, NULL, 1, &modbusRTUTaskHandle);
+	logger.log(LogLevel::INFO, "modbus slave configured");
+
+	logger.log(LogLevel::INFO, "getting manager instance");
+	TestManager& Manager = TestManager::getInstance();
+	logger.log(LogLevel::INFO, "getting manager init");
+	Manager.init();
+
+	RequiredTest testlist[] = {
+		{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
+		{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
+
+	};
+	logger.log(LogLevel::INFO, "adding Tests");
+	Manager.addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
+	logger.log(LogLevel::INFO, "changing states");
+
+	// Manager.triggerEvent(Event::SELF_CHECK_OK);
+	vTaskDelay(pdTICKS_TO_MS(100));
+	Manager.triggerEvent(Event::SETTING_LOADED);
+	vTaskDelay(pdTICKS_TO_MS(100));
+	Manager.triggerEvent(Event::LOAD_BANK_CHECKED);
+	vTaskDelay(pdTICKS_TO_MS(100));
 }
 void loop()
 {
