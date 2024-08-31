@@ -6,6 +6,7 @@
 #include <vector>
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
+
 #include "Settings.h"
 #include "TestData.h"
 #include "UPSdebug.h"
@@ -61,7 +62,6 @@ class PageBuilder
 	PageBuilder(AsyncWebServer* server) : _server(server)
 	{
 	}
-
 	void setupPages();
 	const char* copyFromPROGMEM(const char copyFrom[], char sendTo[]);
 
@@ -98,11 +98,6 @@ class PageBuilder
 
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;
-
-	AsyncWebServer* serve()
-	{
-		return _server;
-	}
 
   private:
 	AsyncWebServer* _server;

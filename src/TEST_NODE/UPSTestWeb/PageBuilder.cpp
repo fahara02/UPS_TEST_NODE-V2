@@ -1,26 +1,28 @@
 #include "PageBuilder.h"
+#include "AsyncJson.h"
+#include "ArduinoJson.h"
 
 #define ETAG "\"" __DATE__ " " __TIME__ "\""
 
 void PageBuilder::setupPages()
 {
+	// Handle the main page
 	_server->on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
 		auto* response = request->beginResponseStream("text/html");
 		this->sendHeader(response);
-
 		this->sendStyle(response);
-
 		this->sendHeaderTrailer(response);
-		const char* routes[] = {"/", "/settings", "/network", "/modbus", "/report"};
 
+		const char* routes[] = {"/", "/settings", "/network", "/modbus", "/report"};
 		this->sendNavbar(response, "UPS TESTING PANEL", routes);
 		this->sendSidebar(response);
 		this->sendUserCommand(response);
-
 		this->sendScript(response);
 		this->sendPageTrailer(response);
 		request->send(response);
 	});
+
+	// Handle GET request for logs
 	_server->on("/log", HTTP_GET, [](AsyncWebServerRequest* request) {
 		String logs = logger.getBufferedLogs();
 		if(logs.length() > 0)
@@ -33,32 +35,101 @@ void PageBuilder::setupPages()
 		}
 	});
 
-	_server->on("/updateTestData", HTTP_POST, [logger](AsyncWebServerRequest* request) {
-		String json;
-		if(request->hasParam("body", true))
-		{
-			json = request->getParam("body", true)->value();
-		}
+	// Handle POST request for updating test data
+	auto* testDataHandler = new AsyncCallbackJsonWebHandler(
+		"/updateTestData", [](AsyncWebServerRequest* request, JsonVariant& json) {
+			// Print the received JSON to the serial monitor for debugging
+			Serial.println("Received JSON Data:");
+			serializeJsonPretty(json, Serial);
 
-		logger.log(LogLevel::SUCCESS, "Received New Test: ", json);
-		request->send(200, "text/plain", "New Test received");
-	});
+			// Check if the JSON data is an array
+			if(json.is<JsonArray>())
+			{
+				JsonArray jsonArray = json.as<JsonArray>();
+
+				// Iterate through the array and process each JSON object
+				for(JsonVariant value: jsonArray)
+				{
+					if(value.is<JsonObject>())
+					{
+						JsonObject jsonObj = value.as<JsonObject>();
+
+						// Validate and process the expected fields
+						if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
+						{
+							Serial.print("testName: ");
+							Serial.println(jsonObj["testName"].as<String>());
+							Serial.print("loadLevel: ");
+							Serial.println(jsonObj["loadLevel"].as<String>());
+						}
+						else
+						{
+							Serial.println("Error: Required fields missing in JSON.");
+						}
+					}
+					else
+					{
+						Serial.println("Error: Expected JSON objects in array.");
+					}
+				}
+				request->send(200, "application/json", "{\"status\":\"success\"}");
+			}
+			else
+			{
+				Serial.println("Error: Invalid JSON format.");
+				request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+			}
+		});
+	_server->addHandler(testDataHandler);
 
 	// Handle POST request to update status
-	_server->on("/updateStatus", HTTP_POST, [logger](AsyncWebServerRequest* request) {
-		String status;
-		if(request->hasParam("body", true))
+	_server->on("/updateStatus", HTTP_POST, [](AsyncWebServerRequest* request) {
+		if(!request->hasParam("body", true))
 		{
-			status = request->getParam("body", true)->value();
+			request->send(400, "text/plain", "Invalid request: No body found.");
+			return;
 		}
-		logger.log(LogLevel::SUCCESS, "Received Status: ", status);
-		request->send(200, "text/plain", "Status received");
+
+		String status = request->getParam("body", true)->value();
+		request->send(200, "text/plain", "Status received: " + status);
 	});
 
+	// Handle 404 errors
 	_server->onNotFound([](AsyncWebServerRequest* request) {
-		request->send(404, "text/plain", "404");
+		request->send(404, "text/plain", "404 Not Found");
 	});
 }
+
+// void PageBuilder::handleJsonPost(AsyncWebServerRequest* request, JsonVariant& json)
+// {
+// 	if(!json.is<JsonObject>())
+// 	{
+// 		request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+// 		return;
+// 	}
+
+// 	JsonObject jsonObj = json.as<JsonObject>();
+
+// 	// Clear the existing _testList data before updating with new JSON content
+// 	_testList.clear();
+// 	for(JsonPair kv: jsonObj)
+// 	{
+// 		// Add the new key-value pairs to _testList
+// 		_testList[kv.key()] = kv.value();
+// 	}
+
+// 	request->send(200, "application/json", "{\"status\":\"success\"}");
+// }
+
+// void PageBuilder::sendJsonResponse(AsyncWebServerRequest* request)
+// {
+// 	String jsonResponse;
+// 	serializeJson(_testList, jsonResponse); // Serialize the _testList JsonObject
+
+// 	AsyncResponseStream* response = request->beginResponseStream("application/json");
+// 	response->print(jsonResponse); // Send the serialized JSON as the response
+// 	request->send(response);
+// }
 
 const char* PageBuilder::copyFromPROGMEM(const char copyFrom[], char sendTo[])
 {
@@ -211,7 +282,6 @@ void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, 
 					 "</tr>",
 					 name, value);
 }
-
 
 void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
 {

@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var testCommand = document.getElementById('testCommand');
         if (testCommand) {
             testCommand.innerHTML += message + '\\n';
-            testCommand.scrollTop = testCommand.scrollHeight; // Corrected to use testCommand
+            testCommand.scrollTop = testCommand.scrollHeight;
         } else {
             console.error('Element testCommand not found');
         }
@@ -77,10 +77,10 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/updateTestData', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(window.tests)
+            body: JSON.stringify(window.tests) // Convert the JavaScript object to a JSON string
         })
         .then(response => response.text())
-        .then(data => console.log(data))
+        .then(data => console.log('Server Response:', data))
         .catch(error => console.error('Error:', error));
     }
 
@@ -88,10 +88,10 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/updateStatus', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({status: status})
+            body: JSON.stringify({status: status}) // Send status as a JSON string
         })
         .then(response => response.text())
-        .then(data => console.log(data))
+        .then(data => console.log('Server Response:', data))
         .catch(error => console.error('Error:', error));
     }
 });
