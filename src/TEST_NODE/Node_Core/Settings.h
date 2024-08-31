@@ -285,7 +285,7 @@ struct SetupTask
 	int mainTest_taskCore = 0;
 	int mainsISR_taskCore = ARDUINO_RUNNING_CORE;
 	int upsISR_taskCore = ARDUINO_RUNNING_CORE;
-	int mainTest_taskIdlePriority = 2;
+	int mainTest_taskIdlePriority = 1;
 	int mainsISR_taskIdlePriority = 1;
 	int upsISR_taskIdlePriority = 1;
 	uint32_t mainTest_taskStack = 12000;

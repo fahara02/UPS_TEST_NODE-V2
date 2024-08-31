@@ -26,6 +26,7 @@ constexpr size_t SIDEBAR_HTML_LENGTH = sizeof(SIDEBAR_HTML) - 1;
 constexpr size_t NAVBAR_HTML_LENGTH = sizeof(NAVBAR_HTML) - 1;
 constexpr size_t HEADER_TRAILER_HTML_LENGTH = sizeof(HEADER_TRAILER_HTML) - 1;
 constexpr size_t LAST_TRAILER_HTML_LENGTH = sizeof(LAST_TRAILER_HTML) - 1;
+constexpr size_t CONTENT_HTML_LENGTH = sizeof(MAIN_CONTENT_HTML) - 1;
 constexpr size_t CSS_LENGTH = sizeof(STYLE_BLOCK_CSS) - 1;
 constexpr size_t JSS_LENGTH = sizeof(MAIN_SCRIPT_JSS) - 1;
 
@@ -61,14 +62,14 @@ class PageBuilder
 	{
 	}
 
-	void setupPages(WiFiManager* wm, UPSTesterSetup* testSetup, TestManager* testManager,
-					TestSync* testSync, SetupUPSTest* allSetup, TestData* data);
+	void setupPages();
 	const char* copyFromPROGMEM(const char copyFrom[], char sendTo[]);
 
-	void sendHeader(AsyncResponseStream* response, const char* title);
+	void sendHeader(AsyncResponseStream* response);
 
 	void sendHeaderTrailer(AsyncResponseStream* response);
 	void sendPageTrailer(AsyncResponseStream* response);
+	void sendMainContent(AsyncResponseStream* response, const char* content);
 	void sendStyle(AsyncResponseStream* response);
 	void sendScript(AsyncResponseStream* response);
 
@@ -91,8 +92,8 @@ class PageBuilder
 	void sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType);
 
 	void sendLogmonitor(AsyncResponseStream* response, Logger& logger);
-	void sendDashboard(AsyncResponseStream* response, Logger& logger,
-					   const char* classname = "content", const char* paragraph = "");
+	void sendLog(AsyncResponseStream* response, Logger& logger, const char* classname = "content",
+				 const char* paragraph = "");
 	void sendNavbar(AsyncResponseStream* response, const char* routes[], const char* title = "",
 					const char* btn1class = "button", const char* btn2class = "button",
 					const char* btn3class = "button");

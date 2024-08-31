@@ -21,6 +21,7 @@
 #include "BackupTest.h"
 
 #include "PageBuilder.h"
+#include "UPSdebug.h"
 
 using namespace Node_Core;
 
@@ -69,9 +70,9 @@ EventGroupHandle_t eventGroupBackupTestData = NULL;
 // Define the SwitchTest instance
 
 // Task handles
-
+const char* PARAM_MESSAGE = "message";
 SemaphoreHandle_t xSemaphore;
-AsyncWebServer webServer(80);
+AsyncWebServer server(80);
 
 WiFiManager wm;
 ModbusRTU mb;
@@ -128,8 +129,8 @@ void modbusRTUTask(void* pvParameters)
 	while(true)
 	{
 		logger.log(LogLevel::WARNING, "Resuming modbus task");
-		mb.task();
-		vTaskDelay(pdMS_TO_TICKS(100)); // Task delay
+		//  mb.task();
+		vTaskDelay(pdMS_TO_TICKS(2000)); // Task delay
 	}
 	vTaskDelete(NULL);
 }
@@ -137,13 +138,13 @@ void modbusRTUTask(void* pvParameters)
 void setup()
 
 {
-	mainLoss = xSemaphoreCreateBinary();
-	upsGain = xSemaphoreCreateBinary();
-	upsLoss = xSemaphoreCreateBinary();
+	// mainLoss = xSemaphoreCreateBinary();
+	// upsGain = xSemaphoreCreateBinary();
+	// upsLoss = xSemaphoreCreateBinary();
 
-	TestManageQueue = xQueueCreate(messageQueueLength, sizeof(SetupTaskParams));
-	SwitchTestDataQueue = xQueueCreate(messageQueueLength, sizeof(SwitchTestData));
-	BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
+	// TestManageQueue = xQueueCreate(messageQueueLength, sizeof(SetupTaskParams));
+	// SwitchTestDataQueue = xQueueCreate(messageQueueLength, sizeof(SwitchTestData));
+	// BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
 	Serial.begin(115200);
 
 	WiFi.mode(WIFI_STA);
@@ -154,66 +155,67 @@ void setup()
 	});
 	wm.autoConnect();
 	if(reboot)
-	{
+		// {
 		ESP.restart();
-	}
+
+	PageBuilder builder(&server);
+	builder.setupPages();
 
 	// Initialize Serial for debugging
 	logger.init(&Serial, LogLevel::INFO, 10);
 	logger.log(LogLevel::INFO, "Serial started........");
 
-	if(mainLoss == NULL || upsGain == NULL || upsLoss == NULL)
-	{
-		logger.log(LogLevel::ERROR, "Failed to create one or more ISR semaphores");
-		// Handle error
-	}
-	else
-	{
-		logger.log(LogLevel::SUCCESS, "Successfully created ISR semaphores");
-	}
+	// if(mainLoss == NULL || upsGain == NULL || upsLoss == NULL)
+	// {
+	// 	logger.log(LogLevel::ERROR, "Failed to create one or more ISR semaphores");
+	// 	// Handle error
+	// }
+	// else
+	// {
+	// 	logger.log(LogLevel::SUCCESS, "Successfully created ISR semaphores");
+	// }
 
-	SyncTest.init();
-	modbusRTU_Init();
-	Serial2.begin(9600, SERIAL_8N1);
-	mb.begin(&Serial2);
-	mb.slave(1);
-	logger.log(LogLevel::INFO, "modbus slave configured");
+	// SyncTest.init();
+	// modbusRTU_Init();
+	// Serial2.begin(9600, SERIAL_8N1);
+	// mb.begin(&Serial2);
+	// mb.slave(1);
+	// logger.log(LogLevel::INFO, "modbus slave configured");
 
-	logger.log(LogLevel::INFO, "creating semaphores..");
+	// logger.log(LogLevel::INFO, "creating semaphores..");
 
-	logger.log(LogLevel::INFO, "creating queue");
+	// logger.log(LogLevel::INFO, "creating queue");
 
-	logger.log(LogLevel::INFO, "getting TesterSetup  instance");
+	// logger.log(LogLevel::INFO, "getting TesterSetup  instance");
 
-	logger.log(LogLevel::INFO, "trying manager to init");
-	switchTest.init();
-	backupTest.init();
+	// logger.log(LogLevel::INFO, "trying manager to init");
+	// switchTest.init();
+	// backupTest.init();
 
-	logger.log(LogLevel::INFO, "getting manager instance");
-	TestManager& Manager = TestManager::getInstance();
-	logger.log(LogLevel::INFO, "getting manager init");
-	Manager.init();
+	// logger.log(LogLevel::INFO, "getting manager instance");
+	// TestManager& Manager = TestManager::getInstance();
+	// logger.log(LogLevel::INFO, "getting manager init");
+	// Manager.init();
 
-	RequiredTest testlist[] = {
-		{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
-		{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
+	// RequiredTest testlist[] = {
+	// 	{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
+	// 	{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
 
-	};
-	logger.log(LogLevel::INFO, "adding Tests");
-	Manager.addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
-	logger.log(LogLevel::INFO, "changing states");
+	// };
+	// logger.log(LogLevel::INFO, "adding Tests");
+	// Manager.addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
+	// logger.log(LogLevel::INFO, "changing states");
 
-	Manager.triggerEvent(Event::SELF_CHECK_OK);
-	vTaskDelay(pdTICKS_TO_MS(100));
-	Manager.triggerEvent(Event::SETTING_LOADED);
-	vTaskDelay(pdTICKS_TO_MS(100));
-	Manager.triggerEvent(Event::LOAD_BANK_CHECKED);
-	vTaskDelay(pdTICKS_TO_MS(100));
+	// //Manager.triggerEvent(Event::SELF_CHECK_OK);
+	// vTaskDelay(pdTICKS_TO_MS(100));
+	// Manager.triggerEvent(Event::SETTING_LOADED);
+	// vTaskDelay(pdTICKS_TO_MS(100));
+	// Manager.triggerEvent(Event::LOAD_BANK_CHECKED);
+	// vTaskDelay(pdTICKS_TO_MS(100));
 
-	xTaskCreatePinnedToCore(modbusRTUTask, "ModbusRTUTask", 10000, NULL, 2, &modbusRTUTaskHandle,
-							0);
+	xTaskCreate(modbusRTUTask, "ModbusRTUTask", 4096, NULL, 1, &modbusRTUTaskHandle);
 
-	webServer.begin();
+	server.begin();
 }
 void loop()
 {

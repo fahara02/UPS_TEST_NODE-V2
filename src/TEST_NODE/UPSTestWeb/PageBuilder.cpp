@@ -2,47 +2,37 @@
 
 #define ETAG "\"" __DATE__ " " __TIME__ "\""
 
-void PageBuilder::setupPages(WiFiManager* wm, UPSTesterSetup* testSetup, TestManager* testManager,
-							 TestSync* testSync, SetupUPSTest* allSetup, TestData* data)
+void PageBuilder::setupPages()
 {
 	_server->on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
 		auto* response = request->beginResponseStream("text/html");
-		this->sendHeader(response, "UPS TESTING PANEL");
+		this->sendHeader(response);
 		response->print("<style>");
 		this->sendStyle(response);
 		response->print("</style>");
 		this->sendHeaderTrailer(response);
-		const char* routes[] = {"DashBoard", "Settings", "Network", "Modbus", "Report"};
+		const char* routes[] = {"/", "/settings", "/network", "/modbus", "/report"};
 
-		this->sendNavbar(response, routes, "WebInterface");
+		this->sendNavbar(response, routes, "UPS TESTING PANEL");
 		this->sendSidebar(response);
-		this->sendDashboard(response, logger);
+		this->sendMainContent(response, "HELLO");
+		// this->sendDashboard(response, logger);
 		this->sendScript(response);
 		this->sendPageTrailer(response);
-	});
-
-	_server->on("/reboot", HTTP_POST, [](AsyncWebServerRequest* request) {
-		request->redirect("/");
-	});
-
-	_server->on("/favicon.ico", [](AsyncWebServerRequest* request) {
-		request->send(204); // TODO add favicon
-	});
-	_server->on("/style.css", [this](AsyncWebServerRequest* request) {
-		if(request->hasHeader("If-None-Match"))
-		{
-			auto header = request->getHeader("If-None-Match");
-			if(header->value() == String(ETAG))
-			{
-				request->send(304);
-				return;
-			}
-		}
-		auto* response = request->beginResponseStream("text/css");
-		this->sendStyle(response);
-		response->addHeader("ETag", ETAG);
 		request->send(response);
 	});
+	_server->on("/log", HTTP_GET, [](AsyncWebServerRequest* request) {
+		String logs = logger.getBufferedLogs();
+		if(logs.length() > 0)
+		{
+			request->send(200, "text/plain", logs);
+		}
+		else
+		{
+			request->send(200, "text/plain", "No logs available.");
+		}
+	});
+
 	_server->onNotFound([](AsyncWebServerRequest* request) {
 		request->send(404, "text/plain", "404");
 	});
@@ -56,11 +46,11 @@ const char* PageBuilder::copyFromPROGMEM(const char copyFrom[], char sendTo[])
 	return sendTo;
 }
 
-void PageBuilder::sendHeader(AsyncResponseStream* response, const char* title)
+void PageBuilder::sendHeader(AsyncResponseStream* response)
 {
 	char buffer[HEADER_HTML_LENGTH];
 	const char* headerHtml = copyFromPROGMEM(HEADER_HTML, buffer);
-	response->printf(headerHtml, title);
+	response->printf(HEADER_HTML);
 }
 
 void PageBuilder::sendStyle(AsyncResponseStream* response)
@@ -101,8 +91,8 @@ void PageBuilder::sendSidebar(AsyncResponseStream* response, const char* content
 	const char* sidebarHtml = copyFromPROGMEM(SIDEBAR_HTML, buffer);
 	response->printf(sidebarHtml, content);
 }
-void PageBuilder::sendDashboard(AsyncResponseStream* response, Logger& logger,
-								const char* classname, const char* paragraph)
+void PageBuilder::sendLog(AsyncResponseStream* response, Logger& logger, const char* classname,
+						  const char* paragraph)
 {
 	response->printf("<div class=\"%s\">", classname);
 	response->print("<h1>Dashboard</h1>");
@@ -220,4 +210,42 @@ void PageBuilder::sendLogmonitor(AsyncResponseStream* response, Logger& logger)
 	response->printf("<p>%s</p>", logger.getBufferedLogs().c_str());
 
 	response->print("</div>");
+}
+
+void PageBuilder::sendMainContent(AsyncResponseStream* response, const char* content)
+{
+	response->print("<div class=\"full-width\" id=\"content\">");
+
+	String logs = logger.getBufferedLogs();
+	if(logs.length() > 0)
+	{
+		response->print("<p style=\"color:green;\" id=\"logs\">");
+		response->printf("%s", logs.c_str());
+		response->print("</p>");
+	}
+	else
+	{
+		response->print("<p id=\"logs\">No logs available.</p>");
+	}
+
+	response->print("</div>");
+
+	// JavaScript for auto-refresh
+	response->print(R"(<script>
+        function refreshLogs() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/log', true); // Replace '/get-logs' with your actual log URL
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    document.getElementById('logs').innerHTML = xhr.responseText;
+                }
+            };
+            xhr.send();
+        }
+        setInterval(refreshLogs, 2000); // Refresh every 2 seconds
+    </script>)");
+
+	char buffer[CONTENT_HTML_LENGTH];
+	const char* contentHtml = copyFromPROGMEM(MAIN_CONTENT_HTML, buffer);
+	response->print(contentHtml);
 }

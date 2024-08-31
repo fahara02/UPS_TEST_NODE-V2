@@ -108,9 +108,9 @@ void TestManager::triggerEvent(Event event)
 
 void TestManager::setupPins()
 {
-	pinMode(SENSE_MAINS_POWER_PIN, INPUT);
-	pinMode(SENSE_UPS_POWER_PIN, INPUT);
-	pinMode(SENSE_UPS_POWER_DOWN, INPUT);
+	pinMode(SENSE_MAINS_POWER_PIN, INPUT_PULLDOWN);
+	pinMode(SENSE_UPS_POWER_PIN, INPUT_PULLDOWN);
+	pinMode(SENSE_UPS_POWER_DOWN, INPUT_PULLDOWN);
 
 	pinMode(UPS_POWER_CUT_PIN, OUTPUT); // Set power cut pin as output
 	pinMode(TEST_END_INT_PIN, OUTPUT);
@@ -128,9 +128,9 @@ void TestManager::setupPins()
 	configureInterrupts();
 
 	logger.log(LogLevel::SUCCESS, "Interrupts configured");
-	pinMode(SENSE_MAINS_POWER_PIN, INPUT);
-	pinMode(SENSE_UPS_POWER_PIN, INPUT);
-	pinMode(SENSE_UPS_POWER_DOWN, INPUT);
+	pinMode(SENSE_MAINS_POWER_PIN, INPUT_PULLDOWN);
+	pinMode(SENSE_UPS_POWER_PIN, INPUT_PULLDOWN);
+	pinMode(SENSE_UPS_POWER_DOWN, INPUT_PULLDOWN);
 
 	logger.log(LogLevel::SUCCESS, "Testmanager sets up all pins");
 }
@@ -144,7 +144,7 @@ void TestManager::configureInterrupts()
 	gpio_install_isr_service(0);
 
 	gpio_set_intr_type(mainpowerPin, GPIO_INTR_NEGEDGE);
-	gpio_set_intr_type(upspowerupPin, GPIO_INTR_POSEDGE);
+	gpio_set_intr_type(upspowerupPin, GPIO_INTR_NEGEDGE);
 	gpio_set_intr_type(upsshutdownPin, GPIO_INTR_NEGEDGE);
 
 	gpio_isr_handler_add(mainpowerPin, keyISR1, NULL);
@@ -206,6 +206,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 {
 	logger.log(LogLevel::INFO, "Resuming Test Manager task");
 	TestManager& instance = TestManager::getInstance();
+	vTaskDelay(pdMS_TO_TICKS(1000));
 	while(true)
 	{
 		State managerState = SyncTest.getState();

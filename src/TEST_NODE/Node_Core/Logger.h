@@ -139,16 +139,12 @@ class Logger
 		}
 		outputStr += buffer;
 		outputStr += "\033[0m"; // Reset color
-		// outputStr += "\x1B[0m"; // Reset color2
-		//   outputStr += "\e[34m"; // Reset color3
 
 		if(_output)
 		{
 			_output->println(outputStr);
 		}
-
 		addToBuffer(outputStr);
-
 		// Store the log persistently if EEPROM is enabled
 		if(_eepromEnabled)
 		{
@@ -264,14 +260,14 @@ class Logger
 	}
 
 	// Log function for binary output
-	void logBinary(LogLevel level, uint32_t result)
-	{
-		String output = formatLogLevel(level);
-		output += "Result in binary: ";
-		Serial.print(output);
-		Serial.println(result, BIN); // Print the result in binary format
-		Serial.println("\033[0m"); // Reset color
-	}
+	// void logBinary(LogLevel level, uint32_t result)
+	// {
+	// 	String output = formatLogLevel(level);
+	// 	output += "Result in binary: ";
+	// 	Serial.print(output);
+	// 	Serial.println(result, BIN); // Print the result in binary format
+	// 	Serial.println("\033[0m"); // Reset color
+	// }
 	// Log error from UPSError
 	void logError(UPSError error)
 	{
@@ -298,6 +294,10 @@ class Logger
 			default:
 				log(LogLevel::ERROR, "Undefined Error.");
 		}
+	}
+	Print* getOutput()
+	{
+		return _output;
 	}
 
   private:
@@ -327,18 +327,67 @@ class Logger
 			vTaskDelay(pdMS_TO_TICKS(1000)); // Example delay
 		}
 	}
+
+	String stripColorCodes(const String& input)
+	{
+		String output;
+		bool insideCode = false;
+
+		for(char c: input)
+		{
+			if(c == '\033')
+			{ // Start of ANSI code
+				insideCode = true;
+				continue;
+			}
+			if(insideCode)
+			{
+				if(c == 'm')
+				{ // End of ANSI code
+					insideCode = false;
+				}
+				continue;
+			}
+			output += c; // Normal character
+		}
+		return output;
+	}
+	void clearWebContent()
+	{
+		Print* output = Logger::getInstance()._output;
+		// Send a Java  Script command to clear the div content on the webpage
+		if(output)
+		{
+			output->println("<script>document.getElementById('content').innerHTML = '';</script>");
+		}
+	}
 	void addToBuffer(const String& logEntry)
 	{
+		Logger& instance = Logger::getInstance();
 		if(_loggingLock && xSemaphoreTake(_loggingLock, portMAX_DELAY) == pdTRUE)
 		{
+			String strippedLog = Logger::getInstance().stripColorCodes(
+				logEntry); // Remove color codes for web display
+
 			if(_logBuffer.size() >= _bufferSize)
 			{
 				_logBuffer.pop_front(); // Remove the oldest entry if buffer is full
 			}
-			_logBuffer.push_back(logEntry);
+
+			_logBuffer.push_back(strippedLog); // Add the new log entry
+
+			// Clear content after 10 logs
+			if(_logBuffer.size() == 10)
+			{
+				_logBuffer.clear(); // Clear the buffer
+				Logger::getInstance()
+					.clearWebContent(); // Custom function to clear the content on the webpage
+			}
+
 			xSemaphoreGive(_loggingLock);
 		}
 	}
+
 	// Store log entry to EEPROM
 	void storeLogToEEPROM(const String& logEntry)
 	{

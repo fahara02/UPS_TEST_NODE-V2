@@ -1,60 +1,70 @@
 #ifndef RAW_JSS_H
 #define RAW_JSS_H
+
 #include <pgmspace.h>
 const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
-      <script>
-      const sidebar = document.getElementById('sidebar');
-      const content = document.getElementById('content');
-      const toggleButton = document.getElementById('toggleSidebar');
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebar');
+    const content = document.getElementById('content');
+    const toggleButton = document.getElementById('toggleSidebar');
 
-      toggleButton.addEventListener('click', () => {
-        sidebar.classList.toggle('hidden');
-        content.classList.toggle('full-width');
-      });
+    if (toggleButton && sidebar && content) {
+        toggleButton.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+            content.classList.toggle('full-width');
+        });
+    } else {
+        console.error('One or more elements not found:', { toggleButton, sidebar, content });
+    }
 
-      var tests = []; // Store all added tests
+    window.tests = []; // Store all added tests in the global window object
 
-      function addTest() {
+    window.addTest = function() { // Define addTest globally
         var testSelect = document.getElementById('addTest');
         var loadLevelSelect = document.getElementById('loadLevel');
         var selectedTest = testSelect.options[testSelect.selectedIndex].text;
         var loadLevel = loadLevelSelect.options[loadLevelSelect.selectedIndex].value;
         var testDetails = {
-          testName: selectedTest,
-          loadLevel: loadLevel + '%',
+            testName: selectedTest,
+            loadLevel: loadLevel + '%',
         };
-        tests.push(testDetails);
-        appendLog('All tests: ' + JSON.stringify(tests) + ' at ' + new Date().toLocaleString());
-      }
+        window.tests.push(testDetails);
+        appendLog('All tests: ' + JSON.stringify(window.tests) + ' at ' + new Date().toLocaleString());
+    }
 
-      function deleteTest() {
-        if (tests.length > 0) {
-          var deletedTest = tests.pop();
-          appendLog('Test deleted: ' + JSON.stringify(deletedTest) + ' at ' + new Date().toLocaleString());
-          appendLog('Remaining tests: ' + JSON.stringify(tests));
+    window.deleteTest = function() { // Define deleteTest globally
+        if (window.tests.length > 0) {
+            var deletedTest = window.tests.pop();
+            appendLog('Test deleted: ' + JSON.stringify(deletedTest) + ' at ' + new Date().toLocaleString());
+            appendLog('Remaining tests: ' + JSON.stringify(window.tests));
         } else {
-          appendLog('No tests to delete.');
+            appendLog('No tests to delete.');
         }
-      }
+    }
 
-      function appendLog(message) {
+    window.appendLog = function(message) { // Define appendLog globally
         var logMonitor = document.getElementById('logMonitor');
-        logMonitor.innerHTML += message + '\n';
+        logMonitor.innerHTML += message + '\\n';
         logMonitor.scrollTop = logMonitor.scrollHeight;
-      }
+    }
 
-      function startTest() {
+    window.startTest = function() { // Define startTest globally
         alert('Test Started');
         appendLog('Test started at ' + new Date().toLocaleString());
-      }
-      function stopTest() {
+    }
+
+    window.stopTest = function() { // Define stopTest globally
         alert('Test Stopped');
         appendLog('Test stopped at ' + new Date().toLocaleString());
-      }
-      function pauseTest() {
+    }
+
+    window.pauseTest = function() { // Define pauseTest globally
         alert('Test Paused');
         appendLog('Test paused at ' + new Date().toLocaleString());
-      }
-    </script>
+    }
+});
+</script>
 )rawliteral";
-#endif
+
+#endif // RAW_JSS_H

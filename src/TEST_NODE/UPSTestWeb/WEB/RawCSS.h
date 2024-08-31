@@ -7,6 +7,15 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         background-color: #f0f0f0;
         margin: 0;
       }
+
+        .hidden {
+            display: none;
+        }
+        .full-width {
+            width: 100%;
+        }
+
+
       .navbar {
         background-color: black;
         padding: 1em;

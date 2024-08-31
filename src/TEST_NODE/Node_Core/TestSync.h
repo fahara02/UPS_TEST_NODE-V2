@@ -35,7 +35,7 @@ class TestSync
 		logger.log(LogLevel::SUCCESS, "for test %s got Start Command,bit set to->",
 				   testTypeToString(test));
 		int result = xEventGroupGetBits(eventGroupTest);
-		logger.logBinary(LogLevel::WARNING, result);
+		// logger.logBinary(LogLevel::WARNING, result);
 	};
 	void stopTest(TestType test)
 	{
@@ -44,7 +44,7 @@ class TestSync
 		logger.log(LogLevel::SUCCESS, "for test %s got Stop Command,bit cleared to->",
 				   testTypeToString(test));
 		int result = xEventGroupGetBits(eventGroupTest);
-		logger.logBinary(LogLevel::WARNING, result);
+		// logger.logBinary(LogLevel::WARNING, result);
 		vTaskDelay(pdMS_TO_TICKS(50));
 	};
 
@@ -65,14 +65,13 @@ class TestSync
   private:
 	TestSync()
 	{
-		logger.log(LogLevel::SUCCESS, "Test Sync is on!");
 	}
 
 	void resetAllBits()
 	{
 		xEventGroupClearBits(eventGroupTest, ALL_TEST_BITS);
 		int result = xEventGroupGetBits(eventGroupTest);
-		logger.logBinary(LogLevel::WARNING, result);
+		// logger.logBinary(LogLevel::WARNING, result);
 	}
 	State _currentState = State::DEVICE_ON;
 
