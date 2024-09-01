@@ -64,7 +64,7 @@ void TestSync::enableCurrentTest()
 {
 	_enableCurrentTest = true;
 }
-void TestSync::diableCurrentTest()
+void TestSync::disableCurrentTest()
 {
 	_enableCurrentTest = false;
 }
@@ -118,24 +118,23 @@ void TestSync::startTest(TestType test)
 {
 	if(isTestEnabled())
 	{
-		EventBits_t test_eventbits = static_cast<EventBits_t>(test);
-		xEventGroupSetBits(eventGroupTest, test_eventbits);
+		EventHelper::setBits(test);
 		logger.log(LogLevel::WARNING, "test %s will be started", testTypeToString(test));
-		diableCurrentTest();
+		disableCurrentTest();
+		vTaskDelay(pdMS_TO_TICKS(50));
 	}
 }
 
 void TestSync::stopTest(TestType test)
 {
-	EventBits_t test_eventbits = static_cast<EventBits_t>(test);
-	xEventGroupClearBits(eventGroupTest, test_eventbits);
+	EventHelper::clearBits(test);
 	logger.log(LogLevel::WARNING, "test %s will be stopped", testTypeToString(test));
 	vTaskDelay(pdMS_TO_TICKS(50));
 }
 
 void TestSync::stopAllTest()
 {
-	xEventGroupClearBits(eventGroupTest, ALL_TEST_BITS);
+	EventHelper::resetAllTestBits();
 	logger.log(LogLevel::WARNING, "All test stopped");
 	vTaskDelay(pdMS_TO_TICKS(50));
 }
@@ -186,7 +185,7 @@ void TestSync::parseTestJson(JsonObject jsonObj)
 				logger.log(LogLevel::INFO,
 						   "LoadLevel percent:", loadPercentageToString(_testList[i].loadLevel));
 
-				handleUserCommand(UserCommand::NEW_TEST);
+				handleUserCommand(UserUpdateEvent::NEW_TEST);
 				return;
 			}
 		}
@@ -213,63 +212,83 @@ void TestSync::checkForDeletedTests()
 
 	if(testDeleted)
 	{
-		handleUserCommand(UserCommand::DELETE_TEST);
+		handleUserUpdate(UserUpdateEvent::DELETE_TEST);
 	}
 }
-
-void TestSync::handleUserCommand(UserCommand command)
+void TestSync::handleUserUpdate(UserUpdateEvent update)
 {
-	EventBits_t commandBits = static_cast<EventBits_t>(command);
-
+	case UserUpdateEvent::NEW_TEST:
+		EventHelper::setBits(UserUpdateEvent::NEW_TEST);
+		EventHelper::clearBits(UserUpdateEvent::DELETE_TEST);
+		reportGlobalEvent(Event::NEW_TEST);
+		refreshState();
+		break;
+	case UserUpdateEvent::DELETE_TEST:
+		EventHelper::setBits(UserUpdateEvent::DELETE_TEST);
+		EventHelper::clearBits(UserUpdateEvent::NEW_TEST);
+		reportGlobalEvent(Event::REJECT_CURRENT_TEST);
+		refreshState();
+		break;
+	case UserUpdateEvent::DATA_ENTRY:
+		EventHelper::setBits(UserUpdateEvent::DATA_ENTRY);
+		reportGlobalEvent(Event::DATA_ENTRY);
+		refreshState();
+		break;
+	case UserUpdateEvent::USER_TUNE:
+		EventHelper::setBits(UserUpdateEvent::USER_TUNE);
+		reportGlobalEvent(Event::USER_TUNE);
+		refreshState();
+		break;
+	default:
+		break;
+}
+void TestSync::handleUserCommand(UserCommandEvent command)
+{
 	switch(command)
 	{
-		case UserCommand::NEW_TEST:
-			xEventGroupClearBits(eventGroupUser,
-								 static_cast<EventBits_t>(UserCommand::DELETE_TEST));
-			reportEvent(Event::PENDING_TEST_FOUND);
-			refreshState();
-			break;
-		case UserCommand::DELETE_TEST:
-			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::NEW_TEST));
-
-			break;
-		case UserCommand::PAUSE:
-			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::RESUME));
-			//EventHelper::setBits(User);
-			//EventHelper::clearBits(UserEvent::USER_RESUME);
-			reportEvent(Event::PAUSE);
+		case UserCommandEvent ::PAUSE:
+			EventHelper::clearBits(UserCommandEvent::RESUME);
+			EventHelper::setBits(UserCommandEvent::PAUSE);
+			reportGlobalEvent(Event::PAUSE);
 			refreshState();
 
 			break;
-		case UserCommand::RESUME:
-			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::PAUSE));
-			reportEvent(Event::RESUME);
-			//EventHelper::setBits(UserEvent::USER_RESUME);
-			//EventHelper::clearBits(UserEvent::USER_PAUSED);
+		case UserCommandEvent ::RESUME:
+			EventHelper::clearBits(UserCommandEvent::PAUSE);
+			EventHelper::setBits(UserCommandEvent::RESUME);
+			reportGlobalEvent(Event::RESUME);
 			refreshState();
 			break;
-		case UserCommand::AUTO:
-			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::MANUAL));
-			//reportEvent(Event::AUTO_TEST_CMD);
+		case UserCommandEvent ::AUTO:
+			EventHelper::clearBits(UserCommandEvent::MANUAL);
+			EventHelper::setBits(UserCommandEvent::AUTO);
+
+			StateMachine::getInstance().refreshState().setMode(TestMode::AUTO);
 			refreshState();
 			break;
-		case UserCommand::MANUAL:
-			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::AUTO));
-			//reportEvent(Event::MANUAL_OVERRIDE);
+		case UserCommandEvent ::MANUAL:
+			EventHelper::clearBits(UserCommandEvent::AUTO);
+			EventHelper::setBits(UserCommandEvent::MANUAL);
+
+			StateMachine::getInstance().refreshState().setMode(TestMode::MANUAL);
+			refreshState();
+
+			break;
+		case UserCommandEvent ::START:
+			EventHelper::clearBits(UserCommandEvent::STOP);
+			EventHelper::setBits(UserCommandEvent::START);
+			reportGlobalEvent(Event::START);
 			refreshState();
 			break;
-		case UserCommand::START:
-			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::STOP));
-			break;
-		case UserCommand::STOP:
-			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::START));
+		case UserCommandEvent ::STOP:
+			EventHelper::clearBits(UserCommandEvent::START);
+			EventHelper::setBits(UserCommandEvent::STOP);
+			reportGlobalEvent(Event::STOP);
+			refreshState();
 			break;
 		default:
 			break;
 	}
-
-	xEventGroupSetBits(eventGroupUser, commandBits);
-	logger.log(LogLevel::INFO, "User command %d triggered", static_cast<int>(command));
 }
 
 void TestSync::handleSyncCommand(SyncCommand command)
@@ -433,8 +452,8 @@ void TestSync::testSyncTask(void* pvParameters)
 							  pdTRUE, portMAX_DELAY))
 	{
 		logger.log(LogLevel::INFO, "Observing test.. ");
-		
-		//int sysBits = xEventGroupGetBits(eventSysEvent);
+
+		// int sysBits = xEventGroupGetBits(eventSysEvent);
 		EventBits_t evRetest = static_cast<EventBits_t>(TestEvent::RETEST);
 
 		while(true)

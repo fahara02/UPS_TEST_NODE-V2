@@ -21,47 +21,24 @@ const EventBits_t ALL_TEST_BITS = (1 << MAX_TEST) - 1;
 const EventBits_t ALL_CMD_BITS = (1 << MAX_USER_COMMAND) - 1;
 const EventBits_t ALL_SYNC_BITS = (1 << MAX_SYNC_COMMAND) - 1;
 
-enum class UserCommand : EventBits_t
-{
-	NEW_TEST = (1 << 0),
-	DELETE_TEST = (1 << 1),
-	PAUSE = (1 << 2),
-	RESUME = (1 << 3),
-	AUTO = (1 << 4),
-	MANUAL = (1 << 5),
-	START = (1 << 6),
-	STOP = (1 << 7)
-};
-
-enum class SyncCommand : EventBits_t
-{
-	MANAGER_WAIT = (1 << 0),
-	MANAGER_ACTIVE = (1 << 1),
-	RE_TEST = (1 << 2),
-	SKIP_TEST = (1 << 3),
-	SAVE = (1 << 4),
-	IGNORE = (1 << 5),
-	START_OBSERVER = (1 << 6),
-	STOP_OBSERVER = (1 << 7)
-};
-
 class TestSync
 {
   public:
 	static TestSync& getInstance();
 	void init();
 	State refreshState();
-	void reportEvent(Event e);
+	void reportGlobalEvent(Event e);
 
 	void parseIncomingJson(JsonVariant json);
-	void handleUserCommand(UserCommand command);
+	void handleUserCommand(UserCommandEvent command);
+	void handleUserUpdate(UserUpdateEvent update);
 	void handleSyncCommand(SyncCommand command);
 	void handleTestEvent(Event e);
 
 	void acknowledgeCMD();
 	void acknowledgeCMDReset();
 	void enableCurrentTest();
-	void diableCurrentTest();
+	void disableCurrentTest();
 	bool iscmdAcknowledged();
 	bool isTestEnabled();
 	EventGroupHandle_t getEventGroupTest() const
@@ -85,8 +62,6 @@ class TestSync
 
 	std::atomic<State> _currentState;
 
-	EventGroupHandle_t eventGroupTest = NULL;
-	EventGroupHandle_t eventGroupUser = NULL;
 	EventGroupHandle_t eventGroupSync = NULL;
 
 	RequiredTest _testList[MAX_TEST];

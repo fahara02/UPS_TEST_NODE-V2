@@ -57,6 +57,7 @@ enum class Event
 	RETEST,
 	TEST_LIST_EMPTY,
 	PENDING_TEST_FOUND,
+	REJECT_CURRENT_TEST,
 	// User commands
 	START,
 	STOP,

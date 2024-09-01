@@ -59,6 +59,7 @@ class StateMachine
 	};
 
 	void NotifyStateChanged(State state);
+	void notifyRejectTest();
 	void handleEvent(Event event);
 	State getCurrentState() const;
 

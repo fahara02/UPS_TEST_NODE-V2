@@ -103,6 +103,18 @@ void StateMachine::NotifyStateChanged(State state)
 	logger.log(LogLevel::INFO, "Notifying others for new %s state", stateToString(state));
 }
 
+void StateMachine::setMode(TestMode new_mode)
+{
+	if(new_mode == TestMode::AUTO)
+	{
+		_deviceMode.store(TestMode::AUTO);
+	}
+	else
+	{
+		_deviceMode.store(TestMode::MANUAL);
+	}
+}
+
 void StateMachine::handleEvent(Event event)
 {
 	logger.log(LogLevel::INFO, "Handling event %s", eventToString(event));
@@ -189,19 +201,35 @@ void StateMachine::handleReport()
 {
 	// update report
 }
-
-const std::array<StateMachine::Transition, 20> StateMachine::regular_transitions = {
-	{Row<State::DEVICE_ON, Event::SELF_CHECK_OK, State::DEVICE_OK, Event::NONE>::get_transition(),
+static void DefaultAction()
+{
+}
+static void notifyRejectTest()
+{
+}
+static void notifyStateReverese()
+{
+}
+static void notifyUser(Evevnt e)
+{
+}
+const std::array<StateMachine::Transition, 21> StateMachine::regular_transitions = {
+	{Row<State::DEVICE_ON, Event::SELF_CHECK_OK, State::DEVICE_OK, Event::NONE>::get_transition(
+		 DefaultAction),
 	 Row<State::DEVICE_OK, Event::SETTING_LOADED, State::DEVICE_SETUP,
 		 Event::NONE>::get_transition(),
 	 Row<State::DEVICE_SETUP, Event::LOAD_BANK_CHECKED, State::DEVICE_READY,
 		 Event::NONE>::get_transition(),
 	 Row<State::DEVICE_READY, Event::NEW_TEST, State::READY_TO_PROCEED,
 		 Event::NONE>::get_transition(),
+	 Row<State::DEVICE_READY, Event::REJECT_CURRENT_TEST, State::DEVICE_READY,
+		 Event::NONE>::get_transition(notifyRejectTest),
+	 Row<State::READY_TO_PROCEED, Event::REJECT_CURRENT_TEST, State::DEVICE_READY,
+		 Event::NONE>::get_transition(notifyStateReverese),
 	 Row<State::READY_TO_PROCEED, Event::START, State::TEST_START, Event::NONE>::get_transition(),
 	 Row<State::TEST_START, Event::TEST_RUN_OK, State::TEST_RUNNING, Event::NONE>::get_transition(),
 	 Row<State::TEST_START, Event::TEST_FAILED, State::USER_CHECK_REQUIRED,
-		 Event::NONE>::get_transition(),
+		 Event::NONE>::get_transition(notifyUser(Event::TEST_FAILED)),
 	 Row<State::TEST_RUNNING, Event::TEST_FAILED, State::RETEST, Event::NONE>::get_transition(),
 	 Row<State::USER_CHECK_REQUIRED, Event::START, State::TEST_START,
 		 Event::NONE>::get_transition(),
@@ -269,8 +297,8 @@ const std::array<StateMachine::Transition, 12> StateMachine::special_case_transi
 	 })}};
 
 // Define the combined transition table
-const std::array<StateMachine::Transition, 32> StateMachine::transition_table = [] {
-	std::array<Transition, 32> result = {}; // Initialize an empty array of 32 transitions
+const std::array<StateMachine::Transition, 33> StateMachine::transition_table = [] {
+	std::array<Transition, 33> result = {};
 
 	// Copy the regular transitions
 	std::copy(StateMachine::regular_transitions.begin(), StateMachine::regular_transitions.end(),

@@ -8,6 +8,7 @@ EventGroupHandle_t EventHelper::testEventGroup = nullptr;
 EventGroupHandle_t EventHelper::userCommandEventGroup = nullptr;
 EventGroupHandle_t EventHelper::userUpdateEventGroup = nullptr;
 EventGroupHandle_t EventHelper::dataEventGroup = nullptr;
+EventGroupHandle_t EventHelper::testControlEvent = nullptr;
 
 const EventBits_t EventHelper::SYSTEM_EVENT_BITS_MASK =
 	static_cast<EventBits_t>(SystemEvent::NONE) | static_cast<EventBits_t>(SystemEvent::ERROR) |
@@ -31,19 +32,27 @@ const EventBits_t EventHelper::TEST_EVENT_BITS_MASK =
 	static_cast<EventBits_t>(TestEvent::PENDING_TEST_FOUND);
 
 const EventBits_t EventHelper::USER_COMMAND_EVENT_BITS_MASK =
-    static_cast<EventBits_t>(UserCommandEvent::START) |
+	static_cast<EventBits_t>(UserCommandEvent::START) |
 	static_cast<EventBits_t>(UserCommandEvent::STOP) |
 	static_cast<EventBits_t>(UserCommandEvent::AUTO) |
-	static_cast<EventBits_t>(UserCommandEvent::MANUAL) |	
+	static_cast<EventBits_t>(UserCommandEvent::MANUAL) |
 	static_cast<EventBits_t>(UserCommandEvent::PAUSE) |
 	static_cast<EventBits_t>(UserCommandEvent::RESUME);
 const EventBits_t EventHelper::USER_UPDATE_EVENT_BITS_MASK =
-    static_cast<EventBits_t>(UserUpdateEvent::NEW_TEST) |
+	static_cast<EventBits_t>(UserUpdateEvent::NEW_TEST) |
 	static_cast<EventBits_t>(UserUpdateEvent::DELETE_TEST) |
 	static_cast<EventBits_t>(UserUpdateEvent::DATA_ENTRY) |
-	static_cast<EventBits_t>(UserUpdateEvent::USER_TUNE) ;
+	static_cast<EventBits_t>(UserUpdateEvent::USER_TUNE);
 const EventBits_t EventHelper::DATA_EVENT_BITS_MASK =
 	static_cast<EventBits_t>(DataEvent::SAVE) | static_cast<EventBits_t>(DataEvent::JSON_READY);
+const EventBits_t EventHelper::ALL_TEST_BITS_MASK =
+	static_cast<EventBits_t>(TestType::SwitchTest) |
+	static_cast<EventBits_t>(TestType::BackupTest) |
+	static_cast<EventBits_t>(TestType::EfficiencyTest) |
+	static_cast<EventBits_t>(TestType::InputVoltageTest) |
+	static_cast<EventBits_t>(TestType::WaveformTest) |
+	static_cast<EventBits_t>(TestType::TunePWMTest) |
+	;
 
 void EventHelper::initializeEventGroups()
 {
@@ -53,6 +62,7 @@ void EventHelper::initializeEventGroups()
 	userCommandEventGroup = xEventGroupCreate();
 	userUpdateEventGroup = xEventGroupCreate();
 	dataEventGroup = xEventGroupCreate();
+	testControlEvent = xEventGroupCreate();
 }
 
 // Clean up FreeRTOS event groups (call this before shutdown)
@@ -67,9 +77,11 @@ void EventHelper::cleanupEventGroups()
 	if(userCommandEventGroup)
 		vEventGroupDelete(userCommandEventGroup);
 	if(userUpdateEventGroup)
-		vEventGroupDelete(userUpdateEventGroup);	
+		vEventGroupDelete(userUpdateEventGroup);
 	if(dataEventGroup)
 		vEventGroupDelete(dataEventGroup);
+	if(testControlEvent)
+		vEventGroupDelete(testControlEvent);
 }
 
 void EventHelper::setBits(SystemEvent e)
@@ -98,7 +110,10 @@ void EventHelper::setBits(DataEvent e)
 {
 	xEventGroupSetBits(dataEventGroup, static_cast<EventBits_t>(e));
 }
-
+void EventHelper::setBits(DataEvent e)
+{
+	xEventGroupSetBits(testControlEvent, static_cast<EventBits_t>(e));
+}
 // Clear bits for specific event types
 void EventHelper::clearBits(SystemEvent e)
 {
@@ -123,6 +138,10 @@ void EventHelper::clearBits(UserUpdateEvent e)
 void EventHelper::clearBits(DataEvent e)
 {
 	xEventGroupClearBits(dataEventGroup, static_cast<EventBits_t>(e));
+}
+void EventHelper::clearBits(DataEvent e)
+{
+	xEventGroupClearBits(testControlEvent, static_cast<EventBits_t>(e));
 }
 
 // Reset all bits in specific event groups
@@ -150,5 +169,8 @@ void EventHelper::resetDataEventBits()
 {
 	xEventGroupClearBits(dataEventGroup, DATA_EVENT_BITS_MASK);
 }
-
+void EventHelper::resetAllTestBits()
+{
+	xEventGroupClearBits(testControlEvent, ALL_TEST_BITS_MASK);
+}
 } // namespace Node_Core

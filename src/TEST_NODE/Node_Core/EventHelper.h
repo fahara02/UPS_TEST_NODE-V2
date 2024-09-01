@@ -1,9 +1,10 @@
 #ifndef EVENT_HELPER_H
 #define EVENT_HELPER_H
 
-#include "StateDefines.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "StateDefines.h"
+#include "TestData.h"
 
 namespace Node_Core
 {
@@ -38,25 +39,37 @@ enum class TestEvent : EventBits_t
 };
 
 enum class UserCommandEvent : EventBits_t
-{   START=1<<0 ,
-	STOP=1<<1 ,
-	AUTO=1<<2,
-	MANUAL=1<<3,
-	PAUSE=1<<4,
-	RESUME=1<<5 
-	
-};
-enum class UserUpdateEvent: EventBits_t
 {
-	USER_TUNE=1<<0,
-	DATA_ENTRY=1<<1,
-	NEW_TEST=1<<2 ,
-	DELETE_TEST =1<<3,	
+	START = 1 << 0,
+	STOP = 1 << 1,
+	AUTO = 1 << 2,
+	MANUAL = 1 << 3,
+	PAUSE = 1 << 4,
+	RESUME = 1 << 5
+};
+enum class UserUpdateEvent : EventBits_t
+{
+	USER_TUNE = 1 << 0,
+	DATA_ENTRY = 1 << 1,
+	NEW_TEST = 1 << 2,
+	DELETE_TEST = 1 << 3,
 };
 enum class DataEvent : EventBits_t
 {
 	SAVE = 1 << 0,
 	JSON_READY = 1 << 1
+};
+
+enum class SyncCommand : EventBits_t
+{
+	MANAGER_WAIT = (1 << 0),
+	MANAGER_ACTIVE = (1 << 1),
+	RE_TEST = (1 << 2),
+	SKIP_TEST = (1 << 3),
+	SAVE = (1 << 4),
+	IGNORE = (1 << 5),
+	START_OBSERVER = (1 << 6),
+	STOP_OBSERVER = (1 << 7)
 };
 
 class EventHelper
@@ -80,6 +93,7 @@ class EventHelper
 	static void resetUserCommandEventBits();
 	static void resetUserUpdateEventBits();
 	static void resetDataEventBits();
+	static void resetAllTestBits();
 
 	static EventGroupHandle_t systemEventGroup;
 	static EventGroupHandle_t systemInitEventGroup;
@@ -87,6 +101,20 @@ class EventHelper
 	static EventGroupHandle_t userCommandEventGroup;
 	static EventGroupHandle_t userUpdateEventGroup;
 	static EventGroupHandle_t dataEventGroup;
+	static EventGroupHandle_t testControlEvent;
+
+	EventGroupHandle_t getEventGroupTestControl() const
+	{
+		return testControlEvent;
+	}
+	EventGroupHandle_t getEventGroupUserCommand() const
+	{
+		return userCommandEventGroup;
+	}
+	EventGroupHandle_t getEventGroupUserUpdate() const
+	{
+		return userCommandEventGroup;
+	}
 
   private:
 	static void initializeEventGroups();
@@ -98,6 +126,7 @@ class EventHelper
 	static const EventBits_t USER_COMMAND_EVENT_BITS_MASK;
 	static const EventBits_t USER_UPDATE_EVENT_BITS_MASK;
 	static const EventBits_t DATA_EVENT_BITS_MASK;
+	static const EventBits_t ALL_TEST_BITS_MASK;
 };
 
 } // namespace Node_Core
