@@ -1,14 +1,10 @@
 #include "SwitchTest.h"
 
-extern TestSync& SyncTest;
-
 // extern EventGroupHandle_t eventGroupTest;
 
-extern QueueHandle_t TestManageQueue;
-
 using namespace Node_Core;
-extern SwitchTest& switchTest;
 
+extern QueueHandle_t TestManageQueue;
 void SwitchTest::init()
 {
 	if(!_initialized_SW)
@@ -32,11 +28,11 @@ void SwitchTest::init()
 
 void SwitchTest::UpdateSettings()
 {
-	switchTest._cfgSpec_SW = TesterSetup.specSetup();
-	switchTest._cfgTest_SW = TesterSetup.testSetup();
-	switchTest._cfgTask_SW = TesterSetup.taskSetup();
-	switchTest._cfgTaskParam_SW = TesterSetup.paramSetup();
-	switchTest._cfgHardware_SW = TesterSetup.hardwareSetup();
+	_cfgSpec_SW = TesterSetup.specSetup();
+	_cfgTest_SW = TesterSetup.testSetup();
+	_cfgTask_SW = TesterSetup.taskSetup();
+	_cfgTaskParam_SW = TesterSetup.paramSetup();
+	_cfgHardware_SW = TesterSetup.hardwareSetup();
 }
 
 SwitchTestData& SwitchTest::data()
@@ -48,6 +44,8 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 {
 	SetupTaskParams taskParam;
 	TestSync& testSync = TestSync::getInstance();
+	SwitchTest& switchTest = SwitchTest::getInstance();
+
 	xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 
 	while(xEventGroupWaitBits(testSync.getEventGroupTest(),
@@ -181,6 +179,7 @@ bool SwitchTest::processTestImpl()
 
 TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 {
+	TestSync& SyncTest = TestSync::getInstance();
 	setLoad(testVARating); // Set the load
 	unsigned long testStartTime = millis(); // Record the start time
 	_testDuration_SW = testduration; // Set the test duration

@@ -10,6 +10,7 @@
 #include "StateDefines.h"
 #include "Settings.h"
 #include "sdkconfig.h"
+#include <nvs_flash.h>
 
 namespace Node_Core
 {

@@ -2,8 +2,6 @@
 #include "AsyncJson.h"
 #include "ArduinoJson.h"
 
-extern TestSync& SyncTest;
-
 #define ETAG "\"" __DATE__ " " __TIME__ "\""
 
 void PageBuilder::setupPages(TestSync& syncTest)
@@ -63,6 +61,7 @@ void PageBuilder::setupPages(TestSync& syncTest)
 							Serial.println(jsonObj["testName"].as<String>());
 							Serial.print("loadLevel: ");
 							Serial.println(jsonObj["loadLevel"].as<String>());
+							TestSync& SyncTest = TestSync::getInstance();
 							SyncTest.parseIncomingJson(jsonObj);
 						}
 						else

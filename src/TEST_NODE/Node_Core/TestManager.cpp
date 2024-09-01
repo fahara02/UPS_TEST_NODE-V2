@@ -3,9 +3,7 @@
 #include "TesterMemory.h"
 
 extern Logger& logger;
-extern TestSync& SyncTest;
-extern SwitchTest& switchTest;
-extern BackupTest& backupTest;
+
 extern void IRAM_ATTR keyISR1(void* pvParameters);
 extern void IRAM_ATTR keyISR2(void* pvParameters);
 extern void IRAM_ATTR keyISR3(void* pvParameters);
@@ -75,10 +73,12 @@ void TestManager::UpdateSettings()
 
 void TestManager::refreshState()
 {
+	TestSync& SyncTest = TestSync::getInstance();
 	_currentState.store(SyncTest.refreshState());
 }
 State TestManager::loadState()
 {
+	TestSync& SyncTest = TestSync::getInstance();
 	_currentState.store(SyncTest.refreshState());
 	return _currentState.load();
 }
@@ -112,6 +112,7 @@ void TestManager::pauseAllTest()
 }
 void TestManager::passEvent(Event event)
 {
+	TestSync& SyncTest = TestSync::getInstance();
 	SyncTest.reportEvent(event);
 }
 
@@ -190,6 +191,9 @@ void TestManager::createISRTasks()
 void TestManager::createTestTasks()
 {
 	logger.log(LogLevel::INFO, "Creating Switchtest task ");
+
+	SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
+	BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 
 	xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
 
@@ -295,6 +299,8 @@ void TestManager::onMainsPowerLossTask(void* pvParameters)
 	{
 		if(xSemaphoreTake(mainLoss, portMAX_DELAY))
 		{
+			SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
+			BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 			// vTaskPrioritySet(&ISR_MAINS_POWER_LOSS, 3);
 			if(switchTest.isTestRunning())
 			{
@@ -326,6 +332,8 @@ void TestManager::onUPSPowerGainTask(void* pvParameters)
 	{
 		if(xSemaphoreTake(upsGain, portMAX_DELAY))
 		{
+			SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
+
 			if(switchTest.isTestRunning())
 			{
 				logger.log(LogLevel::INTR, "UPS Power gain triggered...");
@@ -345,6 +353,7 @@ void TestManager::onUPSPowerLossTask(void* pvParameters)
 	{
 		if(xSemaphoreTake(upsLoss, portMAX_DELAY))
 		{
+			BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 			if(backupTest.isTestRunning())
 
 			{
@@ -361,6 +370,8 @@ void TestManager::onUPSPowerLossTask(void* pvParameters)
 
 void TestManager::initializeTestInstances()
 {
+	SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
+	BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 	switchTest.init();
 
 	backupTest.init();

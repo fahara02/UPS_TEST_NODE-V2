@@ -1,13 +1,10 @@
 #include "BackupTest.h"
 
-extern TestSync& SyncTest;
-
 // extern EventGroupHandle_t eventGroupTest;
 
 extern QueueHandle_t TestManageQueue;
 
 using namespace Node_Core;
-extern BackupTest& backupTest;
 
 void BackupTest::init()
 {
@@ -32,11 +29,11 @@ void BackupTest::init()
 
 void BackupTest::UpdateSettings()
 {
-	backupTest._cfgSpec_BT = TesterSetup.specSetup();
-	backupTest._cfgTest_BT = TesterSetup.testSetup();
-	backupTest._cfgTask_BT = TesterSetup.taskSetup();
-	backupTest._cfgTaskParam_BT = TesterSetup.paramSetup();
-	backupTest._cfgHardware_BT = TesterSetup.hardwareSetup();
+	_cfgSpec_BT = TesterSetup.specSetup();
+	_cfgTest_BT = TesterSetup.testSetup();
+	_cfgTask_BT = TesterSetup.taskSetup();
+	_cfgTaskParam_BT = TesterSetup.paramSetup();
+	_cfgHardware_BT = TesterSetup.hardwareSetup();
 }
 
 BackupTestData& BackupTest::data()
@@ -48,13 +45,14 @@ BackupTestData& BackupTest::data()
 void BackupTest::BackupTestTask(void* pvParameters)
 {
 	SetupTaskParams taskParam;
-	TestSync& testSync = TestSync::getInstance();
-	xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 
+	xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
+	TestSync& testSync = TestSync::getInstance();
 	while(xEventGroupWaitBits(testSync.getEventGroupTest(),
 							  static_cast<EventBits_t>(TestType::BackupTest), pdFALSE, pdTRUE,
 							  portMAX_DELAY))
 	{
+		BackupTest& backupTest = BackupTest::getInstance();
 		logger.log(LogLevel::INFO, "resuming backupTest task");
 
 		EventBits_t bt_eventbits = static_cast<EventBits_t>(TestType::BackupTest);
@@ -180,6 +178,7 @@ bool BackupTest::processTestImpl()
 
 TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 {
+	TestSync& SyncTest = TestSync::getInstance();
 	setLoad(testVARating); // Set the load
 	unsigned long testStartTime = millis(); // Record the start time
 	_testDuration_BT = testduration; // Set the test duration

@@ -17,19 +17,19 @@ StateMachine::StateMachine() :
 	_old_state(State::DEVICE_ON), current_state(State::DEVICE_ON), _dataCapturedFlag(false),
 	_retryCount(0)
 {
-	preferences.begin("state_store", true);
-	uint32_t saved_state =
-		preferences.getUInt("last_state", static_cast<uint32_t>(getDefaultStateFromConfig()));
-	preferences.end();
-	if(isValidState(saved_state))
-	{
-		current_state.store(static_cast<State>(saved_state));
-	}
-	else
-	{
-		current_state.store(getDefaultStateFromConfig()); // Default state from menuconfig
-		Serial.println("No valid previous state found. Using default state from menuconfig.");
-	}
+	// preferences.begin("state_store", true);
+	// uint32_t saved_state =
+	// 	preferences.getUInt("last_state", static_cast<uint32_t>(State::DEVICE_ON));
+	// preferences.end();
+	// if(isValidState(saved_state))
+	// {
+	// 	current_state.store(static_cast<State>(saved_state));
+	// }
+	// else
+	// {
+	// 	current_state.store(getDefaultStateFromConfig()); // Default state from menuconfig
+	// 	Serial.println("No valid previous state found. Using default state from menuconfig.");
+	// }
 	// state_mutex = xSemaphoreCreateMutex();
 	// if (state_mutex == NULL) {
 	//   logger.log(LogLevel::ERROR, "State mutex creation failed!");
@@ -58,7 +58,7 @@ StateMachine& StateMachine::getInstance()
 void StateMachine::setState(State new_state)
 {
 	current_state.store(new_state);
-	saveCurrentStateToNVS();
+	// saveCurrentStateToNVS();
 
 	NotifyStateChanged(new_state);
 

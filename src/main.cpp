@@ -16,12 +16,12 @@
 #include "ModbusManager.h"
 #include "UPSTestNode.h"
 #include "EventHelper.h"
+#include <nvs_flash.h>
 
 using namespace Node_Core;
 
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
-TestSync& SyncTest = TestSync::getInstance();
 
 UPSTesterSetup& TesterSetup = UPSTesterSetup::getInstance();
 SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
@@ -132,7 +132,39 @@ void setup()
 
 {
 	Serial.begin(115200);
+	// Initialize NVS
+	esp_err_t err = nvs_flash_init();
 
+	// Handle NVS flash errors (re-init if necessary)
+	if(err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+	{
+		Serial.println("Erasing NVS and reinitializing...");
+		nvs_flash_erase(); // Erase NVS partition and retry init
+		err = nvs_flash_init();
+	}
+
+	// Check if NVS initialization succeeded
+	if(err != ESP_OK)
+	{
+		Serial.println("NVS initialization failed!");
+	}
+	else
+	{
+		Serial.println("NVS initialized successfully!");
+	}
+
+	// Now you can begin using Preferences
+	if(!preferences.begin("state_store", false))
+	{
+		Serial.println("Failed to open preferences!");
+	}
+	else
+	{
+		Serial.println("Preferences opened successfully!");
+		// Add your preferences handling logic here, for example:
+		int lastState = preferences.getUInt("last_state", (uint32_t)State::DEVICE_ON);
+		Serial.printf("Last saved state: %d\n", lastState);
+	}
 	WiFi.mode(WIFI_STA);
 	wm.setClass("invert");
 	auto reboot = false;
@@ -158,6 +190,7 @@ void setup()
 	BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
 
 	logger.log(LogLevel::INFO, "initiating test sync");
+	TestSync& SyncTest = TestSync::getInstance();
 	SyncTest.init();
 	logger.log(LogLevel::INFO, "initiating modbus");
 	modbusRTU_Init();
