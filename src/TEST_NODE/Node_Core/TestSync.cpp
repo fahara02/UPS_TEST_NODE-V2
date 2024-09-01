@@ -8,7 +8,7 @@ TestSync& TestSync::getInstance()
 
 TestSync::TestSync() :
 	_cmdAcknowledged(false), _enableCurrentTest(false), _currentState{State::DEVICE_ON},
-	eventGroupTest(NULL), eventGroupUser(NULL), eventGroupSync(NULL) // Initialize atomic variable
+	eventGroupTest(NULL), eventGroupUser(NULL), eventGroupSync(NULL)
 {
 	for(int i = 0; i < MAX_TEST; ++i)
 	{
@@ -116,21 +116,19 @@ void TestSync::resetAllBits()
 
 void TestSync::startTest(TestType test)
 {
-	TestSync& instance = TestSync::getInstance();
-	if(instance.isTestEnabled())
+	if(isTestEnabled())
 	{
 		EventBits_t test_eventbits = static_cast<EventBits_t>(test);
-		xEventGroupSetBits(instance.eventGroupTest, test_eventbits);
+		xEventGroupSetBits(eventGroupTest, test_eventbits);
 		logger.log(LogLevel::WARNING, "test %s will be started", testTypeToString(test));
-		instance.diableCurrentTest();
+		diableCurrentTest();
 	}
 }
 
 void TestSync::stopTest(TestType test)
 {
-	TestSync& instance = TestSync::getInstance();
 	EventBits_t test_eventbits = static_cast<EventBits_t>(test);
-	xEventGroupClearBits(instance.eventGroupTest, test_eventbits);
+	xEventGroupClearBits(eventGroupTest, test_eventbits);
 	logger.log(LogLevel::WARNING, "test %s will be stopped", testTypeToString(test));
 	vTaskDelay(pdMS_TO_TICKS(50));
 }
@@ -215,15 +213,14 @@ void TestSync::checkForDeletedTests()
 void TestSync::handleUserCommand(UserCommand command)
 {
 	EventBits_t commandBits = static_cast<EventBits_t>(command);
-	TestSync& instance = TestSync::getInstance();
 
 	switch(command)
 	{
 		case UserCommand::NEW_TEST:
 			xEventGroupClearBits(eventGroupUser,
 								 static_cast<EventBits_t>(UserCommand::DELETE_TEST));
-			instance.reportEvent(Event::PENDING_TEST_FOUND);
-			instance.refreshState();
+			reportEvent(Event::PENDING_TEST_FOUND);
+			refreshState();
 			break;
 		case UserCommand::DELETE_TEST:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::NEW_TEST));
@@ -231,23 +228,23 @@ void TestSync::handleUserCommand(UserCommand command)
 			break;
 		case UserCommand::PAUSE:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::RESUME));
-			instance.reportEvent(Event::USER_RESUME);
-			instance.refreshState();
+			reportEvent(Event::USER_RESUME);
+			refreshState();
 			break;
 		case UserCommand::RESUME:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::PAUSE));
-			instance.reportEvent(Event::USER_PAUSED);
-			instance.refreshState();
+			reportEvent(Event::USER_PAUSED);
+			refreshState();
 			break;
 		case UserCommand::AUTO:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::MANUAL));
-			instance.reportEvent(Event::AUTO_TEST_CMD);
-			instance.refreshState();
+			reportEvent(Event::AUTO_TEST_CMD);
+			refreshState();
 			break;
 		case UserCommand::MANUAL:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::AUTO));
-			instance.reportEvent(Event::MANUAL_OVERRIDE);
-			instance.refreshState();
+			reportEvent(Event::MANUAL_OVERRIDE);
+			refreshState();
 			break;
 		case UserCommand::START:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::STOP));
