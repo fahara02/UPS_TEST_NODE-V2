@@ -11,7 +11,7 @@
 
 namespace Node_Core
 {
-using OnStateChangedCallback = std::function<void(bool statedChanged, State newState)>;
+using OnStateChangedCallback = std::function<void(bool stateChanged, State newState)>;
 
 class StateMachine
 {
@@ -79,11 +79,13 @@ class StateMachine
 	static void handleReport();
 	static void handleError();
 
-	static std::array<Transition, 18> createRegularTransitions();
-	static std::array<Transition, 11> createSpecialCaseTransitions();
-	const std::array<Transition, 18> regular_transitions = createRegularTransitions();
-	const std::array<Transition, 11> special_case_transitions = createSpecialCaseTransitions();
-	static const std::array<Transition, 29> transition_table;
+	static const std::array<Transition, 20> regular_transitions;
+	static const std::array<Transition, 12> special_case_transitions;
+	static const std::array<Transition, 32> transition_table;
+
+	static const Transition* getRegularTransitions();
+	static const Transition* getSpecialCaseTransitions();
+	static const Transition* getTransitionTable();
 
 	StateMachine(const StateMachine&) = delete;
 	StateMachine& operator=(const StateMachine&) = delete;

@@ -4,6 +4,7 @@
 #include "StateDefines.h"
 #include <cstring>
 #include <iostream>
+#include "pgmspace.h"
 
 using namespace Node_Core;
 extern Logger& logger;
@@ -159,103 +160,116 @@ void StateMachine::handleReport()
 	// update report
 }
 
-// Static member function definitions
-std::array<StateMachine::Transition, 18> StateMachine::createRegularTransitions()
-{
-	return {
-		Row<State::DEVICE_ON, Event::SELF_CHECK_OK, State::DEVICE_OK,
-			Event::NONE>::get_transition(),
-		Row<State::DEVICE_OK, Event::SETTING_LOADED, State::DEVICE_SETUP,
-			Event::NONE>::get_transition(),
-		Row<State::DEVICE_SETUP, Event::LOAD_BANK_CHECKED, State::DEVICE_READY,
-			Event::NONE>::get_transition(),
-		Row<State::DEVICE_READY, Event::NEW_TEST, State::READY_TO_PROCEED,
-			Event::NONE>::get_transition(),
-		Row<State::READY_TO_PROCEED, Event::START, State::TEST_START,
-			Event::NONE>::get_transition(),
-		Row<State::TEST_START, Event::TEST_RUN_OK, State::TEST_RUNNING,
-			Event::NONE>::get_transition(),
-		Row<State::TEST_START, Event::TEST_FAILED, State::USER_CHECK_REQUIRED,
-			Event::NONE>::get_transition(),
-		Row<State::TEST_RUNNING, Event::TEST_FAILED, State::RETEST, Event::NONE>::get_transition(),
-		Row<State::USER_CHECK_REQUIRED, Event::START, State::TEST_START,
-			Event::NONE>::get_transition(),
-		Row<State::CURRENT_TEST_CHECK, Event::VALID_DATA, State::CURRENT_TEST_OK,
-			Event::NONE>::get_transition(),
-		Row<State::CURRENT_TEST_CHECK, Event::TEST_FAILED, State::RETEST,
-			Event::NONE>::get_transition(),
-		Row<State::CURRENT_TEST_OK, Event::SAVE, State::READY_NEXT_TEST,
-			Event::NONE>::get_transition(),
-		Row<State::READY_NEXT_TEST, Event::PENDING_TEST_FOUND, State::TEST_START,
-			Event::NONE>::get_transition([]() {
-			return StateMachine::getInstance().isAutoMode(); // Custom guard function
-		}),
-		Row<State::READY_NEXT_TEST, Event::PENDING_TEST_FOUND, State::WAITING_FOR_USER,
-			Event::NONE>::get_transition([]() {
-			return StateMachine::getInstance().isManualMode(); // Custom guard function
-		}),
-		Row<State::READY_NEXT_TEST, Event::TEST_LIST_EMPTY, State::ALL_TEST_DONE,
-			Event::NONE>::get_transition(),
-		Row<State::CURRENT_TEST_OK, Event::TEST_FAILED, State::RECOVER_DATA,
-			Event::NONE>::get_transition(),
-		Row<State::RECOVER_DATA, Event::SAVE, State::START_FROM_SAVE,
-			Event::NONE>::get_transition(),
-		Row<State::ALL_TEST_DONE, Event::JSON_READY, State::TRANSPORT_DATA,
-			Event::NONE>::get_transition()};
-}
+const std::array<StateMachine::Transition, 20> StateMachine::regular_transitions = {
+	{Row<State::DEVICE_ON, Event::SELF_CHECK_OK, State::DEVICE_OK, Event::NONE>::get_transition(),
+	 Row<State::DEVICE_OK, Event::SETTING_LOADED, State::DEVICE_SETUP,
+		 Event::NONE>::get_transition(),
+	 Row<State::DEVICE_SETUP, Event::LOAD_BANK_CHECKED, State::DEVICE_READY,
+		 Event::NONE>::get_transition(),
+	 Row<State::DEVICE_READY, Event::NEW_TEST, State::READY_TO_PROCEED,
+		 Event::NONE>::get_transition(),
+	 Row<State::READY_TO_PROCEED, Event::START, State::TEST_START, Event::NONE>::get_transition(),
+	 Row<State::TEST_START, Event::TEST_RUN_OK, State::TEST_RUNNING, Event::NONE>::get_transition(),
+	 Row<State::TEST_START, Event::TEST_FAILED, State::USER_CHECK_REQUIRED,
+		 Event::NONE>::get_transition(),
+	 Row<State::TEST_RUNNING, Event::TEST_FAILED, State::RETEST, Event::NONE>::get_transition(),
+	 Row<State::USER_CHECK_REQUIRED, Event::START, State::TEST_START,
+		 Event::NONE>::get_transition(),
+	 Row<State::CURRENT_TEST_CHECK, Event::VALID_DATA, State::CURRENT_TEST_OK,
+		 Event::NONE>::get_transition(),
+	 Row<State::CURRENT_TEST_CHECK, Event::TEST_FAILED, State::RETEST,
+		 Event::NONE>::get_transition(),
+	 Row<State::CURRENT_TEST_OK, Event::SAVE, State::READY_NEXT_TEST,
+		 Event::NONE>::get_transition(),
+	 Row<State::READY_NEXT_TEST, Event::PENDING_TEST_FOUND, State::TEST_START,
+		 Event::NONE>::get_transition([]() {
+		 return StateMachine::getInstance().isAutoMode();
+	 }),
+	 Row<State::READY_NEXT_TEST, Event::PENDING_TEST_FOUND, State::WAITING_FOR_USER,
+		 Event::NONE>::get_transition([]() {
+		 return StateMachine::getInstance().isManualMode();
+	 }),
+	 Row<State::READY_NEXT_TEST, Event::TEST_LIST_EMPTY, State::ALL_TEST_DONE,
+		 Event::NONE>::get_transition(),
+	 Row<State::CURRENT_TEST_OK, Event::TEST_FAILED, State::RECOVER_DATA,
+		 Event::NONE>::get_transition(),
+	 Row<State::RECOVER_DATA, Event::SAVE, State::START_FROM_SAVE, Event::NONE>::get_transition(),
+	 Row<State::ALL_TEST_DONE, Event::JSON_READY, State::TRANSPORT_DATA,
+		 Event::NONE>::get_transition()}};
 
-std::array<StateMachine::Transition, 11> StateMachine::createSpecialCaseTransitions()
-{
-	return {
-		Row<State::TEST_RUNNING, Event::TEST_TIME_END, State::CURRENT_TEST_CHECK,
-			Event::NONE>::get_transition([]() {
-			// Static action (e.g., reset flag)
-		}),
-		Row<State::TEST_RUNNING, Event::DATA_CAPTURED, State::CURRENT_TEST_CHECK,
-			Event::NONE>::get_transition([]() {
-			// Static action (e.g., set flag)
-		}),
-		Row<State::CURRENT_TEST_CHECK, Event::TEST_TIME_END, State::CURRENT_TEST_CHECK,
-			Event::NONE>::get_transition(),
-		Row<State::ALL_TEST_DONE, Event::TEST_FAILED, State::RECOVER_DATA,
-			Event::NONE>::get_transition([]() {
-			StateMachine::handleError();
-		}),
-		Row<State::ADDENDUM_TEST_DATA, Event::JSON_READY, State::TRANSPORT_DATA,
-			Event::NONE>::get_transition([]() {
-			StateMachine::handleReport();
-		}),
-		Row<State::ADDENDUM_TEST_DATA, Event::TEST_FAILED, State::RECOVER_DATA,
-			Event::NONE>::get_transition([]() {
-			StateMachine::handleError();
-		}),
-		Row<State::SYSTEM_TUNING, Event::AUTO, State::RECOVER_DATA, Event::NONE>::get_transition(
-			[]() {
-				StateMachine::handleReport();
-			}),
-		Row<State::FAULT, Event::FAULT_CLEARED, State::RECOVER_DATA, Event::NONE>::get_transition(
-			[]() {
-				StateMachine::handleReport();
-			}),
-		Row<State::SYSTEM_PAUSED, Event::AUTO, State::START_FROM_SAVE, Event::NONE>::get_transition(
-			[]() {
-				StateMachine::handleReport();
-			}),
-		Row<State::START_FROM_SAVE, Event::PENDING_TEST_FOUND, State::TEST_START,
-			Event::NONE>::get_transition(),
-		Row<State::FAULT, Event::RESTART, State::DEVICE_ON, Event::NONE>::get_transition([]() {
-			StateMachine::handleReport();
-		})};
-}
+// Define the special case transitions
+const std::array<StateMachine::Transition, 12> StateMachine::special_case_transitions = {
+	{Row<State::TEST_RUNNING, Event::TEST_TIME_END, State::CURRENT_TEST_CHECK,
+		 Event::NONE>::get_transition([]() {
+		 // Static action (e.g., reset flag)
+	 }),
+	 Row<State::TEST_RUNNING, Event::DATA_CAPTURED, State::CURRENT_TEST_CHECK,
+		 Event::NONE>::get_transition([]() {
+		 // Static action (e.g., set flag)
+	 }),
+	 Row<State::CURRENT_TEST_CHECK, Event::TEST_TIME_END, State::CURRENT_TEST_CHECK,
+		 Event::NONE>::get_transition(),
+	 Row<State::ALL_TEST_DONE, Event::TEST_FAILED, State::RECOVER_DATA,
+		 Event::NONE>::get_transition([]() {
+		 StateMachine::handleError();
+	 }),
+	 Row<State::ADDENDUM_TEST_DATA, Event::JSON_READY, State::TRANSPORT_DATA,
+		 Event::NONE>::get_transition([]() {
+		 StateMachine::handleReport();
+	 }),
+	 Row<State::ADDENDUM_TEST_DATA, Event::TEST_FAILED, State::RECOVER_DATA,
+		 Event::NONE>::get_transition([]() {
+		 StateMachine::handleError();
+	 }),
+	 Row<State::SYSTEM_TUNING, Event::AUTO, State::RECOVER_DATA, Event::NONE>::get_transition([]() {
+		 StateMachine::handleReport();
+	 }),
+	 Row<State::FAULT, Event::FAULT_CLEARED, State::RECOVER_DATA, Event::NONE>::get_transition(
+		 []() {
+			 StateMachine::handleReport();
+		 }),
+	 Row<State::SYSTEM_PAUSED, Event::AUTO, State::START_FROM_SAVE, Event::NONE>::get_transition(
+		 []() {
+			 StateMachine::handleReport();
+		 }),
+	 Row<State::START_FROM_SAVE, Event::PENDING_TEST_FOUND, State::TEST_START,
+		 Event::NONE>::get_transition(),
+	 Row<State::FAULT, Event::RESTART, State::DEVICE_ON, Event::NONE>::get_transition([]() {
+		 StateMachine::handleReport();
+	 })}};
 
-const std::array<StateMachine::Transition, 29> StateMachine::transition_table = [] {
-	std::array<Transition, 29> result = {}; // Initialize an empty array of 29 transitions
+// Define the combined transition table
+const std::array<StateMachine::Transition, 32> StateMachine::transition_table = [] {
+	std::array<Transition, 32> result = {}; // Initialize an empty array of 32 transitions
 
-	std::copy(createRegularTransitions().begin(), createRegularTransitions().end(), result.begin());
-	std::copy(createSpecialCaseTransitions().begin(), createSpecialCaseTransitions().end(),
-			  result.begin() + createRegularTransitions().size());
+	// Copy the regular transitions
+	std::copy(StateMachine::regular_transitions.begin(), StateMachine::regular_transitions.end(),
+			  result.begin());
+
+	// Copy the special case transitions
+	std::copy(StateMachine::special_case_transitions.begin(),
+			  StateMachine::special_case_transitions.end(),
+			  result.begin() + StateMachine::regular_transitions.size());
 
 	return result;
 }();
+
+// Access functions for the transition tables
+const StateMachine::Transition* StateMachine::getRegularTransitions()
+{
+	return StateMachine::regular_transitions.data();
+}
+
+const StateMachine::Transition* StateMachine::getSpecialCaseTransitions()
+{
+	return StateMachine::special_case_transitions.data();
+}
+
+const StateMachine::Transition* StateMachine::getTransitionTable()
+{
+	return StateMachine::transition_table.data();
+}
+
+// Implementation of other StateMachine methods...
 
 } // namespace Node_Core
