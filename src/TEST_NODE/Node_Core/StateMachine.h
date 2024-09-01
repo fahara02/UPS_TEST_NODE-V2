@@ -20,6 +20,7 @@ using OnStateChangedCallback = std::function<void(bool stateChanged, State newSt
 class StateMachine
 {
   public:
+	friend class TestSync;
 	static StateMachine& getInstance();
 
 	using GuardFunction = std::function<bool()>;
@@ -61,12 +62,12 @@ class StateMachine
 	void NotifyStateChanged(State state);
 	void notifyRejectTest();
 	void handleEvent(Event event);
+	void setMode(TestMode new_mode);
 	State getCurrentState() const;
 
 	void registerStateChangeCallback(OnStateChangedCallback callback);
 
   private:
-	friend class TestSync;
 	StateMachine();
 
 	std::atomic<State> _old_state{State::DEVICE_ON};
@@ -83,7 +84,7 @@ class StateMachine
 
 	void setState(State new_state);
 	void saveState(State new_state);
-	void setMode(TestMode new_mode);
+
 	void saveCurrentStateToNVS();
 
 	static void handleReport();

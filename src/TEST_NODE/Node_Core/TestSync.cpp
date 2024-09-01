@@ -1,5 +1,6 @@
 #include "TestSync.h"
 
+
 TestSync& TestSync::getInstance()
 {
 	static TestSync instance;
@@ -7,8 +8,8 @@ TestSync& TestSync::getInstance()
 }
 
 TestSync::TestSync() :
-	_cmdAcknowledged(false), _enableCurrentTest(false), _currentState{State::DEVICE_ON},
-	eventGroupTest(NULL), eventGroupUser(NULL), eventGroupSync(NULL)
+	_cmdAcknowledged(false), _enableCurrentTest(false), _currentState{State::DEVICE_ON}
+
 {
 	for(int i = 0; i < MAX_TEST; ++i)
 	{
@@ -19,21 +20,13 @@ TestSync::TestSync() :
 void TestSync::init()
 {
 	refreshState();
-	if(eventGroupTest == NULL)
-	{
-		eventGroupTest = xEventGroupCreate();
-	}
-
-	if(eventGroupUser == NULL)
-	{
-		eventGroupUser = xEventGroupCreate();
-	}
+	Node_Core::EventHelper::initializeEventGroups();
 
 	if(eventGroupSync == NULL)
 	{
 		eventGroupSync = xEventGroupCreate();
 	}
-	resetAllBits();
+
 	logger.log(LogLevel::INFO, "testSync initialization");
 }
 
@@ -108,12 +101,6 @@ void TestSync::parseIncomingJson(JsonVariant json)
 	}
 }
 
-void TestSync::resetAllBits()
-{
-	xEventGroupClearBits(eventGroupTest, ALL_TEST_BITS);
-	xEventGroupClearBits(eventGroupUser, ALL_CMD_BITS);
-}
-
 void TestSync::startTest(TestType test)
 {
 	if(isTestEnabled())
@@ -185,7 +172,7 @@ void TestSync::parseTestJson(JsonObject jsonObj)
 				logger.log(LogLevel::INFO,
 						   "LoadLevel percent:", loadPercentageToString(_testList[i].loadLevel));
 
-				handleUserCommand(UserUpdateEvent::NEW_TEST);
+				handleUserUpdate(UserUpdateEvent::NEW_TEST);
 				return;
 			}
 		}
@@ -217,30 +204,33 @@ void TestSync::checkForDeletedTests()
 }
 void TestSync::handleUserUpdate(UserUpdateEvent update)
 {
-	case UserUpdateEvent::NEW_TEST:
-		EventHelper::setBits(UserUpdateEvent::NEW_TEST);
-		EventHelper::clearBits(UserUpdateEvent::DELETE_TEST);
-		reportGlobalEvent(Event::NEW_TEST);
-		refreshState();
-		break;
-	case UserUpdateEvent::DELETE_TEST:
-		EventHelper::setBits(UserUpdateEvent::DELETE_TEST);
-		EventHelper::clearBits(UserUpdateEvent::NEW_TEST);
-		reportGlobalEvent(Event::REJECT_CURRENT_TEST);
-		refreshState();
-		break;
-	case UserUpdateEvent::DATA_ENTRY:
-		EventHelper::setBits(UserUpdateEvent::DATA_ENTRY);
-		reportGlobalEvent(Event::DATA_ENTRY);
-		refreshState();
-		break;
-	case UserUpdateEvent::USER_TUNE:
-		EventHelper::setBits(UserUpdateEvent::USER_TUNE);
-		reportGlobalEvent(Event::USER_TUNE);
-		refreshState();
-		break;
-	default:
-		break;
+	switch(update)
+	{
+		case UserUpdateEvent::NEW_TEST:
+			EventHelper::setBits(UserUpdateEvent::NEW_TEST);
+			EventHelper::clearBits(UserUpdateEvent::DELETE_TEST);
+			reportEvent(Event::NEW_TEST);
+			refreshState();
+			break;
+		case UserUpdateEvent::DELETE_TEST:
+			EventHelper::setBits(UserUpdateEvent::DELETE_TEST);
+			EventHelper::clearBits(UserUpdateEvent::NEW_TEST);
+			reportEvent(Event::REJECT_CURRENT_TEST);
+			refreshState();
+			break;
+		case UserUpdateEvent::DATA_ENTRY:
+			EventHelper::setBits(UserUpdateEvent::DATA_ENTRY);
+			reportEvent(Event::DATA_ENTRY);
+			refreshState();
+			break;
+		case UserUpdateEvent::USER_TUNE:
+			EventHelper::setBits(UserUpdateEvent::USER_TUNE);
+			reportEvent(Event::USER_TUNE);
+			refreshState();
+			break;
+		default:
+			break;
+	}
 }
 void TestSync::handleUserCommand(UserCommandEvent command)
 {
@@ -249,41 +239,41 @@ void TestSync::handleUserCommand(UserCommandEvent command)
 		case UserCommandEvent ::PAUSE:
 			EventHelper::clearBits(UserCommandEvent::RESUME);
 			EventHelper::setBits(UserCommandEvent::PAUSE);
-			reportGlobalEvent(Event::PAUSE);
+			reportEvent(Event::PAUSE);
 			refreshState();
 
 			break;
 		case UserCommandEvent ::RESUME:
 			EventHelper::clearBits(UserCommandEvent::PAUSE);
 			EventHelper::setBits(UserCommandEvent::RESUME);
-			reportGlobalEvent(Event::RESUME);
+			reportEvent(Event::RESUME);
 			refreshState();
 			break;
 		case UserCommandEvent ::AUTO:
 			EventHelper::clearBits(UserCommandEvent::MANUAL);
 			EventHelper::setBits(UserCommandEvent::AUTO);
 
-			StateMachine::getInstance().refreshState().setMode(TestMode::AUTO);
+			StateMachine::getInstance().setMode(TestMode::AUTO);
 			refreshState();
 			break;
 		case UserCommandEvent ::MANUAL:
 			EventHelper::clearBits(UserCommandEvent::AUTO);
 			EventHelper::setBits(UserCommandEvent::MANUAL);
 
-			StateMachine::getInstance().refreshState().setMode(TestMode::MANUAL);
+			StateMachine::getInstance().setMode(TestMode::MANUAL);
 			refreshState();
 
 			break;
 		case UserCommandEvent ::START:
 			EventHelper::clearBits(UserCommandEvent::STOP);
 			EventHelper::setBits(UserCommandEvent::START);
-			reportGlobalEvent(Event::START);
+			reportEvent(Event::START);
 			refreshState();
 			break;
 		case UserCommandEvent ::STOP:
 			EventHelper::clearBits(UserCommandEvent::START);
 			EventHelper::setBits(UserCommandEvent::STOP);
-			reportGlobalEvent(Event::STOP);
+			reportEvent(Event::STOP);
 			refreshState();
 			break;
 		default:
@@ -345,8 +335,9 @@ void TestSync::handleTestEvent(Event event)
 void TestSync::userCommandObserverTask(void* pvParameters)
 {
 	TestSync& instance = TestSync::getInstance();
-	while(xEventGroupWaitBits(instance.eventGroupUser, static_cast<EventBits_t>(ALL_CMD_BITS),
-							  pdFALSE, pdTRUE, portMAX_DELAY))
+	while(xEventGroupWaitBits(EventHelper::userCommandEventGroup,
+							  static_cast<EventBits_t>(ALL_CMD_BITS), pdFALSE, pdTRUE,
+							  portMAX_DELAY))
 	{
 		logger.log(LogLevel::SUCCESS, "New User Command Received");
 
@@ -356,89 +347,89 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			return;
 		}
 
-		int allCMD = xEventGroupGetBits(instance.eventGroupUser);
-		EventBits_t cmdAuto = static_cast<EventBits_t>(UserCommand::AUTO);
-		EventBits_t cmdManual = static_cast<EventBits_t>(UserCommand::MANUAL);
-		EventBits_t cmdStart = static_cast<EventBits_t>(UserCommand::START);
-		EventBits_t cmdStop = static_cast<EventBits_t>(UserCommand::STOP);
-		EventBits_t cmdPause = static_cast<EventBits_t>(UserCommand::PAUSE);
-		EventBits_t cmdResume = static_cast<EventBits_t>(UserCommand::RESUME);
-		EventBits_t cmdNewTest = static_cast<EventBits_t>(UserCommand::NEW_TEST);
-		EventBits_t cmdDeleteTest = static_cast<EventBits_t>(UserCommand::DELETE_TEST);
+		// int allCMD = xEventGroupGetBits(instance.eventGroupUser);
+		//  EventBits_t cmdAuto = static_cast<EventBits_t>(UserCommand::AUTO);
+		//  EventBits_t cmdManual = static_cast<EventBits_t>(UserCommand::MANUAL);
+		//  EventBits_t cmdStart = static_cast<EventBits_t>(UserCommand::START);
+		//  EventBits_t cmdStop = static_cast<EventBits_t>(UserCommand::STOP);
+		//  EventBits_t cmdPause = static_cast<EventBits_t>(UserCommand::PAUSE);
+		//  EventBits_t cmdResume = static_cast<EventBits_t>(UserCommand::RESUME);
+		//  EventBits_t cmdNewTest = static_cast<EventBits_t>(UserCommand::NEW_TEST);
+		//  EventBits_t cmdDeleteTest = static_cast<EventBits_t>(UserCommand::DELETE_TEST);
 
-		if((allCMD & cmdAuto) != 0)
-		{
-			instance.refreshState();
-			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
-			instance.acknowledgeCMD();
-			return;
-		}
-		else if((allCMD & cmdManual) != 0)
-		{
-			instance.refreshState();
-			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
-			instance.acknowledgeCMD();
-			return;
-		}
-		else if((allCMD & cmdStart) != 0)
-		{
-			instance.refreshState();
-			instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
-			if((allCMD & cmdManual) != 0)
-			{
-				instance.startTest(instance._testList[0].testType);
-			}
-			instance.acknowledgeCMD();
-			return;
-		}
-		else if((allCMD & cmdStop) != 0)
-		{
-			instance.refreshState();
-			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
-			if((allCMD & cmdManual) != 0)
-			{
-				instance.stopTest(instance._testList[0].testType);
-			}
-			else
-			{
-				instance.stopAllTest();
-				instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
-			}
+		// if((allCMD & cmdAuto) != 0)
+		// {
+		// 	instance.refreshState();
+		// 	instance.handleSyncCommand(SyncCommand::START_OBSERVER);
+		// 	instance.acknowledgeCMD();
+		// 	return;
+		// }
+		// else if((allCMD & cmdManual) != 0)
+		// {
+		// 	instance.refreshState();
+		// 	instance.handleSyncCommand(SyncCommand::START_OBSERVER);
+		// 	instance.acknowledgeCMD();
+		// 	return;
+		// }
+		// else if((allCMD & cmdStart) != 0)
+		// {
+		// 	instance.refreshState();
+		// 	instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
+		// 	if((allCMD & cmdManual) != 0)
+		// 	{
+		// 		instance.startTest(instance._testList[0].testType);
+		// 	}
+		// 	instance.acknowledgeCMD();
+		// 	return;
+		// }
+		// else if((allCMD & cmdStop) != 0)
+		// {
+		// 	instance.refreshState();
+		// 	instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
+		// 	if((allCMD & cmdManual) != 0)
+		// 	{
+		// 		instance.stopTest(instance._testList[0].testType);
+		// 	}
+		// 	else
+		// 	{
+		// 		instance.stopAllTest();
+		// 		instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
+		// 	}
 
-			instance.acknowledgeCMD();
-			return;
-		}
-		else if((allCMD & cmdPause) != 0)
-		{
-			instance.refreshState();
-			instance.stopAllTest();
-			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
-			instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
-			instance.acknowledgeCMD();
-			return;
-		}
-		else if((allCMD & cmdResume) != 0)
-		{
-			instance.refreshState();
-			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
-			instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
-			instance.acknowledgeCMD();
-			return;
-		}
-		else if((allCMD & cmdNewTest) != 0)
-		{
-			instance.refreshState();
-			instance.enableCurrentTest();
-			instance.acknowledgeCMD();
-			return;
-		}
-		else if((allCMD & cmdDeleteTest) != 0)
-		{
-			instance.refreshState();
+		// 	instance.acknowledgeCMD();
+		// 	return;
+		// }
+		// else if((allCMD & cmdPause) != 0)
+		// {
+		// 	instance.refreshState();
+		// 	instance.stopAllTest();
+		// 	instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
+		// 	instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
+		// 	instance.acknowledgeCMD();
+		// 	return;
+		// }
+		// else if((allCMD & cmdResume) != 0)
+		// {
+		// 	instance.refreshState();
+		// 	instance.handleSyncCommand(SyncCommand::START_OBSERVER);
+		// 	instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
+		// 	instance.acknowledgeCMD();
+		// 	return;
+		// }
+		// else if((allCMD & cmdNewTest) != 0)
+		// {
+		// 	instance.refreshState();
+		// 	instance.enableCurrentTest();
+		// 	instance.acknowledgeCMD();
+		// 	return;
+		// }
+		// else if((allCMD & cmdDeleteTest) != 0)
+		// {
+		// 	instance.refreshState();
 
-			instance.acknowledgeCMD();
-			return;
-		}
+		// 	instance.acknowledgeCMD();
+		// 	return;
+		// }
 		vTaskDelay(pdMS_TO_TICKS(200));
 	}
 	vTaskDelete(NULL);

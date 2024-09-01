@@ -3,6 +3,7 @@
 #include "TestData.h"
 #include "UPSTest.h"
 #include "TestManager.h"
+#include "EventHelper.h"
 using namespace Node_Core;
 extern QueueHandle_t SwitchTestDataQueue;
 extern TaskHandle_t switchTestTaskHandle;

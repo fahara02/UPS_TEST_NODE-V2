@@ -4,6 +4,7 @@
 #include "TestData.h"
 #include "UPSTest.h"
 #include "TestManager.h"
+#include "EventHelper.h"
 extern QueueHandle_t BackupTestDataQueue;
 extern TaskHandle_t backupTestTaskHandle;
 class BackupTest : public UPSTest<BackupTest, BackupTestData>

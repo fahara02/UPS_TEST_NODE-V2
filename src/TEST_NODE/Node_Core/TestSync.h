@@ -27,7 +27,7 @@ class TestSync
 	static TestSync& getInstance();
 	void init();
 	State refreshState();
-	void reportGlobalEvent(Event e);
+	void reportEvent(Event e);
 
 	void parseIncomingJson(JsonVariant json);
 	void handleUserCommand(UserCommandEvent command);
@@ -41,14 +41,7 @@ class TestSync
 	void disableCurrentTest();
 	bool iscmdAcknowledged();
 	bool isTestEnabled();
-	EventGroupHandle_t getEventGroupTest() const
-	{
-		return eventGroupTest;
-	}
-	EventGroupHandle_t getEventGroupUser() const
-	{
-		return eventGroupUser;
-	}
+
 	EventGroupHandle_t getEventGroupSync() const
 	{
 		return eventGroupSync;

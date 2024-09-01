@@ -6,6 +6,9 @@
 #include "StateDefines.h"
 #include "TestData.h"
 
+// Forward declaration of TestSync
+class TestSync;
+
 namespace Node_Core
 {
 
@@ -75,18 +78,21 @@ enum class SyncCommand : EventBits_t
 class EventHelper
 {
   public:
+	friend class TestSync;
 	static void setBits(SystemEvent e);
 	static void setBits(SystemInitEvent e);
 	static void setBits(TestEvent e);
 	static void setBits(UserCommandEvent e);
 	static void setBits(UserUpdateEvent e);
 	static void setBits(DataEvent e);
+	static void setBits(TestType e);
 	static void clearBits(SystemEvent e);
 	static void clearBits(SystemInitEvent e);
 	static void clearBits(TestEvent e);
 	static void clearBits(UserCommandEvent e);
 	static void clearBits(UserUpdateEvent e);
 	static void clearBits(DataEvent e);
+	static void clearBits(TestType e);
 	static void resetSystemEventBits();
 	static void resetSystemInitEventBits();
 	static void resetTestEventBits();
@@ -102,24 +108,12 @@ class EventHelper
 	static EventGroupHandle_t userUpdateEventGroup;
 	static EventGroupHandle_t dataEventGroup;
 	static EventGroupHandle_t testControlEvent;
-
-	EventGroupHandle_t getEventGroupTestControl() const
-	{
-		return testControlEvent;
-	}
-	EventGroupHandle_t getEventGroupUserCommand() const
-	{
-		return userCommandEventGroup;
-	}
-	EventGroupHandle_t getEventGroupUserUpdate() const
-	{
-		return userCommandEventGroup;
-	}
-
-  private:
 	static void initializeEventGroups();
+
+  protected:
 	static void cleanupEventGroups();
 
+  private:
 	static const EventBits_t SYSTEM_EVENT_BITS_MASK;
 	static const EventBits_t SYSTEM_INIT_EVENT_BITS_MASK;
 	static const EventBits_t TEST_EVENT_BITS_MASK;

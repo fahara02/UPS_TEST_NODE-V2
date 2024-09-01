@@ -51,37 +51,76 @@ const EventBits_t EventHelper::ALL_TEST_BITS_MASK =
 	static_cast<EventBits_t>(TestType::EfficiencyTest) |
 	static_cast<EventBits_t>(TestType::InputVoltageTest) |
 	static_cast<EventBits_t>(TestType::WaveformTest) |
-	static_cast<EventBits_t>(TestType::TunePWMTest) |
-	;
+	static_cast<EventBits_t>(TestType::TunePWMTest);
 
 void EventHelper::initializeEventGroups()
 {
-	systemEventGroup = xEventGroupCreate();
-	systemInitEventGroup = xEventGroupCreate();
-	testEventGroup = xEventGroupCreate();
-	userCommandEventGroup = xEventGroupCreate();
-	userUpdateEventGroup = xEventGroupCreate();
-	dataEventGroup = xEventGroupCreate();
-	testControlEvent = xEventGroupCreate();
+	if(systemEventGroup == nullptr)
+		systemEventGroup = xEventGroupCreate();
+
+	if(systemInitEventGroup == nullptr)
+		systemInitEventGroup = xEventGroupCreate();
+
+	if(testEventGroup == nullptr)
+		testEventGroup = xEventGroupCreate();
+
+	if(userCommandEventGroup == nullptr)
+		userCommandEventGroup = xEventGroupCreate();
+
+	if(userUpdateEventGroup == nullptr)
+		userUpdateEventGroup = xEventGroupCreate();
+
+	if(dataEventGroup == nullptr)
+		dataEventGroup = xEventGroupCreate();
+
+	if(testControlEvent == nullptr)
+		testControlEvent = xEventGroupCreate();
 }
 
 // Clean up FreeRTOS event groups (call this before shutdown)
 void EventHelper::cleanupEventGroups()
 {
-	if(systemEventGroup)
+	if(systemEventGroup != nullptr)
+	{
 		vEventGroupDelete(systemEventGroup);
-	if(systemInitEventGroup)
+		systemEventGroup = nullptr;
+	}
+
+	if(systemInitEventGroup != nullptr)
+	{
 		vEventGroupDelete(systemInitEventGroup);
-	if(testEventGroup)
+		systemInitEventGroup = nullptr;
+	}
+
+	if(testEventGroup != nullptr)
+	{
 		vEventGroupDelete(testEventGroup);
-	if(userCommandEventGroup)
+		testEventGroup = nullptr;
+	}
+
+	if(userCommandEventGroup != nullptr)
+	{
 		vEventGroupDelete(userCommandEventGroup);
-	if(userUpdateEventGroup)
+		userCommandEventGroup = nullptr;
+	}
+
+	if(userUpdateEventGroup != nullptr)
+	{
 		vEventGroupDelete(userUpdateEventGroup);
-	if(dataEventGroup)
+		userUpdateEventGroup = nullptr;
+	}
+
+	if(dataEventGroup != nullptr)
+	{
 		vEventGroupDelete(dataEventGroup);
-	if(testControlEvent)
+		dataEventGroup = nullptr;
+	}
+
+	if(testControlEvent != nullptr)
+	{
 		vEventGroupDelete(testControlEvent);
+		testControlEvent = nullptr;
+	}
 }
 
 void EventHelper::setBits(SystemEvent e)
@@ -110,7 +149,7 @@ void EventHelper::setBits(DataEvent e)
 {
 	xEventGroupSetBits(dataEventGroup, static_cast<EventBits_t>(e));
 }
-void EventHelper::setBits(DataEvent e)
+void EventHelper::setBits(TestType e)
 {
 	xEventGroupSetBits(testControlEvent, static_cast<EventBits_t>(e));
 }
@@ -139,7 +178,7 @@ void EventHelper::clearBits(DataEvent e)
 {
 	xEventGroupClearBits(dataEventGroup, static_cast<EventBits_t>(e));
 }
-void EventHelper::clearBits(DataEvent e)
+void EventHelper::clearBits(TestType e)
 {
 	xEventGroupClearBits(testControlEvent, static_cast<EventBits_t>(e));
 }

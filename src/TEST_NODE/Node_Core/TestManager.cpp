@@ -218,10 +218,11 @@ void TestManager::createTestTasks()
 void TestManager::TestManagerTask(void* pvParameters)
 {
 	logger.log(LogLevel::INFO, "Resuming Test Manager task");
-	TestManager& instance = TestManager::getInstance();
+
 	vTaskDelay(pdMS_TO_TICKS(1000));
 	while(true)
 	{
+		TestManager& instance = TestManager::getInstance();
 		State managerState = instance.loadState();
 
 		if(managerState == State::DEVICE_READY)

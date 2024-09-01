@@ -47,8 +47,8 @@ void BackupTest::BackupTestTask(void* pvParameters)
 	SetupTaskParams taskParam;
 
 	xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
-	TestSync& testSync = TestSync::getInstance();
-	while(xEventGroupWaitBits(testSync.getEventGroupTest(),
+
+	while(xEventGroupWaitBits(EventHelper::testControlEvent,
 							  static_cast<EventBits_t>(TestType::BackupTest), pdFALSE, pdTRUE,
 							  portMAX_DELAY))
 	{
@@ -56,7 +56,7 @@ void BackupTest::BackupTestTask(void* pvParameters)
 		logger.log(LogLevel::INFO, "resuming backupTest task");
 
 		EventBits_t bt_eventbits = static_cast<EventBits_t>(TestType::BackupTest);
-		int result = xEventGroupGetBits(testSync.getEventGroupTest());
+		int result = xEventGroupGetBits(EventHelper::testControlEvent);
 
 		if((result & bt_eventbits) != 0)
 		{

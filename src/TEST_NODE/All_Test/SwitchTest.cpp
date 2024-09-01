@@ -43,19 +43,19 @@ SwitchTestData& SwitchTest::data()
 void SwitchTest::SwitchTestTask(void* pvParameters)
 {
 	SetupTaskParams taskParam;
-	TestSync& testSync = TestSync::getInstance();
+
 	SwitchTest& switchTest = SwitchTest::getInstance();
 
 	xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 
-	while(xEventGroupWaitBits(testSync.getEventGroupTest(),
+	while(xEventGroupWaitBits(EventHelper::testControlEvent,
 							  static_cast<EventBits_t>(TestType::SwitchTest), pdFALSE, pdTRUE,
 							  portMAX_DELAY))
 	{
 		logger.log(LogLevel::INFO, "resuming switchTest task");
 
 		EventBits_t sw_eventbits = static_cast<EventBits_t>(TestType::SwitchTest);
-		int result = xEventGroupGetBits(testSync.getEventGroupTest());
+		int result = xEventGroupGetBits(EventHelper::testControlEvent);
 
 		if((result & sw_eventbits) != 0)
 
