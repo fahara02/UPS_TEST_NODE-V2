@@ -1,0 +1,81 @@
+menu "UPSTester State Machine "
+
+    choice DEFAULT_STATE
+        prompt "Select default state"
+        default DEFAULT_STATE_DEVICE_ON
+        help
+            Set the default state for the state machine on the first boot.
+    
+    config DEFAULT_STATE_DEVICE_ON
+        bool "DEVICE_ON"
+    
+    config DEFAULT_STATE_DEVICE_OK
+        bool "DEVICE_OK"
+    
+    config DEFAULT_STATE_DEVICE_SETUP
+        bool "DEVICE_SETUP"
+    
+    config DEFAULT_STATE_DEVICE_READY
+        bool "DEVICE_READY"
+    
+    config DEFAULT_STATE_READY_TO_PROCEED
+        bool "READY_TO_PROCEED"
+    
+    config DEFAULT_STATE_TEST_START
+        bool "TEST_START"
+    
+    config DEFAULT_STATE_TEST_RUNNING
+        bool "TEST_RUNNING"
+    
+    config DEFAULT_STATE_CURRENT_TEST_CHECK
+        bool "CURRENT_TEST_CHECK"
+    
+    config DEFAULT_STATE_CURRENT_TEST_OK
+        bool "CURRENT_TEST_OK"
+    
+    config DEFAULT_STATE_READY_NEXT_TEST
+        bool "READY_NEXT_TEST"
+    
+    config DEFAULT_STATE_MANUAL_NEXT_TEST
+        bool "MANUAL_NEXT_TEST"
+    
+    config DEFAULT_STATE_RETEST
+        bool "RETEST"
+    
+    config DEFAULT_STATE_SYSTEM_PAUSED
+        bool "SYSTEM_PAUSED"
+    
+    config DEFAULT_STATE_ALL_TEST_DONE
+        bool "ALL_TEST_DONE"
+    
+    config DEFAULT_STATE_START_FROM_SAVE
+        bool "START_FROM_SAVE"
+    
+    config DEFAULT_STATE_RECOVER_DATA
+        bool "RECOVER_DATA"
+    
+    config DEFAULT_STATE_ADDENDUM_TEST_DATA
+        bool "ADDENDUM_TEST_DATA"
+    
+    config DEFAULT_STATE_FAILED_TEST
+        bool "FAILED_TEST"
+    
+    config DEFAULT_STATE_TRANSPORT_DATA
+        bool "TRANSPORT_DATA"
+    
+    config DEFAULT_STATE_SYSTEM_TUNING
+        bool "SYSTEM_TUNING"
+    
+    config DEFAULT_STATE_FAULT
+        bool "FAULT"
+    
+    config DEFAULT_STATE_USER_CHECK_REQUIRED
+        bool "USER_CHECK_REQUIRED"
+    
+    config DEFAULT_STATE_WAITING_FOR_USER
+        bool "WAITING_FOR_USER"
+    
+    endchoice
+    
+    endmenu
+    

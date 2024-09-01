@@ -32,7 +32,8 @@ enum class State
 	SYSTEM_TUNING,
 	FAULT,
 	USER_CHECK_REQUIRED,
-	WAITING_FOR_USER
+	WAITING_FOR_USER,
+	MAX_STATE
 };
 
 enum class Event

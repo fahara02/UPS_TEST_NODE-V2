@@ -11,15 +11,42 @@ extern Logger& logger;
 extern xSemaphoreHandle state_mutex;
 namespace Node_Core
 {
+Preferences preferences;
 
 StateMachine::StateMachine() :
 	_old_state(State::DEVICE_ON), current_state(State::DEVICE_ON), _dataCapturedFlag(false),
 	_retryCount(0)
 {
+	preferences.begin("state_store", true);
+	uint32_t saved_state =
+		preferences.getUInt("last_state", static_cast<uint32_t>(getDefaultStateFromConfig()));
+	preferences.end();
+	if(isValidState(saved_state))
+	{
+		current_state.store(static_cast<State>(saved_state));
+	}
+	else
+	{
+		current_state.store(getDefaultStateFromConfig()); // Default state from menuconfig
+		Serial.println("No valid previous state found. Using default state from menuconfig.");
+	}
 	// state_mutex = xSemaphoreCreateMutex();
 	// if (state_mutex == NULL) {
 	//   logger.log(LogLevel::ERROR, "State mutex creation failed!");
 	// }
+}
+void StateMachine::saveCurrentStateToNVS()
+{
+	preferences.begin("state_store", false); // Open preferences in write mode
+	preferences.putUInt("last_state",
+						static_cast<uint32_t>(current_state.load())); // Save current state
+	preferences.end(); // Close preferences
+}
+
+bool StateMachine::isValidState(uint32_t state)
+{
+	return state >= static_cast<uint32_t>(State::DEVICE_ON) &&
+		   state <= static_cast<uint32_t>(State::MAX_STATE);
 }
 
 StateMachine& StateMachine::getInstance()
@@ -31,6 +58,9 @@ StateMachine& StateMachine::getInstance()
 void StateMachine::setState(State new_state)
 {
 	current_state.store(new_state);
+	saveCurrentStateToNVS();
+
+	NotifyStateChanged(new_state);
 
 	// Take the mutex to ensure exclusive access
 	// if (xSemaphoreTake(state_mutex, portMAX_DELAY) == pdTRUE) {
