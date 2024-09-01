@@ -62,7 +62,7 @@ class StateMachine
 	void setState(State new_state);
 
   private:
-	friend class TestManager;
+	friend class TestSync;
 	StateMachine();
 
 	std::atomic<State> _old_state{State::DEVICE_ON};
@@ -85,8 +85,8 @@ class StateMachine
 		Row<State::DEVICE_READY, Event::MANUAL_OVERRIDE, State::MANUAL_MODE, Event::NONE>(),
 		Row<State::DEVICE_READY, Event::AUTO_TEST_CMD, State::AUTO_MODE, Event::NONE>(),
 		Row<State::MANUAL_MODE, Event::NETWORK_DISCONNECTED, State::FAULT, Event::NONE>(),
-		Row<State::AUTO_MODE, Event::NETWORK_DISCONNECTED, State::DEVICE_OK, Event::NONE>(),
-		Row<State::DEVICE_SETUP, Event::NETWORK_DISCONNECTED, State::DEVICE_OK, Event::NONE>(),
+		Row<State::AUTO_MODE, Event::NETWORK_DISCONNECTED, State::FAULT, Event::NONE>(),
+		Row<State::DEVICE_SETUP, Event::NETWORK_DISCONNECTED, State::FAULT, Event::NONE>(),
 		Row<State::AUTO_MODE, Event::PENDING_TEST_FOUND, State::TEST_START, Event::NONE>(),
 		Row<State::TEST_START, Event::TEST_ONGOING, State::TEST_IN_PROGRESS, Event::NONE>(),
 		Row<State::TEST_START, Event::TEST_FAILED, State::RETEST, Event::NONE>(),

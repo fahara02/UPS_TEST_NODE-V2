@@ -15,9 +15,9 @@
 using namespace Node_Core;
 extern Logger& logger;
 extern StateMachine& stateMachine;
-extern EventGroupHandle_t eventGroupTest;
-extern EventGroupHandle_t eventGroupUser;
-extern EventGroupHandle_t eventGroupSync;
+// extern EventGroupHandle_t eventGroupTest;
+// extern EventGroupHandle_t eventGroupUser;
+// extern EventGroupHandle_t eventGroupSync;
 
 const EventBits_t ALL_TEST_BITS = (1 << MAX_TEST) - 1;
 const EventBits_t ALL_CMD_BITS = (1 << MAX_USER_COMMAND) - 1;
@@ -52,33 +52,48 @@ class TestSync
   public:
 	static TestSync& getInstance();
 	void init();
-	void reportEvent(Event event);
 	State refreshState();
+	void reportEvent(Event event);
 
-	bool iscmdAcknowledged()
-	{
-		return _cmdAcknowledged;
-	}
-	void acknowledgeCMD()
-	{
-		_cmdAcknowledged = true;
-	}
-	void acknowledgeCMDReset()
-	{
-		_cmdAcknowledged = false;
-	}
 	void parseIncomingJson(JsonVariant json);
 	void handleUserCommand(UserCommand command);
 	void handleSyncCommand(SyncCommand command);
 	void handlelocalEvent(Event event);
 
+	void acknowledgeCMD();
+	void acknowledgeCMDReset();
+	void enableCurrentTest();
+	void diableCurrentTest();
+	bool iscmdAcknowledged();
+	bool isTestEnabled();
+	EventGroupHandle_t getEventGroupTest() const
+	{
+		return eventGroupTest;
+	}
+	EventGroupHandle_t getEventGroupUser() const
+	{
+		return eventGroupUser;
+	}
+	EventGroupHandle_t getEventGroupSync() const
+	{
+		return eventGroupSync;
+	}
+
   private:
 	TestSync();
-	static const EventBits_t ALL_TEST_BITS;
-	static const EventBits_t ALL_CMD_BITS;
+
 	bool _cmdAcknowledged = false;
+	bool _enableCurrentTest = false;
+
 	std::atomic<State> _currentState;
+
+	EventGroupHandle_t eventGroupTest = NULL;
+	EventGroupHandle_t eventGroupUser = NULL;
+	EventGroupHandle_t eventGroupSync = NULL;
+
 	RequiredTest _testList[MAX_TEST];
+
+	StateMachine& stateMachine = StateMachine::getInstance();
 
 	void resetAllBits();
 	void createSynctask();

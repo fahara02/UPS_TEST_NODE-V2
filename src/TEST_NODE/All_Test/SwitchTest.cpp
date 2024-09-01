@@ -2,7 +2,7 @@
 
 extern TestSync& SyncTest;
 
-extern EventGroupHandle_t eventGroupTest;
+// extern EventGroupHandle_t eventGroupTest;
 
 extern QueueHandle_t TestManageQueue;
 
@@ -47,15 +47,17 @@ SwitchTestData& SwitchTest::data()
 void SwitchTest::SwitchTestTask(void* pvParameters)
 {
 	SetupTaskParams taskParam;
+	TestSync& testSync = TestSync::getInstance();
 	xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 
-	while(xEventGroupWaitBits(eventGroupTest, static_cast<EventBits_t>(TestType::SwitchTest),
-							  pdFALSE, pdTRUE, portMAX_DELAY))
+	while(xEventGroupWaitBits(testSync.getEventGroupTest(),
+							  static_cast<EventBits_t>(TestType::SwitchTest), pdFALSE, pdTRUE,
+							  portMAX_DELAY))
 	{
 		logger.log(LogLevel::INFO, "resuming switchTest task");
 
 		EventBits_t sw_eventbits = static_cast<EventBits_t>(TestType::SwitchTest);
-		int result = xEventGroupGetBits(eventGroupTest);
+		int result = xEventGroupGetBits(testSync.getEventGroupTest());
 
 		if((result & sw_eventbits) != 0)
 

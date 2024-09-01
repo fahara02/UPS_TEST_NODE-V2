@@ -2,7 +2,7 @@
 
 extern TestSync& SyncTest;
 
-extern EventGroupHandle_t eventGroupTest;
+// extern EventGroupHandle_t eventGroupTest;
 
 extern QueueHandle_t TestManageQueue;
 
@@ -48,15 +48,17 @@ BackupTestData& BackupTest::data()
 void BackupTest::BackupTestTask(void* pvParameters)
 {
 	SetupTaskParams taskParam;
+	TestSync& testSync = TestSync::getInstance();
 	xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 
-	while(xEventGroupWaitBits(eventGroupTest, static_cast<EventBits_t>(TestType::BackupTest),
-							  pdFALSE, pdTRUE, portMAX_DELAY))
+	while(xEventGroupWaitBits(testSync.getEventGroupTest(),
+							  static_cast<EventBits_t>(TestType::BackupTest), pdFALSE, pdTRUE,
+							  portMAX_DELAY))
 	{
 		logger.log(LogLevel::INFO, "resuming backupTest task");
 
 		EventBits_t bt_eventbits = static_cast<EventBits_t>(TestType::BackupTest);
-		int result = xEventGroupGetBits(eventGroupTest);
+		int result = xEventGroupGetBits(testSync.getEventGroupTest());
 
 		if((result & bt_eventbits) != 0)
 		{

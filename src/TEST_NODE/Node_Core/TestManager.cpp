@@ -432,13 +432,11 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 	if(managerState == State::DEVICE_READY)
 	{
 		instance.logPendingTest(instance._testList[i]);
-		instance.passEvent(Event::AUTO_TEST_CMD);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::AUTO_MODE)
 	{
-		vTaskDelay(pdMS_TO_TICKS(100));
-		instance.passEvent(Event::PENDING_TEST_FOUND);
+		instance.logPendingTest(instance._testList[i]);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::TEST_START)
@@ -448,7 +446,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		LoadPercentage load = instance._testList[i].testRequired.loadLevel;
 		instance.configureTest(load);
 		testInstance.logTaskState(LogLevel::INFO);
-		// TaskHandle_t taskHandle = testInstance->getTaskHandle();
+
 		testInstance.setTaskPriority(TestPriority);
 
 		logger.log(LogLevel::INFO, "Starting %s...", testInstance.testTypeName());

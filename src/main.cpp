@@ -14,21 +14,14 @@
 #include "freertos/timers.h"
 #include "Logger.h"
 #include "ModbusManager.h"
-#include "TestSync.h"
-#include "TestManager.h"
-#include "UPSTest.h"
-#include "SwitchTest.h"
-#include "BackupTest.h"
-
-#include "PageBuilder.h"
-#include "UPSdebug.h"
+#include "UPSTestNode.h"
 
 using namespace Node_Core;
 
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
-StateMachine& stateMachine = StateMachine::getInstance();
+
 UPSTesterSetup& TesterSetup = UPSTesterSetup::getInstance();
 SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
 BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
@@ -63,9 +56,6 @@ QueueHandle_t SwitchTestDataQueue = NULL;
 QueueHandle_t BackupTestDataQueue = NULL;
 static const uint8_t messageQueueLength = 10;
 
-EventGroupHandle_t eventGroupTest = NULL;
-EventGroupHandle_t eventGroupUser = NULL;
-EventGroupHandle_t eventGroupSync = NULL;
 EventGroupHandle_t eventGroupSwitchTestData = NULL;
 EventGroupHandle_t eventGroupBackupTestData = NULL;
 
