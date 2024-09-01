@@ -195,7 +195,7 @@ TestResult SwitchTest::run(uint16_t testVARating, unsigned long testduration)
 		_triggerTestEndEvent_SW = false;
 
 		logger.log(LogLevel::WARNING, "Triggering Test ongoing event from switch test");
-		SyncTest.reportEvent(Event::TEST_ONGOING);
+		SyncTest.reportEvent(Event::TEST_RUN_OK);
 		vTaskDelay(pdTICKS_TO_MS(100));
 	}
 

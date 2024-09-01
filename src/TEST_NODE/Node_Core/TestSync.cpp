@@ -235,27 +235,27 @@ void TestSync::handleUserCommand(UserCommand command)
 			break;
 		case UserCommand::PAUSE:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::RESUME));
-			EventHelper::setBits(UserEvent::USER_PAUSED);
-			EventHelper::clearBits(UserEvent::USER_RESUME);
-			reportEvent(Event::USER_PAUSED);
+			//EventHelper::setBits(User);
+			//EventHelper::clearBits(UserEvent::USER_RESUME);
+			reportEvent(Event::PAUSE);
 			refreshState();
 
 			break;
 		case UserCommand::RESUME:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::PAUSE));
-			reportEvent(Event::USER_RESUME);
-			EventHelper::setBits(UserEvent::USER_RESUME);
-			EventHelper::clearBits(UserEvent::USER_PAUSED);
+			reportEvent(Event::RESUME);
+			//EventHelper::setBits(UserEvent::USER_RESUME);
+			//EventHelper::clearBits(UserEvent::USER_PAUSED);
 			refreshState();
 			break;
 		case UserCommand::AUTO:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::MANUAL));
-			reportEvent(Event::AUTO_TEST_CMD);
+			//reportEvent(Event::AUTO_TEST_CMD);
 			refreshState();
 			break;
 		case UserCommand::MANUAL:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::AUTO));
-			reportEvent(Event::MANUAL_OVERRIDE);
+			//reportEvent(Event::MANUAL_OVERRIDE);
 			refreshState();
 			break;
 		case UserCommand::START:
@@ -433,8 +433,8 @@ void TestSync::testSyncTask(void* pvParameters)
 							  pdTRUE, portMAX_DELAY))
 	{
 		logger.log(LogLevel::INFO, "Observing test.. ");
-		EventGroupHandle_t eventSysEvent = instance.stateMachine.getEventGroupSystemState();
-		int sysBits = xEventGroupGetBits(eventSysEvent);
+		
+		//int sysBits = xEventGroupGetBits(eventSysEvent);
 		EventBits_t evRetest = static_cast<EventBits_t>(TestEvent::RETEST);
 
 		while(true)

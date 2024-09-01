@@ -6,16 +6,18 @@
 #include <atomic>
 #include <cstddef>
 #include <functional>
+#include "NodeConstants.h"
+#include "Settings.h"
 
 namespace Node_Core
 {
-
+using OnStateChangedCallback = std::function<void(bool statedChanged, State newState)>;
 class StateMachine
 {
   public:
 	static StateMachine& getInstance();
 
-	std::atomic<bool> dataCapturedFlag{false};
+	
 
 	using GuardFunction = std::function<bool()>;
 	using ActionFunction = std::function<void()>;
@@ -36,94 +38,89 @@ class StateMachine
 	}
 
 	// Keeping the Row template with ActionEvent parameter
-	template<State Start, Event EventTrigger, State Next, Event ActionEvent>
-	struct Row
-	{
-		static Transition get_transition()
-		{
-			return {Start, EventTrigger, Next,
-					[]() {
-						StateMachine& instance = StateMachine::getInstance();
-						instance.updateStateEventGroup(Start, false);
-						instance.updateStateEventGroup(Next, true);
-					},
-					[]() {
-						return true;
-					}};
-		}
-	};
+template<State Start, Event EventTrigger, State Next, Event ActionEvent, typename Guard = std::function<bool()>>
+struct Row
+{
+    static Transition get_transition()
+    {
+        return {Start, EventTrigger, Next,
+                []() {
+                    StateMachine& instance = StateMachine::getInstance();
+                    instance.NotifyStateChanged(Next);
+                },
+                Guard()};
+    }
+};
 
-	void NotifySystemEventGroup(Event event, bool set_bits);
+
+
+	void NotifyStateChanged(State state);
 	void handleEvent(Event event);
 	State getCurrentState() const;
-	void setState(State new_state);
-	EventGroupHandle_t getEventGroupSystemState() const
-	{
-		return systemStateEventGroup;
-	}
-	EventGroupHandle_t getEventGroupSystemEvent() const
-	{
-		return systemEventsEventGroup;
-	}
+	
+    void registerStateChangeCallback(OnStateChangedCallback callback);
 
   private:
 	friend class TestSync;
 	StateMachine();
+    
 
+	
 	std::atomic<State> _old_state{State::DEVICE_ON};
 	std::atomic<State> current_state{State::DEVICE_ON};
-	std::atomic<int> retry_count{0};
+	std::atomic<TestMode> _deviceMode{TestMode::MANUAL};
+	std::atomic<bool> _dataCapturedFlag{false};
+	std::atomic<int> _retryCount{0};
 
-	const int max_retries = 3;
-	const int max_retest = 2;
+	OnStateChangedCallback _stateChangeCallback;
 
-	EventGroupHandle_t systemStateEventGroup = nullptr;
-	EventGroupHandle_t systemEventsEventGroup = nullptr;
-
-	void updateStateEventGroup(State state, bool set_bits);
-	void handleEventbits(EventBits_t event_bits);
+	bool isAutoMode() const;
+	bool isManualMode() const;
+	void setState(State new_state);
+	void setMode(TestMode new_mode);
 	void handleReport();
 	void handleError();
-
+    
 	// Define the regular transitions using the Row template
-	const std::array<Transition, 20> regular_transitions = StateMachine::TransitionTable(
+	const std::array<Transition, 16> regular_transitions = StateMachine::TransitionTable(
+		//Intial Startup
 		Row<State::DEVICE_ON, Event::SELF_CHECK_OK, State::DEVICE_OK, Event::NONE>(),
 		Row<State::DEVICE_OK, Event::SETTING_LOADED, State::DEVICE_SETUP, Event::NONE>(),
 		Row<State::DEVICE_SETUP, Event::LOAD_BANK_CHECKED, State::DEVICE_READY, Event::NONE>(),
-		Row<State::DEVICE_READY, Event::MANUAL_OVERRIDE, State::MANUAL_MODE, Event::NONE>(),
-		Row<State::DEVICE_READY, Event::AUTO_TEST_CMD, State::AUTO_MODE, Event::NONE>(),
-		Row<State::MANUAL_MODE, Event::NETWORK_DISCONNECTED, State::FAULT, Event::NONE>(),
-		Row<State::AUTO_MODE, Event::NETWORK_DISCONNECTED, State::FAULT, Event::NONE>(),
-		Row<State::DEVICE_SETUP, Event::NETWORK_DISCONNECTED, State::FAULT, Event::NONE>(),
-		Row<State::AUTO_MODE, Event::PENDING_TEST_FOUND, State::TEST_START, Event::NONE>(),
-		Row<State::TEST_START, Event::TEST_ONGOING, State::TEST_IN_PROGRESS, Event::NONE>(),
-		Row<State::TEST_START, Event::TEST_FAILED, State::RETEST, Event::NONE>(),
+		//After Test Added and User Proceed Command(AUOT OR MANUAL MODE SAME FOR THESE)
+        Row<State::DEVICE_READY, Event::NEW_TEST, State::READY_TO_PROCEED, Event::NONE>(),
+		Row<State::READY_TO_PROCEED, Event::START, State::TEST_START, Event::NONE>(),
+	    Row<State::TEST_START, Event::TEST_RUN_OK, State::TEST_RUNNING, Event::NONE>(),
+	    Row<State::TEST_START, Event::TEST_FAILED, State::USER_CHECK_REQUIRED, Event::NONE>(),		
+		Row<State::TEST_RUNNING, Event::TEST_FAILED, State::RETEST, Event::NONE>(),//retest logic in Test Sync
+		Row<State::USER_CHECK_REQUIRED, Event::START, State::TEST_START, Event::NONE>(),
+		
+       
 		Row<State::CURRENT_TEST_CHECK, Event::VALID_DATA, State::CURRENT_TEST_OK, Event::NONE>(),
-		Row<State::TEST_IN_PROGRESS, Event::TEST_FAILED, State::RETEST, Event::NONE>(),
+		
 		Row<State::CURRENT_TEST_CHECK, Event::TEST_FAILED, State::RETEST, Event::NONE>(),
 		Row<State::CURRENT_TEST_OK, Event::SAVE, State::READY_NEXT_TEST, Event::NONE>(),
-		Row<State::READY_NEXT_TEST, Event::PENDING_TEST_FOUND, State::TEST_START, Event::NONE>(),
+
+		
 		Row<State::READY_NEXT_TEST, Event::TEST_LIST_EMPTY, State::ALL_TEST_DONE, Event::NONE>(),
 		Row<State::CURRENT_TEST_OK, Event::TEST_FAILED, State::RECOVER_DATA, Event::NONE>(),
 		Row<State::RECOVER_DATA, Event::SAVE, State::START_FROM_SAVE, Event::NONE>(),
 		Row<State::ALL_TEST_DONE, Event::JSON_READY, State::TRANSPORT_DATA, Event::NONE>());
 
 	// Define the special case transitions separately
-	const std::array<Transition, 12> special_case_transitions = {
-		{{State::TEST_IN_PROGRESS, Event::TEST_TIME_END, State::CURRENT_TEST_CHECK,
+	const std::array<Transition, 11> special_case_transitions = {
+		{{State::TEST_RUNNING, Event::TEST_TIME_END, State::CURRENT_TEST_CHECK,
 		  [this]() {
-			  dataCapturedFlag.store(false); // Reset the flag
-			  updateStateEventGroup(State::TEST_IN_PROGRESS, false);
-			  updateStateEventGroup(State::CURRENT_TEST_CHECK, true);
+			  _dataCapturedFlag.store(false); // Reset the flag
+			 
 		  },
 		  []() {
 			  return true;
 		  }},
-		 {State::TEST_IN_PROGRESS, Event::DATA_CAPTURED, State::CURRENT_TEST_CHECK,
+		 {State::TEST_RUNNING, Event::DATA_CAPTURED, State::CURRENT_TEST_CHECK,
 		  [this]() {
-			  dataCapturedFlag.store(true); // Set the flag
-			  updateStateEventGroup(State::TEST_IN_PROGRESS, false);
-			  updateStateEventGroup(State::CURRENT_TEST_CHECK, true);
+			  _dataCapturedFlag.store(true); // Set the flag
+			
 		  },
 		  []() {
 			  return true;
@@ -158,7 +155,7 @@ class StateMachine
 		  []() {
 			  return true;
 		  }},
-		 {State::SYSTEM_TUNING, Event::AUTO_TEST_CMD, State::RECOVER_DATA,
+		 {State::SYSTEM_TUNING, Event::AUTO, State::RECOVER_DATA,
 		  [this]() {
 			  handleReport();
 		  },
@@ -172,7 +169,7 @@ class StateMachine
 		  []() {
 			  return true;
 		  }},
-		 {State::SYSTEM_PAUSED, Event::AUTO_TEST_CMD, State::START_FROM_SAVE,
+		 {State::SYSTEM_PAUSED, Event::AUTO, State::START_FROM_SAVE,
 		  [this]() {
 			  handleReport();
 		  },
@@ -186,13 +183,7 @@ class StateMachine
 		  []() {
 			  return true;
 		  }},
-		 {State::FAULT, Event::RESTART, State::DEVICE_ON,
-		  [this]() {
-			  handleError();
-		  },
-		  []() {
-			  return true;
-		  }},
+		
 		 {State::FAULT, Event::RESTART, State::DEVICE_ON,
 		  [this]() {
 			  handleReport();

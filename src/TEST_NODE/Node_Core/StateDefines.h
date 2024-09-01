@@ -7,35 +7,37 @@
 
 namespace Node_Core
 {
-using StateBits = uint32_t;
 
-enum class State : StateBits
-{
-	DEVICE_ON = 1 << 0,
-	DEVICE_OK = 1 << 1,
-	DEVICE_SETUP = 1 << 2,
-	DEVICE_READY = 1 << 3,
-	MANUAL_MODE = 1 << 4,
-	AUTO_MODE = 1 << 5,
-	TEST_START = 1 << 6,
-	TEST_IN_PROGRESS = 1 << 7,
-	CURRENT_TEST_CHECK = 1 << 8,
-	CURRENT_TEST_OK = 1 << 9, // Added CURRENT_TEST_OK
-	READY_NEXT_TEST = 1 << 10,
-	RETEST = 1 << 11,
-	SYSTEM_PAUSED = 1 << 12,
-	ALL_TEST_DONE = 1 << 13,
-	START_FROM_SAVE = 1 << 14,
-	RECOVER_DATA = 1 << 15,
-	ADDENDUM_TEST_DATA = 1 << 16,
-	FAILED_TEST = 1 << 17,
-	TRANSPORT_DATA = 1 << 18,
-	SYSTEM_TUNING = 1 << 19,
-	FAULT = 1 << 20,
-	REPORT_AVAILABLE = 1 << 21, // Adjusted bit position
-	// MANUAL_NEXT_TEST = 1 << 22,
-	// NEW_TEST = 1 << 23,
-	// LOG_ERROR = 1 << 24,
+
+enum class State 
+{ 
+
+	
+	DEVICE_ON ,
+	DEVICE_OK ,
+	DEVICE_SETUP ,
+	DEVICE_READY ,
+	READY_TO_PROCEED,
+	TEST_START ,
+	TEST_RUNNING ,
+	CURRENT_TEST_CHECK ,
+	CURRENT_TEST_OK , // Added CURRENT_TEST_OK
+	READY_NEXT_TEST ,
+	MANUAL_NEXT_TEST ,
+	RETEST ,
+	SYSTEM_PAUSED ,
+	ALL_TEST_DONE ,
+	START_FROM_SAVE ,
+	RECOVER_DATA ,
+	ADDENDUM_TEST_DATA ,
+	FAILED_TEST ,
+	TRANSPORT_DATA ,
+	SYSTEM_TUNING ,
+	FAULT ,
+	USER_CHECK_REQUIRED
+
+	
+	
 };
 
 enum class Event
@@ -49,23 +51,28 @@ enum class Event
 	// System init events
 	SETTING_LOADED,
 	SELF_CHECK_OK,
-	LOAD_BANK_CHECKED,
-	PENDING_TEST_FOUND,
+	LOAD_BANK_CHECKED,	
 	// TestEvents
-	TEST_ONGOING,
+	TEST_RUN_OK,
 	TEST_TIME_END,
 	DATA_CAPTURED,
 	VALID_DATA,
 	TEST_FAILED,
 	RETEST,
 	TEST_LIST_EMPTY,
-	// User Events
-	USER_TUNE,
-	AUTO_TEST_CMD,
-	MANUAL_OVERRIDE,
-	MANUAL_DATA_ENTRY,
-	USER_PAUSED,
-	USER_RESUME,
+	PENDING_TEST_FOUND,
+	// User commands
+	START ,
+	STOP ,
+	AUTO,
+	MANUAL,
+	PAUSE,
+	RESUME,	
+	//User Updates
+    USER_TUNE,
+	DATA_ENTRY,
+	NEW_TEST ,
+	DELETE_TEST ,	
 	// Data Events
 	SAVE,
 	JSON_READY
@@ -82,14 +89,11 @@ static const char* stateToString(State state)
 			return "DEVICE_SETUP";
 		case State::DEVICE_READY:
 			return "DEVICE_READY";
-		case State::MANUAL_MODE:
-			return "MANUAL_MODE";
-		case State::AUTO_MODE:
-			return "AUTO_MODE";
+	
 		case State::TEST_START:
 			return "TEST_START";
-		case State::TEST_IN_PROGRESS:
-			return "TEST_IN_PROGRESS";
+		case State::TEST_RUNNING:
+			return "TEST_ONGOING";
 		case State::CURRENT_TEST_OK:
 			return "CURRENT_TEST_OK";
 		case State::READY_NEXT_TEST:
@@ -152,13 +156,13 @@ static const char* eventToString(Event event)
 			return "SELF_CHECK_OK";
 		case Event::LOAD_BANK_CHECKED:
 			return "LOAD_BANK_CHECKED";
-		case Event::AUTO_TEST_CMD:
-			return "AUTO_TEST_CMD";
+		case Event::AUTO:
+			return "AUTO";
 		case Event::PENDING_TEST_FOUND:
 			return "PENDING_TEST_FOUND";
 
 		// Test Execution Events
-		case Event::TEST_ONGOING:
+		case Event::TEST_RUN_OK:
 			return "TEST_ONGOING";
 		case Event::TEST_TIME_END:
 			return "TEST_TIME_END"; // Newly added event
@@ -176,13 +180,13 @@ static const char* eventToString(Event event)
 		// User Interaction Events
 		case Event::USER_TUNE:
 			return "USER_TUNE";
-		case Event::MANUAL_OVERRIDE:
+		case Event::MANUAL:
 			return "MANUAL_OVERRIDE";
-		case Event::MANUAL_DATA_ENTRY:
+		case Event::DATA_ENTRY:
 			return "MANUAL_DATA_ENTRY";
-		case Event::USER_PAUSED:
+		case Event::PAUSE:
 			return "USER_PAUSED";
-		case Event::USER_RESUME:
+		case Event::RESUME:
 			return "USER_RESUME";
 
 		// Data Handling Events

@@ -434,7 +434,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		instance.logPendingTest(instance._testList[i]);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
-	else if(managerState == State::AUTO_MODE)
+	else if(managerState == State::READY_TO_PROCEED)
 	{
 		instance.logPendingTest(instance._testList[i]);
 		vTaskDelay(pdMS_TO_TICKS(100));
@@ -453,7 +453,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		// SyncTest.startTest(testInstance.getTestType());
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
-	else if(managerState == State::TEST_IN_PROGRESS)
+	else if(managerState == State::TEST_RUNNING)
 	{
 		if(testInstance.isdataCaptureOk())
 		{

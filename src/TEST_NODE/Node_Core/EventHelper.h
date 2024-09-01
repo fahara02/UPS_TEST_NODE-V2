@@ -7,7 +7,7 @@
 
 namespace Node_Core
 {
-// Define enum classes for different event types
+
 enum class SystemEvent : EventBits_t
 {
 	NONE = 1 << 0,
@@ -37,16 +37,22 @@ enum class TestEvent : EventBits_t
 	PENDING_TEST_FOUND = 1 << 7
 };
 
-enum class UserEvent : EventBits_t
-{
-	AUTO_TEST_CMD = 1 << 0,
-	MANUAL_OVERRIDE = 1 << 1,
-	USER_TUNE = 1 << 2,
-	MANUAL_DATA_ENTRY = 1 << 3,
-	USER_PAUSED = 1 << 4,
-	USER_RESUME = 1 << 5
+enum class UserCommandEvent : EventBits_t
+{   START=1<<0 ,
+	STOP=1<<1 ,
+	AUTO=1<<2,
+	MANUAL=1<<3,
+	PAUSE=1<<4,
+	RESUME=1<<5 
+	
 };
-
+enum class UserUpdateEvent: EventBits_t
+{
+	USER_TUNE=1<<0,
+	DATA_ENTRY=1<<1,
+	NEW_TEST=1<<2 ,
+	DELETE_TEST =1<<3,	
+};
 enum class DataEvent : EventBits_t
 {
 	SAVE = 1 << 0,
@@ -59,23 +65,27 @@ class EventHelper
 	static void setBits(SystemEvent e);
 	static void setBits(SystemInitEvent e);
 	static void setBits(TestEvent e);
-	static void setBits(UserEvent e);
+	static void setBits(UserCommandEvent e);
+	static void setBits(UserUpdateEvent e);
 	static void setBits(DataEvent e);
 	static void clearBits(SystemEvent e);
 	static void clearBits(SystemInitEvent e);
 	static void clearBits(TestEvent e);
-	static void clearBits(UserEvent e);
+	static void clearBits(UserCommandEvent e);
+	static void clearBits(UserUpdateEvent e);
 	static void clearBits(DataEvent e);
 	static void resetSystemEventBits();
 	static void resetSystemInitEventBits();
 	static void resetTestEventBits();
-	static void resetUserEventBits();
+	static void resetUserCommandEventBits();
+	static void resetUserUpdateEventBits();
 	static void resetDataEventBits();
 
 	static EventGroupHandle_t systemEventGroup;
 	static EventGroupHandle_t systemInitEventGroup;
 	static EventGroupHandle_t testEventGroup;
-	static EventGroupHandle_t userEventGroup;
+	static EventGroupHandle_t userCommandEventGroup;
+	static EventGroupHandle_t userUpdateEventGroup;
 	static EventGroupHandle_t dataEventGroup;
 
   private:
@@ -85,7 +95,8 @@ class EventHelper
 	static const EventBits_t SYSTEM_EVENT_BITS_MASK;
 	static const EventBits_t SYSTEM_INIT_EVENT_BITS_MASK;
 	static const EventBits_t TEST_EVENT_BITS_MASK;
-	static const EventBits_t USER_EVENT_BITS_MASK;
+	static const EventBits_t USER_COMMAND_EVENT_BITS_MASK;
+	static const EventBits_t USER_UPDATE_EVENT_BITS_MASK;
 	static const EventBits_t DATA_EVENT_BITS_MASK;
 };
 

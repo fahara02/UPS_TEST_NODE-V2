@@ -19,6 +19,9 @@ constexpr int MAX_USER_COMMAND = 8;
 constexpr int MAX_SYNC_COMMAND = 8;
 constexpr int MAX_SYS_EVENTS = 8;
 
+const int MAX_RETRIES = 3;
+const int MAX_RETEST = 2;
+
 enum class validTaskStackSize
 {
 	LOWEST_STACK = 1024,

@@ -194,7 +194,7 @@ TestResult BackupTest::run(uint16_t testVARating, unsigned long testduration)
 		_triggerTestEndEvent_BT = false;
 
 		logger.log(LogLevel::WARNING, "Triggering Test ongoing event from backup test");
-		SyncTest.reportEvent(Event::TEST_ONGOING);
+		SyncTest.reportEvent(Event::TEST_RUN_OK);
 		vTaskDelay(pdTICKS_TO_MS(100));
 	}
 

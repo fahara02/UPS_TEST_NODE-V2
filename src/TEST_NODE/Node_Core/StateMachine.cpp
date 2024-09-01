@@ -12,18 +12,9 @@ namespace Node_Core
 {
 
 StateMachine::StateMachine() :
-	_old_state(State::DEVICE_ON), current_state(State::DEVICE_ON), retry_count(0), max_retest(0)
+	_old_state(State::DEVICE_ON), current_state(State::DEVICE_ON),_dataCapturedFlag(false),_retryCount(0)
 {
-	EventGroupHandle_t systemStateEventGroup = nullptr;
-	EventGroupHandle_t systemEventsEventGroup = nullptr;
-	if(systemStateEventGroup == nullptr)
-	{
-		systemStateEventGroup = xEventGroupCreate();
-	}
-	if(systemEventsEventGroup == nullptr)
-	{
-		systemEventsEventGroup = xEventGroupCreate();
-	}
+
 
 	// state_mutex = xSemaphoreCreateMutex();
 	// if (state_mutex == NULL) {
@@ -67,40 +58,25 @@ State StateMachine::getCurrentState() const
 	// }
 	return state;
 }
-
-void StateMachine::updateStateEventGroup(State state, bool set_bits)
+bool StateMachine::isAutoMode() const
 {
-	EventBits_t bits = static_cast<EventBits_t>(state);
-
-	if(set_bits)
-	{
-		xEventGroupSetBits(systemStateEventGroup, bits);
-	}
-	else
-	{
-		xEventGroupClearBits(systemStateEventGroup, bits);
-	}
-}
-void StateMachine::NotifySystemEventGroup(Event event, bool set_bits)
-{
-	EventBits_t bits_event = static_cast<EventBits_t>(event);
-	logger.log(LogLevel::INFO, "Processing System Event %s", eventToString(event));
-	if(set_bits)
-	{
-		xEventGroupSetBits(systemEventsEventGroup, bits_event);
-	}
-	else
-	{
-		xEventGroupClearBits(systemEventsEventGroup, bits_event);
-	}
+	return _deviceMode.load() == TestMode::AUTO;
 }
 
-void StateMachine::handleEventbits(EventBits_t event_bits)
+bool StateMachine::isManualMode() const
 {
-	// StateMachine& instance = StateMachine::getInstance();
-	Event event = static_cast<Event>(event_bits);
-	handleEvent(event);
+	return _deviceMode.load() == TestMode::MANUAL;
 }
+
+
+void StateMachine::NotifyStateChanged(State state)
+{
+	
+	logger.log(LogLevel::INFO, "Notifying others for new %s state", stateToString(state));
+
+}
+
+
 
 void StateMachine::handleEvent(Event event)
 {
@@ -113,18 +89,16 @@ void StateMachine::handleEvent(Event event)
 		_old_state.store(old_state);
 		State new_state = State::FAULT;
 		setState(new_state);
-		updateStateEventGroup(old_state, false);
-		updateStateEventGroup(new_state, true);
+		
 		return;
 	}
 
-	if(event == Event::USER_PAUSED)
+	if(event == Event::PAUSE)
 	{
 		_old_state.store(old_state);
 		State new_state = State::SYSTEM_PAUSED;
 		setState(new_state);
-		updateStateEventGroup(old_state, false);
-		updateStateEventGroup(new_state, true);
+		
 		logger.log(LogLevel::WARNING, "State now in: %s", stateToString(new_state));
 		return;
 	}
@@ -134,8 +108,7 @@ void StateMachine::handleEvent(Event event)
 		_old_state.store(old_state);
 		State new_state = State::SYSTEM_TUNING;
 		setState(new_state);
-		updateStateEventGroup(old_state, false);
-		updateStateEventGroup(new_state, true);
+		
 		return;
 	}
 
@@ -158,12 +131,10 @@ void StateMachine::handleEvent(Event event)
 				// Reset the dataCapturedFlag if necessary
 				if(event == Event::TEST_TIME_END)
 				{
-					dataCapturedFlag.store(false);
+					_dataCapturedFlag.store(false);
 				}
 
-				// Update the event group and log after setting the new state
-				updateStateEventGroup(old_state, false);
-				updateStateEventGroup(current_state.load(), true);
+			
 
 				logger.log(LogLevel::INFO, "State changed from %s to %s", stateToString(old_state),
 						   stateToString(transition.next_state));
@@ -193,7 +164,7 @@ void StateMachine::handleError()
 
 void StateMachine::handleReport()
 {
-	updateStateEventGroup(State::REPORT_AVAILABLE, true);
+	//update report
 }
 // Convert State enum to string
 

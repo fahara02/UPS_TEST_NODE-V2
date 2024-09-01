@@ -5,7 +5,8 @@ namespace Node_Core
 EventGroupHandle_t EventHelper::systemEventGroup = nullptr;
 EventGroupHandle_t EventHelper::systemInitEventGroup = nullptr;
 EventGroupHandle_t EventHelper::testEventGroup = nullptr;
-EventGroupHandle_t EventHelper::userEventGroup = nullptr;
+EventGroupHandle_t EventHelper::userCommandEventGroup = nullptr;
+EventGroupHandle_t EventHelper::userUpdateEventGroup = nullptr;
 EventGroupHandle_t EventHelper::dataEventGroup = nullptr;
 
 const EventBits_t EventHelper::SYSTEM_EVENT_BITS_MASK =
@@ -29,14 +30,18 @@ const EventBits_t EventHelper::TEST_EVENT_BITS_MASK =
 	static_cast<EventBits_t>(TestEvent::TEST_LIST_EMPTY) |
 	static_cast<EventBits_t>(TestEvent::PENDING_TEST_FOUND);
 
-const EventBits_t EventHelper::USER_EVENT_BITS_MASK =
-	static_cast<EventBits_t>(UserEvent::AUTO_TEST_CMD) |
-	static_cast<EventBits_t>(UserEvent::MANUAL_OVERRIDE) |
-	static_cast<EventBits_t>(UserEvent::USER_TUNE) |
-	static_cast<EventBits_t>(UserEvent::MANUAL_DATA_ENTRY) |
-	static_cast<EventBits_t>(UserEvent::USER_PAUSED) |
-	static_cast<EventBits_t>(UserEvent::USER_RESUME);
-
+const EventBits_t EventHelper::USER_COMMAND_EVENT_BITS_MASK =
+    static_cast<EventBits_t>(UserCommandEvent::START) |
+	static_cast<EventBits_t>(UserCommandEvent::STOP) |
+	static_cast<EventBits_t>(UserCommandEvent::AUTO) |
+	static_cast<EventBits_t>(UserCommandEvent::MANUAL) |	
+	static_cast<EventBits_t>(UserCommandEvent::PAUSE) |
+	static_cast<EventBits_t>(UserCommandEvent::RESUME);
+const EventBits_t EventHelper::USER_UPDATE_EVENT_BITS_MASK =
+    static_cast<EventBits_t>(UserUpdateEvent::NEW_TEST) |
+	static_cast<EventBits_t>(UserUpdateEvent::DELETE_TEST) |
+	static_cast<EventBits_t>(UserUpdateEvent::DATA_ENTRY) |
+	static_cast<EventBits_t>(UserUpdateEvent::USER_TUNE) ;
 const EventBits_t EventHelper::DATA_EVENT_BITS_MASK =
 	static_cast<EventBits_t>(DataEvent::SAVE) | static_cast<EventBits_t>(DataEvent::JSON_READY);
 
@@ -45,7 +50,8 @@ void EventHelper::initializeEventGroups()
 	systemEventGroup = xEventGroupCreate();
 	systemInitEventGroup = xEventGroupCreate();
 	testEventGroup = xEventGroupCreate();
-	userEventGroup = xEventGroupCreate();
+	userCommandEventGroup = xEventGroupCreate();
+	userUpdateEventGroup = xEventGroupCreate();
 	dataEventGroup = xEventGroupCreate();
 }
 
@@ -58,8 +64,10 @@ void EventHelper::cleanupEventGroups()
 		vEventGroupDelete(systemInitEventGroup);
 	if(testEventGroup)
 		vEventGroupDelete(testEventGroup);
-	if(userEventGroup)
-		vEventGroupDelete(userEventGroup);
+	if(userCommandEventGroup)
+		vEventGroupDelete(userCommandEventGroup);
+	if(userUpdateEventGroup)
+		vEventGroupDelete(userUpdateEventGroup);	
 	if(dataEventGroup)
 		vEventGroupDelete(dataEventGroup);
 }
@@ -76,10 +84,16 @@ void EventHelper::setBits(TestEvent e)
 {
 	xEventGroupSetBits(testEventGroup, static_cast<EventBits_t>(e));
 }
-void EventHelper::setBits(UserEvent e)
+
+void EventHelper::setBits(UserCommandEvent e)
 {
-	xEventGroupSetBits(userEventGroup, static_cast<EventBits_t>(e));
+	xEventGroupSetBits(userCommandEventGroup, static_cast<EventBits_t>(e));
 }
+void EventHelper::setBits(UserUpdateEvent e)
+{
+	xEventGroupSetBits(userUpdateEventGroup, static_cast<EventBits_t>(e));
+}
+
 void EventHelper::setBits(DataEvent e)
 {
 	xEventGroupSetBits(dataEventGroup, static_cast<EventBits_t>(e));
@@ -98,9 +112,13 @@ void EventHelper::clearBits(TestEvent e)
 {
 	xEventGroupClearBits(testEventGroup, static_cast<EventBits_t>(e));
 }
-void EventHelper::clearBits(UserEvent e)
+void EventHelper::clearBits(UserCommandEvent e)
 {
-	xEventGroupClearBits(userEventGroup, static_cast<EventBits_t>(e));
+	xEventGroupClearBits(userCommandEventGroup, static_cast<EventBits_t>(e));
+}
+void EventHelper::clearBits(UserUpdateEvent e)
+{
+	xEventGroupClearBits(userUpdateEventGroup, static_cast<EventBits_t>(e));
 }
 void EventHelper::clearBits(DataEvent e)
 {
@@ -120,9 +138,13 @@ void EventHelper::resetTestEventBits()
 {
 	xEventGroupClearBits(testEventGroup, TEST_EVENT_BITS_MASK);
 }
-void EventHelper::resetUserEventBits()
+void EventHelper::resetUserCommandEventBits()
 {
-	xEventGroupClearBits(userEventGroup, USER_EVENT_BITS_MASK);
+	xEventGroupClearBits(userCommandEventGroup, USER_COMMAND_EVENT_BITS_MASK);
+}
+void EventHelper::resetUserUpdateEventBits()
+{
+	xEventGroupClearBits(userUpdateEventGroup, USER_UPDATE_EVENT_BITS_MASK);
 }
 void EventHelper::resetDataEventBits()
 {
