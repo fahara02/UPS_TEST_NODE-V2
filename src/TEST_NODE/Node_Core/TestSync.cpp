@@ -431,7 +431,7 @@ void TestSync::testSyncTask(void* pvParameters)
 		logger.log(LogLevel::INFO, "Observing test.. ");
 		EventGroupHandle_t eventSysEvent = instance.stateMachine.getEventGroupSystemState();
 		int sysBits = xEventGroupGetBits(eventSysEvent);
-		EventBits_t evRetest = static_cast<EventBits_t>(Event::RETEST);
+		EventBits_t evRetest = static_cast<EventBits_t>(TestEvent::RETEST);
 
 		while(true)
 		{
