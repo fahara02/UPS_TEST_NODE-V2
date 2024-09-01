@@ -133,6 +133,13 @@ void TestSync::stopTest(TestType test)
 	vTaskDelay(pdMS_TO_TICKS(50));
 }
 
+void TestSync::stopAllTest()
+{
+	xEventGroupClearBits(eventGroupTest, ALL_TEST_BITS);
+	logger.log(LogLevel::WARNING, "All test stopped");
+	vTaskDelay(pdMS_TO_TICKS(50));
+}
+
 void TestSync::parseTestJson(JsonObject jsonObj)
 {
 	bool isExistingTest = false;
@@ -303,6 +310,14 @@ void TestSync::handleSyncCommand(SyncCommand command)
 	logger.log(LogLevel::INFO, "Sync command %d triggered", static_cast<int>(command));
 }
 
+void TestSync::handleTestEvent(Event event)
+{
+	TestSync& instance = TestSync::getInstance();
+	logger.log(LogLevel::INFO, "Handling Test event %s", eventToString(event));
+	// Event eventBit = static_cast<Event>(event_bits);
+	// instance.stateMachine.handleEventbits(eventBit);
+}
+
 void TestSync::userCommandObserverTask(void* pvParameters)
 {
 	TestSync& instance = TestSync::getInstance();
@@ -332,12 +347,14 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			instance.refreshState();
 			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
 			instance.acknowledgeCMD();
+			return;
 		}
 		else if((allCMD & cmdManual) != 0)
 		{
 			instance.refreshState();
 			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
 			instance.acknowledgeCMD();
+			return;
 		}
 		else if((allCMD & cmdStart) != 0)
 		{
@@ -348,6 +365,7 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 				instance.startTest(instance._testList[0].testType);
 			}
 			instance.acknowledgeCMD();
+			return;
 		}
 		else if((allCMD & cmdStop) != 0)
 		{
@@ -357,15 +375,23 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			{
 				instance.stopTest(instance._testList[0].testType);
 			}
-			instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
+			else
+			{
+				instance.stopAllTest();
+				instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
+			}
+
 			instance.acknowledgeCMD();
+			return;
 		}
 		else if((allCMD & cmdPause) != 0)
 		{
 			instance.refreshState();
+			instance.stopAllTest();
 			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
 			instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
 			instance.acknowledgeCMD();
+			return;
 		}
 		else if((allCMD & cmdResume) != 0)
 		{
@@ -373,12 +399,21 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
 			instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
 			instance.acknowledgeCMD();
+			return;
 		}
 		else if((allCMD & cmdNewTest) != 0)
 		{
 			instance.refreshState();
 			instance.enableCurrentTest();
 			instance.acknowledgeCMD();
+			return;
+		}
+		else if((allCMD & cmdDeleteTest) != 0)
+		{
+			instance.refreshState();
+
+			instance.acknowledgeCMD();
+			return;
 		}
 		vTaskDelay(pdMS_TO_TICKS(200));
 	}
@@ -392,7 +427,15 @@ void TestSync::testSyncTask(void* pvParameters)
 							  static_cast<EventBits_t>(SyncCommand::START_OBSERVER), pdFALSE,
 							  pdTRUE, portMAX_DELAY))
 	{
-		logger.log(LogLevel::SUCCESS, "test Observer awaken ");
+		logger.log(LogLevel::INFO, "Observing test.. ");
+		EventGroupHandle_t eventSysEvent = instance.stateMachine.getEventGroupSystemState();
+		int sysBits = xEventGroupGetBits(eventSysEvent);
+		EventBits_t evRetest = static_cast<EventBits_t>(Event::RETEST);
+
+		while(true)
+		{
+		}
+
 		vTaskDelay(pdMS_TO_TICKS(200));
 	}
 	vTaskDelete(NULL);

@@ -14,8 +14,17 @@ namespace Node_Core
 StateMachine::StateMachine() :
 	_old_state(State::DEVICE_ON), current_state(State::DEVICE_ON), retry_count(0), max_retest(0)
 {
-	TestState_EventGroup = xEventGroupCreate();
-	SystemEvents_EventGroup = xEventGroupCreate();
+	EventGroupHandle_t systemStateEventGroup = nullptr;
+	EventGroupHandle_t systemEventsEventGroup = nullptr;
+	if(systemStateEventGroup == nullptr)
+	{
+		systemStateEventGroup = xEventGroupCreate();
+	}
+	if(systemEventsEventGroup == nullptr)
+	{
+		systemEventsEventGroup = xEventGroupCreate();
+	}
+
 	// state_mutex = xSemaphoreCreateMutex();
 	// if (state_mutex == NULL) {
 	//   logger.log(LogLevel::ERROR, "State mutex creation failed!");
@@ -65,11 +74,11 @@ void StateMachine::updateStateEventGroup(State state, bool set_bits)
 
 	if(set_bits)
 	{
-		xEventGroupSetBits(TestState_EventGroup, bits);
+		xEventGroupSetBits(systemStateEventGroup, bits);
 	}
 	else
 	{
-		xEventGroupClearBits(TestState_EventGroup, bits);
+		xEventGroupClearBits(systemStateEventGroup, bits);
 	}
 }
 void StateMachine::NotifySystemEventGroup(Event event, bool set_bits)
@@ -78,19 +87,19 @@ void StateMachine::NotifySystemEventGroup(Event event, bool set_bits)
 	logger.log(LogLevel::INFO, "Processing System Event %s", eventToString(event));
 	if(set_bits)
 	{
-		xEventGroupSetBits(SystemEvents_EventGroup, bits_event);
+		xEventGroupSetBits(systemEventsEventGroup, bits_event);
 	}
 	else
 	{
-		xEventGroupClearBits(SystemEvents_EventGroup, bits_event);
+		xEventGroupClearBits(systemEventsEventGroup, bits_event);
 	}
 }
 
 void StateMachine::handleEventbits(EventBits_t event_bits)
 {
-	StateMachine& instance = StateMachine::getInstance();
+	// StateMachine& instance = StateMachine::getInstance();
 	Event event = static_cast<Event>(event_bits);
-	instance.handleEvent(event);
+	handleEvent(event);
 }
 
 void StateMachine::handleEvent(Event event)

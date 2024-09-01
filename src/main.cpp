@@ -15,6 +15,7 @@
 #include "Logger.h"
 #include "ModbusManager.h"
 #include "UPSTestNode.h"
+#include "EventHelper.h"
 
 using namespace Node_Core;
 

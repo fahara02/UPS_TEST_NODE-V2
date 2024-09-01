@@ -1,6 +1,6 @@
 #ifndef NODE_CONSTANTS_H
 #define NODE_CONSTANTS_H
-
+/*----------Defaults-----------------*/
 constexpr int UPS_MAX_VA = 4000;
 constexpr int UPS_MIN_VA = 100;
 constexpr int UPS_MIN_INPUT_VOLT = 180;
@@ -13,10 +13,11 @@ constexpr int UPS_MIN_SWITCHING_TIME_MS_SANITY_CHECK = 1;
 constexpr int UPS_MAX_SWITCHING_TIME_MS_SANITY_CHECK = UPS_MAX_SWITCHING_TIME_MS;
 constexpr int UPS_MIN_BACKUP_TIME_MS_SANITY_CHECK = 1;
 
-//---------DEFAULTS----------------//
+/*----------Constants-----------------*/
 constexpr int MAX_TEST = 6;
 constexpr int MAX_USER_COMMAND = 8;
 constexpr int MAX_SYNC_COMMAND = 8;
+constexpr int MAX_SYS_EVENTS = 8;
 
 enum class validTaskStackSize
 {

@@ -15,9 +15,6 @@
 using namespace Node_Core;
 extern Logger& logger;
 extern StateMachine& stateMachine;
-// extern EventGroupHandle_t eventGroupTest;
-// extern EventGroupHandle_t eventGroupUser;
-// extern EventGroupHandle_t eventGroupSync;
 
 const EventBits_t ALL_TEST_BITS = (1 << MAX_TEST) - 1;
 const EventBits_t ALL_CMD_BITS = (1 << MAX_USER_COMMAND) - 1;
@@ -58,7 +55,7 @@ class TestSync
 	void parseIncomingJson(JsonVariant json);
 	void handleUserCommand(UserCommand command);
 	void handleSyncCommand(SyncCommand command);
-	void handlelocalEvent(Event event);
+	void handleTestEvent(Event event);
 
 	void acknowledgeCMD();
 	void acknowledgeCMDReset();
@@ -103,6 +100,7 @@ class TestSync
 
 	void startTest(TestType test);
 	void stopTest(TestType test);
+	void stopAllTest();
 	void parseTestJson(JsonObject jsonObj);
 	void checkForDeletedTests();
 

@@ -13,9 +13,6 @@ namespace Node_Core
 class StateMachine
 {
   public:
-	EventGroupHandle_t TestState_EventGroup = nullptr;
-	EventGroupHandle_t SystemEvents_EventGroup = nullptr;
-
 	static StateMachine& getInstance();
 
 	std::atomic<bool> dataCapturedFlag{false};
@@ -60,6 +57,14 @@ class StateMachine
 	void handleEvent(Event event);
 	State getCurrentState() const;
 	void setState(State new_state);
+	EventGroupHandle_t getEventGroupSystemState() const
+	{
+		return systemStateEventGroup;
+	}
+	EventGroupHandle_t getEventGroupSystemEvent() const
+	{
+		return systemEventsEventGroup;
+	}
 
   private:
 	friend class TestSync;
@@ -71,6 +76,9 @@ class StateMachine
 
 	const int max_retries = 3;
 	const int max_retest = 2;
+
+	EventGroupHandle_t systemStateEventGroup = nullptr;
+	EventGroupHandle_t systemEventsEventGroup = nullptr;
 
 	void updateStateEventGroup(State state, bool set_bits);
 	void handleEventbits(EventBits_t event_bits);

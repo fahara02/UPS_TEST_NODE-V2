@@ -38,44 +38,38 @@ enum class State : StateBits
 	// LOG_ERROR = 1 << 24,
 };
 
-enum class Event : EventBits_t
-{
-	// System Events
-	NONE = 1 << 0,
-	ERROR = 1 << 1,
-	SYSTEM_FAULT = 1 << 2,
-	FAULT_CLEARED = 1 << 3,
-	NETWORK_DISCONNECTED = 1 << 4,
-	RESTART = 1 << 5,
-
-	// Test Initialization Events
-	SETTING_LOADED = 1 << 6,
-	SELF_CHECK_OK = 1 << 7,
-	LOAD_BANK_CHECKED = 1 << 8,
-	AUTO_TEST_CMD = 1 << 9,
-	PENDING_TEST_FOUND = 1 << 10,
-
-	// Test Execution Events
-	TEST_ONGOING = 1 << 11,
-	TEST_TIME_END = 1 << 12, // Newly added event
-	DATA_CAPTURED = 1 << 13, // Newly added event
-	VALID_DATA = 1 << 14,
-	TEST_FAILED = 1 << 15,
-	RETEST = 1 << 16,
-	TEST_LIST_EMPTY = 1 << 17,
-
-	// User Interaction Events
-	USER_TUNE = 1 << 18,
-	MANUAL_OVERRIDE = 1 << 19,
-	MANUAL_DATA_ENTRY = 1 << 20,
-	USER_PAUSED = 1 << 21,
-	USER_RESUME = 1 << 22,
-
-	// Data Handling Events
-	SAVE = 1 << 23,
-	JSON_READY = 1 << 24,
+enum class Event
+{ // System Events
+	NONE,
+	ERROR,
+	SYSTEM_FAULT,
+	FAULT_CLEARED,
+	NETWORK_DISCONNECTED,
+	RESTART,
+	// System init events
+	SETTING_LOADED,
+	SELF_CHECK_OK,
+	LOAD_BANK_CHECKED,
+	PENDING_TEST_FOUND,
+	// TestEvents
+	TEST_ONGOING,
+	TEST_TIME_END,
+	DATA_CAPTURED,
+	VALID_DATA,
+	TEST_FAILED,
+	RETEST,
+	TEST_LIST_EMPTY,
+	// User Events
+	USER_TUNE,
+	AUTO_TEST_CMD,
+	MANUAL_OVERRIDE,
+	MANUAL_DATA_ENTRY,
+	USER_PAUSED,
+	USER_RESUME,
+	// Data Events
+	SAVE,
+	JSON_READY
 };
-
 static const char* stateToString(State state)
 {
 	switch(state)
