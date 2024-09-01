@@ -235,13 +235,17 @@ void TestSync::handleUserCommand(UserCommand command)
 			break;
 		case UserCommand::PAUSE:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::RESUME));
-			reportEvent(Event::USER_RESUME);
-			EventHelper::setBits(UserEvent::USER_RESUME);
+			EventHelper::setBits(UserEvent::USER_PAUSED);
+			EventHelper::clearBits(UserEvent::USER_RESUME);
+			reportEvent(Event::USER_PAUSED);
 			refreshState();
+
 			break;
 		case UserCommand::RESUME:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::PAUSE));
-			reportEvent(Event::USER_PAUSED);
+			reportEvent(Event::USER_RESUME);
+			EventHelper::setBits(UserEvent::USER_RESUME);
+			EventHelper::clearBits(UserEvent::USER_PAUSED);
 			refreshState();
 			break;
 		case UserCommand::AUTO:
