@@ -11,6 +11,7 @@
 #include "StateMachine.h"
 #include "NodeConstants.h"
 #include <string>
+#include "EventHelper.h"
 
 using namespace Node_Core;
 extern Logger& logger;
@@ -50,12 +51,12 @@ class TestSync
 	static TestSync& getInstance();
 	void init();
 	State refreshState();
-	void reportEvent(Event event);
+	void reportEvent(Event e);
 
 	void parseIncomingJson(JsonVariant json);
 	void handleUserCommand(UserCommand command);
 	void handleSyncCommand(SyncCommand command);
-	void handleTestEvent(Event event);
+	void handleTestEvent(Event e);
 
 	void acknowledgeCMD();
 	void acknowledgeCMDReset();

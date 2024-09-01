@@ -236,6 +236,7 @@ void TestSync::handleUserCommand(UserCommand command)
 		case UserCommand::PAUSE:
 			xEventGroupClearBits(eventGroupUser, static_cast<EventBits_t>(UserCommand::RESUME));
 			reportEvent(Event::USER_RESUME);
+			EventHelper::setBits(UserEvent::USER_RESUME);
 			refreshState();
 			break;
 		case UserCommand::RESUME:
