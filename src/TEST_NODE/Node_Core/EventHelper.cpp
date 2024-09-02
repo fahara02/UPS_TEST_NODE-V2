@@ -1,5 +1,7 @@
 #include "EventHelper.h"
-
+#include "Logger.h"
+using namespace Node_Core;
+extern Logger& logger;
 namespace Node_Core
 {
 EventGroupHandle_t EventHelper::systemEventGroup = nullptr;
@@ -80,6 +82,8 @@ void EventHelper::initializeEventGroups()
 		testControlEvent = xEventGroupCreate();
 	if(syncControlEvent == nullptr)
 		syncControlEvent = xEventGroupCreate();
+
+	logger.log(LogLevel::SUCCESS, "All event groups created!");
 }
 
 // Clean up FreeRTOS event groups (call this before shutdown)

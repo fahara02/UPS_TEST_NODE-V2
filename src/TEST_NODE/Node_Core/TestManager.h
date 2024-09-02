@@ -35,8 +35,7 @@ class TestManager
 	void initializeTestInstances();
 	void UpdateSettings();
 
-	void refreshState();
-	State loadState();
+	State refreshState();
 
   private:
 	TestManager();

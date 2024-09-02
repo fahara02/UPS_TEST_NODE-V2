@@ -36,7 +36,7 @@ enum class State
 	MAX_STATE
 };
 
-enum class Event
+enum class Event : u_int32_t
 { // System Events
 	NONE,
 	ERROR,

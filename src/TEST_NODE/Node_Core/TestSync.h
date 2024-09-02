@@ -57,6 +57,7 @@ class TestSync
 	void createSynctask();
 
 	static void userCommandObserverTask(void* pvParameters);
+	static void userUpdateObserverTask(void* pvParameters);
 	static void testSyncObserverTask(void* pvParameters);
 
 	void startTest(TestType test);
@@ -66,6 +67,7 @@ class TestSync
 	void checkForDeletedTests();
 
 	TaskHandle_t commandObserverTaskHandle = nullptr;
+	TaskHandle_t updateObserverTaskHandle = nullptr;
 
 	TestSync(const TestSync&) = delete;
 	TestSync& operator=(const TestSync&) = delete;

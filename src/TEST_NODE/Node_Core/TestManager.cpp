@@ -1,6 +1,7 @@
 #include "SwitchTest.h"
 #include "BackupTest.h"
 #include "TesterMemory.h"
+#include "EventHelper.h"
 
 extern Logger& logger;
 
@@ -71,12 +72,7 @@ void TestManager::UpdateSettings()
 	logger.log(LogLevel::SUCCESS, "Testmanager data updated");
 }
 
-void TestManager::refreshState()
-{
-	TestSync& SyncTest = TestSync::getInstance();
-	_currentState.store(SyncTest.refreshState());
-}
-State TestManager::loadState()
+State TestManager::refreshState()
 {
 	TestSync& SyncTest = TestSync::getInstance();
 	_currentState.store(SyncTest.refreshState());
@@ -191,28 +187,17 @@ void TestManager::createISRTasks()
 void TestManager::createTestTasks()
 {
 	logger.log(LogLevel::INFO, "Creating Switchtest task ");
-
 	SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
 	BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
-
 	xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
-
 	xTaskCreatePinnedToCore(switchTest.SwitchTestTask, "MainsTestManager", 12000, NULL,
 							_cfgTask.mainTest_taskIdlePriority, &switchTestTaskHandle, 0);
 	logger.log(LogLevel::SUCCESS, "Switch Test task created");
-
-	eTaskState state = eTaskGetState(switchTestTaskHandle);
-	logger.log(LogLevel::INFO, "SwitchTest task state: %s", etaskStatetoString(state));
-
 	logger.log(LogLevel::INFO, "Creating Backuptest task ");
-
 	xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
-
 	xTaskCreatePinnedToCore(backupTest.BackupTestTask, "MainsTestManager", 12000, NULL,
 							_cfgTask.mainTest_taskIdlePriority, &backupTestTaskHandle, 0);
 	logger.log(LogLevel::SUCCESS, "Switch Test task created");
-	state = eTaskGetState(backupTestTaskHandle);
-	logger.log(LogLevel::INFO, "BackupTest task state: %s", etaskStatetoString(state));
 }
 
 void TestManager::TestManagerTask(void* pvParameters)
@@ -223,25 +208,30 @@ void TestManager::TestManagerTask(void* pvParameters)
 	while(true)
 	{
 		TestManager& instance = TestManager::getInstance();
-		State managerState = instance.loadState();
+		State managerState = instance.refreshState();
+		xEventGroupWaitBits(EventHelper::syncControlEvent,
+							static_cast<EventBits_t>(SyncCommand::MANAGER_ACTIVE), pdFALSE, pdFALSE,
+							portMAX_DELAY);
 
 		if(managerState == State::DEVICE_READY)
 		{
-			logger.log(LogLevel::INFO, "Device is ready. Checking pending tests...");
+			managerState = instance.refreshState();
+			logger.log(LogLevel::INFO, "Manager state is:", stateToString(managerState));
+			vTaskDelay(pdMS_TO_TICKS(1000));
 		}
 
 		for(int i = 0; i < instance._numTest; ++i)
 		{
 			if(instance.isTestPendingAndNotStarted(instance._testList[i]))
 			{
-				managerState = instance.loadState();
+				managerState = instance.refreshState();
 
 				TestType testType = instance._testList[i].testRequired.testType;
 				bool success = false;
 
 				if(testType == TestType::SwitchTest)
 				{
-					managerState = instance.loadState();
+					managerState = instance.refreshState();
 					SwitchTestData dataBuff1;
 					success = instance.handleTestState(SwitchTest::getInstance(), managerState, i,
 													   &dataBuff1);
@@ -264,7 +254,7 @@ void TestManager::TestManagerTask(void* pvParameters)
 				}
 				else if(testType == TestType::BackupTest)
 				{
-					managerState = instance.loadState();
+					managerState = instance.refreshState();
 					BackupTestData dataBuff2;
 					success = instance.handleTestState(BackupTest::getInstance(), managerState, i,
 													   &dataBuff2);
