@@ -6,7 +6,7 @@
 #include <vector>
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
-
+#include "NodeConstants.h"
 #include "Settings.h"
 #include "TestData.h"
 #include "UPSdebug.h"
@@ -73,8 +73,8 @@ class PageBuilder
 	void sendScript(AsyncResponseStream* response);
 	void sendNavbar(AsyncResponseStream* response);
 	void sendSidebar(AsyncResponseStream* response, const char* content = "");
-
 	void sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup);
+	void sendTableStyle(AsyncResponseStream* response);
 
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;
@@ -85,18 +85,35 @@ class PageBuilder
 
 	void sendButton(AsyncResponseStream* response, const char* title, const char* action,
 					const char* css = "");
-	void sendTableRow(AsyncResponseStream* response, const char* name, uint32_t value);
-	void sendTableRow(AsyncResponseStream* response, const char* name, String value);
+
+	void sendTableRow(AsyncResponseStream* response, const char* name, uint32_t value,
+					  const char* cssClass = nullptr);
+
+	void sendTableRow(AsyncResponseStream* response, const char* name, double value,
+					  const char* cssClass = nullptr);
+	void sendTableRow(AsyncResponseStream* response, const char* name, int value,
+					  const char* cssClass = nullptr);
+
+	void sendTableRow(AsyncResponseStream* response, const char* name, String value,
+					  const char* cssClass = nullptr);
+	void sendTableRow(AsyncResponseStream* response, const char* name, const char* value,
+					  const char* cssClass = nullptr);
+
 	void sendDebugForm(AsyncResponseStream* response, String slaveId, String reg, String function,
 					   String count);
 	void sendMinCss(AsyncResponseStream* response);
 	void sendToggleButton(AsyncResponseStream* response, const char* name, bool state);
-	void sendDropdown(AsyncResponseStream* response, const char* name,
-					  const std::vector<const char*>& options, const char* selected = nullptr);
+
 	void sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType);
 
 	void sendInputField(AsyncResponseStream* response, const char* name, uint32_t value);
+	void sendInputField(AsyncResponseStream* response, const char* name, uint32_t value,
+						uint32_t minValue, uint32_t maxValue);
 	void sendInputField(AsyncResponseStream* response, const char* name, const char* value);
+	void sendInputField(AsyncResponseStream* response, const char* name, const char* value,
+						const std::vector<const char*>& options);
+	void sendDropdown(AsyncResponseStream* response, const char* name,
+					  const std::vector<const char*>& options, const char* selected = nullptr);
 };
 
 #endif // PAGE_BUILDER_H

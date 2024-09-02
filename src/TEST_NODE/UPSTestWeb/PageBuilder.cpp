@@ -39,11 +39,13 @@ void PageBuilder::setupPages(TestSync& syncTest)
 		auto* response = request->beginResponseStream("text/html");
 		this->sendHtmlHead(response);
 		this->sendStyle(response);
+		this->sendTableStyle(response);
 		this->sendHeaderTrailer(response);
 		this->sendHeader(response);
 		this->sendNavbar(response);
 		UPSTesterSetup& testerSetup = UPSTesterSetup::getInstance();
 		this->sendSettingTable(response, testerSetup);
+
 		this->sendScript(response);
 		this->sendPageTrailer(response);
 		request->send(response);
@@ -389,6 +391,7 @@ void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
 
 void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup)
 {
+	response->print("<div id='custom-settings-page'>");
 	// Begin table
 	response->print("<form method='post' action='/updateSettings'>");
 	response->print("<table border='1'>");
@@ -398,25 +401,26 @@ void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup
 	SetupTest& test = testerSetup.testSetup(); // Retrieve SetupTest
 
 	// Editable dropdown or input fields for SetupSpec
-	sendTableRow(response, "Rating (VA)", spec.Rating_va);
-	sendInputField(response, "Rating_va", spec.Rating_va);
+	sendTableRow(response, "Rating (VA)", static_cast<double>(spec.Rating_va), "highlight");
+	sendInputField(response, "Rating_va", spec.Rating_va, UPS_MIN_VA, UPS_MAX_VA);
 
-	sendTableRow(response, "Rated Voltage (V)", spec.RatedVoltage_volt);
-	sendInputField(response, "RatedVoltage_volt", spec.RatedVoltage_volt);
+	sendTableRow(response, "Rated Voltage (V)", static_cast<double>(spec.RatedVoltage_volt));
+	sendInputField(response, "RatedVoltage_volt", spec.RatedVoltage_volt, UPS_MIN_INPUT_VOLT,
+				   UPS_MAX_INPUT_VOLT);
 
-	sendTableRow(response, "Rated Current (A)", spec.RatedCurrent_amp);
+	sendTableRow(response, "Rated Current (A)", static_cast<double>(spec.RatedCurrent_amp));
 	sendInputField(response, "RatedCurrent_amp", spec.RatedCurrent_amp);
 
-	sendTableRow(response, "Min Input Voltage (V)", spec.MinInputVoltage_volt);
+	sendTableRow(response, "Min Input Voltage (V)", static_cast<double>(spec.MinInputVoltage_volt));
 	sendInputField(response, "MinInputVoltage_volt", spec.MinInputVoltage_volt);
 
-	sendTableRow(response, "Max Input Voltage (V)", spec.MaxInputVoltage_volt);
+	sendTableRow(response, "Max Input Voltage (V)", static_cast<double>(spec.MaxInputVoltage_volt));
 	sendInputField(response, "MaxInputVoltage_volt", spec.MaxInputVoltage_volt);
 
-	sendTableRow(response, "Avg Switch Time (ms)", spec.AvgSwitchTime_ms);
+	sendTableRow(response, "Avg Switch Time (ms)", static_cast<double>(spec.AvgSwitchTime_ms));
 	sendInputField(response, "AvgSwitchTime_ms", spec.AvgSwitchTime_ms);
 
-	sendTableRow(response, "Avg Backup Time (ms)", spec.AvgBackupTime_ms);
+	sendTableRow(response, "Avg Backup Time (ms)", static_cast<double>(spec.AvgBackupTime_ms));
 	sendInputField(response, "AvgBackupTime_ms", spec.AvgBackupTime_ms);
 
 	// Handle the Test settings similarly, providing individual editable fields
@@ -426,10 +430,10 @@ void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup
 	sendTableRow(response, "Test Mode", static_cast<int>(test.mode));
 	sendDropdown(response, "TestMode", {"AUTO", "MANUAL"}, "AUTO"); // Example Dropdown
 
-	sendTableRow(response, "Test VA Rating", test.testVARating);
+	sendTableRow(response, "Test VA Rating", static_cast<double>(test.testVARating));
 	sendInputField(response, "TestVARating", test.testVARating);
 
-	sendTableRow(response, "Input Voltage (V)", test.inputVoltage_volt);
+	sendTableRow(response, "Input Voltage (V)", static_cast<double>(test.inputVoltage_volt));
 	sendInputField(response, "InputVoltage_volt", test.inputVoltage_volt);
 
 	// More fields...
@@ -442,6 +446,7 @@ void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup
 	response->print("</table>");
 	response->print("<button type='submit'>Save Settings</button>");
 	response->print("</form>");
+	response->print("</div>");
 }
 
 //----------------------------------HTML BLOCK FACTORY------------------//
@@ -493,39 +498,71 @@ void PageBuilder::sendToggleButton(AsyncResponseStream* response, const char* na
 	response->printf("<input type='checkbox' %s>", state ? "checked" : "");
 	response->print("</div>");
 }
-
-void PageBuilder::sendDropdown(AsyncResponseStream* response, const char* name,
-							   const std::vector<const char*>& options, const char* selected)
+void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, const char* value,
+							   const char* cssClass)
 {
-	response->print("<div>");
-	response->printf("<label>%s</label>", name);
-	response->print("<select>");
-
-	for(const auto& option: options)
+	if(cssClass)
 	{
-		response->printf("<option value='%s' %s>%s</option>", option,
-						 (selected && strcmp(option, selected) == 0) ? "selected" : "", option);
+		response->printf("<tr class='%s'><td>%s:</td><td>%s</td></tr>", cssClass, name, value);
 	}
-
-	response->print("</select>");
-	response->print("</div>");
+	else
+	{
+		response->printf("<tr><td>%s:</td><td>%s</td></tr>", name, value);
+	}
 }
-void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, String value)
+void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, String value,
+							   const char* cssClass)
 {
-	response->printf("<tr>"
-					 "<td>%s:</td>"
-					 "<td>%s</td>"
-					 "</tr>",
-					 name, value.c_str());
+	// Handle the class attribute separately
+	if(cssClass)
+	{
+		response->printf("<tr class='%s'><td>%s:</td><td>%s</td></tr>", cssClass, name,
+						 value.c_str());
+	}
+	else
+	{
+		response->printf("<tr><td>%s:</td><td>%s</td></tr>", name, value.c_str());
+	}
 }
 
-void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, uint32_t value)
+void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, uint32_t value,
+							   const char* cssClass)
 {
-	response->printf("<tr>"
-					 "<td>%s:</td>"
-					 "<td>%d</td>"
-					 "</tr>",
-					 name, value);
+	// Handle the class attribute separately
+	if(cssClass)
+	{
+		response->printf("<tr class='%s'><td>%s:</td><td>%d</td></tr>", cssClass, name, value);
+	}
+	else
+	{
+		response->printf("<tr><td>%s:</td><td>%d</td></tr>", name, value);
+	}
+}
+
+void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, double value,
+							   const char* cssClass)
+{
+	if(cssClass)
+	{
+		response->printf("<tr class='%s'><td>%s:</td><td>%.2f</td></tr>", cssClass, name, value);
+	}
+	else
+	{
+		response->printf("<tr><td>%s:</td><td>%.2f</td></tr>", name, value);
+	}
+}
+
+void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, int value,
+							   const char* cssClass)
+{
+	if(cssClass)
+	{
+		response->printf("<tr class='%s'><td>%s:</td><td>%d</td></tr>", cssClass, name, value);
+	}
+	else
+	{
+		response->printf("<tr><td>%s:</td><td>%d</td></tr>", name, value);
+	}
 }
 
 void PageBuilder::sendInputField(AsyncResponseStream* response, const char* name, uint32_t value)
@@ -538,4 +575,81 @@ void PageBuilder::sendInputField(AsyncResponseStream* response, const char* name
 {
 	response->printf("<tr><td>%s:</td>", name);
 	response->printf("<td><input type='text' name='%s' value='%s'></td></tr>", name, value);
+}
+
+void PageBuilder::sendInputField(AsyncResponseStream* response, const char* name, uint32_t value,
+								 uint32_t minValue, uint32_t maxValue)
+{
+	response->printf("<tr><td>%s:</td>", name);
+	response->printf("<td><input type='number' name='%s' value='%d' min='%d' max='%d'></td></tr>",
+					 name, value, minValue, maxValue);
+}
+void PageBuilder::sendInputField(AsyncResponseStream* response, const char* name, const char* value,
+								 const std::vector<const char*>& options)
+{
+	response->printf("<tr><td>%s:</td>", name);
+	response->printf("<td><select name='%s'>", name);
+	for(const auto& option: options)
+	{
+		response->printf("<option value='%s'%s>%s</option>", option,
+						 strcmp(option, value) == 0 ? " selected" : "", option);
+	}
+	response->printf("</select></td></tr>");
+}
+void PageBuilder::sendDropdown(AsyncResponseStream* response, const char* name,
+							   const std::vector<const char*>& options, const char* selected)
+
+{
+	response->print("<tr><td>");
+	response->printf("<label>%s</label>", name);
+	response->print("</td><td><select name='");
+	response->print(name);
+	response->print("'>");
+
+	for(const auto& option: options)
+	{
+		response->printf("<option value='%s' %s>%s</option>", option,
+						 (strcmp(option, selected) == 0) ? "selected" : "", option);
+	}
+
+	response->print("</select></td></tr>");
+}
+
+// void PageBuilder::sendTableStyle(AsyncResponseStream* response)
+// {
+// 	response->print("<style>");
+// 	response->print("table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: "
+// 					"1em; font-family: sans-serif; min-width: 400px; }");
+// 	response->print("th, td { padding: 12px 15px; border: 1px solid #ddd; text-align: left; }");
+// 	response->print("th { background-color: #f4f4f4; font-weight: bold; }");
+// 	response->print("tr:nth-child(even) { background-color: #f9f9f9; }");
+// 	response->print("tr:hover { background-color: #f1f1f1; }");
+// 	response->print("input[type='text'], input[type='number'], select { width: 100%; padding: 8px; "
+// 					"border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }");
+// 	response->print("button { background-color: #4CAF50; color: white; padding: 10px 15px; border: "
+// 					"none; border-radius: 4px; cursor: pointer; }");
+// 	response->print("button:hover { background-color: #45a049; }");
+// 	response->print("form { padding: 20px; background-color: #fff; border-radius: 5px; box-shadow: "
+// 					"0px 0px 15px rgba(0, 0, 0, 0.1); }");
+// 	response->print("</style>");
+// }
+void PageBuilder::sendTableStyle(AsyncResponseStream* response)
+{
+	response->print("<style>");
+	response->print("#custom-settings-page table { width: 100%; border-collapse: collapse; margin: "
+					"20px 0; font-size: 1em; font-family: sans-serif; min-width: 400px; }");
+	response->print("#custom-settings-page th, td { padding: 12px 15px; border: 1px solid #ddd; "
+					"text-align: left; }");
+	response->print("#custom-settings-page th { background-color: #f4f4f4; font-weight: bold; }");
+	response->print("#custom-settings-page tr:nth-child(even) { background-color: #f9f9f9; }");
+	response->print("#custom-settings-page tr:hover { background-color: #f1f1f1; }");
+	response->print("#custom-settings-page input[type='text'], #custom-settings-page "
+					"input[type='number'], #custom-settings-page select { width: 100%; padding: "
+					"8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }");
+	response->print("#custom-settings-page button { background-color: #4CAF50; color: white; "
+					"padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }");
+	response->print("#custom-settings-page button:hover { background-color: #45a049; }");
+	response->print("#custom-settings-page form { padding: 20px; background-color: #fff; "
+					"border-radius: 5px; box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1); }");
+	response->print("</style>");
 }
