@@ -12,6 +12,7 @@
 #include "NodeConstants.h"
 #include <string>
 #include "EventHelper.h"
+#include <queue>
 
 using namespace Node_Core;
 extern Logger& logger;
@@ -49,12 +50,13 @@ class TestSync
 
 	bool _cmdAcknowledged = false;
 	bool _enableCurrentTest = false;
-	bool _parsingOngoing = false;
+	bool parsingOngoing = false;
 
 	std::atomic<State> _currentState;
 
 	RequiredTest _testList[MAX_TEST];
 	int _testID[MAX_TEST];
+	std::queue<JsonObject> jsonQueue;
 
 	StateMachine& stateMachine = StateMachine::getInstance();
 
@@ -68,7 +70,9 @@ class TestSync
 	void startTest(TestType test);
 	void stopTest(TestType test);
 	void stopAllTest();
+	void transferTest();
 	void parseTestJson(JsonObject jsonObj);
+	void processNextJson();
 	void checkForDeletedTests();
 
 	TaskHandle_t commandObserverTaskHandle = nullptr;

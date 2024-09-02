@@ -1,4 +1,5 @@
 #include "TestSync.h"
+#include "TestManager.h"
 
 TestSync& TestSync::getInstance()
 {
@@ -7,13 +8,16 @@ TestSync& TestSync::getInstance()
 }
 
 TestSync::TestSync() :
-	_cmdAcknowledged(false), _enableCurrentTest(false), _parsingOngoing(false),
+	_cmdAcknowledged(false), _enableCurrentTest(false), parsingOngoing(false),
 	_currentState{State::DEVICE_ON}
 
 {
 	for(int i = 0; i < MAX_TEST; ++i)
 	{
-		_testList[i] = RequiredTest();
+		_testList[i].testId = 0;
+		_testList[i].testType = TestType::TunePWMTest;
+		_testList[i].loadLevel = LoadPercentage::LOAD_0P;
+		_testList[i].isActive = false;
 		_testID[i] = i * 2 + 31;
 	}
 }
@@ -106,12 +110,6 @@ void TestSync::stopAllTest()
 
 void TestSync::parseIncomingJson(JsonVariant json)
 {
-	// Reset all tests as inactive
-	for(int i = 0; i < MAX_TEST; i++)
-	{
-		_testList[i].isActive = false;
-	}
-
 	if(json.is<JsonObject>())
 	{
 		logger.log(LogLevel::TEST, "TEST SYNC FUNCTION RECEIVING THIS");
@@ -121,11 +119,12 @@ void TestSync::parseIncomingJson(JsonVariant json)
 
 		if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
 		{
-			// DeserializationError error = deserializeJson(_testDoc, json);
-			if(!_parsingOngoing)
+			logger.log(LogLevel::SUCCESS, "Queueing JSON for processing");
+			jsonQueue.push(jsonObj); // Enqueue the JSON object
+
+			if(!parsingOngoing) // Only start parsing if no other parsing is ongoing
 			{
-				logger.log(LogLevel::SUCCESS, "Send to Json test parser");
-				parseTestJson(jsonObj);
+				processNextJson();
 			}
 		}
 		else if(jsonObj.containsKey("startCommand") || jsonObj.containsKey("stopCommand") ||
@@ -145,80 +144,88 @@ void TestSync::parseIncomingJson(JsonVariant json)
 	}
 }
 
+void TestSync::processNextJson()
+{
+	if(!jsonQueue.empty())
+	{
+		parsingOngoing = true;
+
+		JsonObject jsonObj = jsonQueue.front(); // Get the next JSON object
+		jsonQueue.pop(); // Remove it from the queue
+
+		parseTestJson(jsonObj); // Parse the JSON
+
+		parsingOngoing = false;
+
+		if(!jsonQueue.empty()) // If there are more JSON objects in the queue, process the next one
+		{
+			processNextJson();
+		}
+	}
+}
+
 void TestSync::parseTestJson(JsonObject jsonObj)
 {
 	logger.log(LogLevel::TEST, "parseTest JSON INPUT");
 	serializeJsonPretty(jsonObj, Serial);
-
-	bool isExistingTest = false;
 
 	String testName = jsonObj["testName"];
 	String loadLevel = jsonObj["loadLevel"];
 	TestType testType = getTestTypeFromString(testName);
 	LoadPercentage loadPercentage = getLoadLevelFromString(loadLevel);
 
-	logger.log(LogLevel::TEST, "parseTest JSON CHECK,Printing again");
-	Serial.println(testTypeToString(testType));
-	Serial.println(loadPercentageToString(loadPercentage));
+	logger.log(LogLevel::TEST, "Parsed Test Name: %s", testTypeToString(testType));
+	logger.log(LogLevel::TEST, "Parsed Load Level: %s", loadPercentageToString(loadPercentage));
 
 	if(testType == static_cast<TestType>(0))
 	{
-		logger.log(LogLevel::ERROR, "Unknown testName: ", testName);
+		logger.log(LogLevel::ERROR, "Unknown testName: %s", testName.c_str());
 		return;
 	}
 
 	if(loadPercentage == static_cast<LoadPercentage>(-1))
 	{
-		logger.log(LogLevel::ERROR, "Invalid loadLevel: ", loadLevel);
+		logger.log(LogLevel::ERROR, "Invalid loadLevel: %s", loadLevel.c_str());
 		return;
 	}
 
-	if(!_parsingOngoing)
-
+	// Check if the test with the same testType and loadPercentage already exists
+	for(int i = 0; i < MAX_TEST; i++)
 	{
-		logger.log(LogLevel::TEST, "into parsing zone");
-		_parsingOngoing = true;
-
-		for(int i = 0; i < MAX_TEST; i++)
+		if(_testList[i].testType == testType && _testList[i].loadLevel == loadPercentage &&
+		   _testList[i].isActive)
 		{
-			logger.log(LogLevel::TEST, "parsing no %d", i);
-			if(_testList[i].testId == _testID[i] && _testList[i].testType == testType)
-			{
-				isExistingTest = true;
-				_testList[i].loadLevel = loadPercentage;
-				_testList[i].isActive = true;
-
-				break;
-			}
+			logger.log(LogLevel::WARNING,
+					   "Test with the same type and load level already exists. No new test added.");
+			logger.log(LogLevel::INFO, "Existing TestName: %s",
+					   testTypeToString(_testList[i].testType));
+			logger.log(LogLevel::INFO, "Existing LoadLevel percent: %s",
+					   loadPercentageToString(_testList[i].loadLevel));
+			return;
 		}
-		logger.log(LogLevel::TEST, "checking boolean flag");
-
-		if(!isExistingTest)
-		{
-			logger.log(LogLevel::TEST, "parseTest NEW TEST CHECKED");
-			for(int i = 0; i < MAX_TEST; i++)
-			{
-				if(!_testList[i].isActive)
-				{
-					_testList[i].testId = _testID[i];
-					_testList[i].testType = testType;
-					_testList[i].loadLevel = loadPercentage;
-					_testList[i].isActive = true;
-					logger.log(LogLevel::SUCCESS, "Received new test requirement");
-					logger.log(LogLevel::INFO, "TestName:%s",
-							   testTypeToString(_testList[i].testType));
-					logger.log(LogLevel::INFO, "LoadLevel percent:%s",
-							   loadPercentageToString(_testList[i].loadLevel));
-
-					handleUserUpdate(UserUpdateEvent::NEW_TEST);
-					return;
-				}
-			}
-			logger.log(LogLevel::WARNING, "Test list is full, unable to add new test.");
-		}
-		_parsingOngoing = false;
 	}
 
+	// If no duplicate was found, add the new test
+	for(int i = 0; i < MAX_TEST; i++)
+	{
+		if(!_testList[i].isActive)
+		{
+			_testList[i].testId = _testID[i];
+			_testList[i].testType = testType;
+			_testList[i].loadLevel = loadPercentage;
+			_testList[i].isActive = true;
+
+			logger.log(LogLevel::SUCCESS, "Received new test requirement");
+			logger.log(LogLevel::INFO, "TestName: %s", testTypeToString(_testList[i].testType));
+			logger.log(LogLevel::INFO, "LoadLevel percent: %s",
+					   loadPercentageToString(_testList[i].loadLevel));
+
+			handleUserUpdate(UserUpdateEvent::NEW_TEST);
+			return;
+		}
+	}
+
+	logger.log(LogLevel::WARNING, "Test list is full, unable to add new test.");
 	logger.log(LogLevel::TEST, "parseTest JSON EXIT");
 }
 
@@ -231,9 +238,9 @@ void TestSync::checkForDeletedTests()
 		if(!_testList[i].isActive && _testList[i].testId != 0)
 		{
 			logger.log(LogLevel::WARNING, "Removing test requirement");
-			logger.log(LogLevel::INFO, "TestName:", testTypeToString(_testList[i].testType));
-			logger.log(LogLevel::INFO,
-					   "LoadLevel percent:", loadPercentageToString(_testList[i].loadLevel));
+			logger.log(LogLevel::INFO, "TestName:%s", testTypeToString(_testList[i].testType));
+			logger.log(LogLevel::INFO, "LoadLevel percent:%s",
+					   loadPercentageToString(_testList[i].loadLevel));
 			_testList[i] = {};
 			testDeleted = true;
 		}
@@ -244,6 +251,46 @@ void TestSync::checkForDeletedTests()
 		handleUserUpdate(UserUpdateEvent::DELETE_TEST);
 	}
 }
+
+void TestSync::transferTest()
+{
+	// Get the TestManager instance
+	TestManager& testManager = TestManager::getInstance();
+
+	// Count the number of active tests in _testList
+	int activeTestCount = 0;
+	for(int i = 0; i < MAX_TEST; ++i)
+	{
+		if(_testList[i].isActive)
+		{
+			activeTestCount++;
+		}
+	}
+
+	// If there are no active tests, return early
+	if(activeTestCount == 0)
+	{
+		logger.log(LogLevel::INFO, "No active tests to transfer.");
+		return;
+	}
+
+	// Create a temporary array to hold the active tests
+	RequiredTest activeTests[activeTestCount];
+	int index = 0;
+	for(int i = 0; i < MAX_TEST; ++i)
+	{
+		if(_testList[i].isActive)
+		{
+			activeTests[index++] = _testList[i];
+		}
+	}
+
+	// Transfer the active tests to the TestManager
+	testManager.addTests(activeTests, activeTestCount);
+
+	logger.log(LogLevel::SUCCESS, "Transferred all active tests to TestManager.");
+}
+
 void TestSync::handleUserUpdate(UserUpdateEvent update)
 {
 	TestSync& SyncTest = TestSync::getInstance();
