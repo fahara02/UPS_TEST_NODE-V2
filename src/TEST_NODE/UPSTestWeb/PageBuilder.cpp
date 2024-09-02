@@ -395,7 +395,7 @@ void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup
 	// Begin table
 	response->print("<form method='post' action='/updateSettings'>");
 	response->print("<table border='1'>");
-
+	sendTableCaption(response, "UPS Specification");
 	// Retrieve SetupSpec and SetupTest instances
 	SetupSpec& spec = testerSetup.specSetup(); // Retrieve SetupSpec
 	SetupTest& test = testerSetup.testSetup(); // Retrieve SetupTest
@@ -498,72 +498,6 @@ void PageBuilder::sendToggleButton(AsyncResponseStream* response, const char* na
 	response->printf("<input type='checkbox' %s>", state ? "checked" : "");
 	response->print("</div>");
 }
-void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, const char* value,
-							   const char* cssClass)
-{
-	if(cssClass)
-	{
-		response->printf("<tr class='%s'><td>%s:</td><td>%s</td></tr>", cssClass, name, value);
-	}
-	else
-	{
-		response->printf("<tr><td>%s:</td><td>%s</td></tr>", name, value);
-	}
-}
-void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, String value,
-							   const char* cssClass)
-{
-	// Handle the class attribute separately
-	if(cssClass)
-	{
-		response->printf("<tr class='%s'><td>%s:</td><td>%s</td></tr>", cssClass, name,
-						 value.c_str());
-	}
-	else
-	{
-		response->printf("<tr><td>%s:</td><td>%s</td></tr>", name, value.c_str());
-	}
-}
-
-void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, uint32_t value,
-							   const char* cssClass)
-{
-	// Handle the class attribute separately
-	if(cssClass)
-	{
-		response->printf("<tr class='%s'><td>%s:</td><td>%d</td></tr>", cssClass, name, value);
-	}
-	else
-	{
-		response->printf("<tr><td>%s:</td><td>%d</td></tr>", name, value);
-	}
-}
-
-void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, double value,
-							   const char* cssClass)
-{
-	if(cssClass)
-	{
-		response->printf("<tr class='%s'><td>%s:</td><td>%.2f</td></tr>", cssClass, name, value);
-	}
-	else
-	{
-		response->printf("<tr><td>%s:</td><td>%.2f</td></tr>", name, value);
-	}
-}
-
-void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, int value,
-							   const char* cssClass)
-{
-	if(cssClass)
-	{
-		response->printf("<tr class='%s'><td>%s:</td><td>%d</td></tr>", cssClass, name, value);
-	}
-	else
-	{
-		response->printf("<tr><td>%s:</td><td>%d</td></tr>", name, value);
-	}
-}
 
 void PageBuilder::sendInputField(AsyncResponseStream* response, const char* name, uint32_t value)
 {
@@ -615,24 +549,89 @@ void PageBuilder::sendDropdown(AsyncResponseStream* response, const char* name,
 	response->print("</select></td></tr>");
 }
 
-// void PageBuilder::sendTableStyle(AsyncResponseStream* response)
-// {
-// 	response->print("<style>");
-// 	response->print("table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: "
-// 					"1em; font-family: sans-serif; min-width: 400px; }");
-// 	response->print("th, td { padding: 12px 15px; border: 1px solid #ddd; text-align: left; }");
-// 	response->print("th { background-color: #f4f4f4; font-weight: bold; }");
-// 	response->print("tr:nth-child(even) { background-color: #f9f9f9; }");
-// 	response->print("tr:hover { background-color: #f1f1f1; }");
-// 	response->print("input[type='text'], input[type='number'], select { width: 100%; padding: 8px; "
-// 					"border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }");
-// 	response->print("button { background-color: #4CAF50; color: white; padding: 10px 15px; border: "
-// 					"none; border-radius: 4px; cursor: pointer; }");
-// 	response->print("button:hover { background-color: #45a049; }");
-// 	response->print("form { padding: 20px; background-color: #fff; border-radius: 5px; box-shadow: "
-// 					"0px 0px 15px rgba(0, 0, 0, 0.1); }");
-// 	response->print("</style>");
-// }
+// -----TABLE RELATED ----------------------------------------//
+
+void PageBuilder::sendTableCaption(AsyncResponseStream* response, const char* caption)
+{
+	response->printf("<caption>%s</caption>", caption);
+}
+
+void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, int value,
+							   const char* cssClass)
+{
+	if(cssClass)
+	{
+		response->printf("<tr class='%s'><td>%s:</td><td>%d</td></tr>", cssClass, name, value);
+	}
+	else
+	{
+		response->printf("<tr><td>%s:</td><td>%d</td></tr>", name, value);
+	}
+}
+void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, double value,
+							   const char* cssClass)
+{
+	if(cssClass)
+	{
+		response->printf("<tr class='%s'><td>%s:</td><td>%.2f</td></tr>", cssClass, name, value);
+	}
+	else
+	{
+		response->printf("<tr><td>%s:</td><td>%.2f</td></tr>", name, value);
+	}
+}
+void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, uint32_t value,
+							   const char* cssClass)
+{
+	// Handle the class attribute separately
+	if(cssClass)
+	{
+		response->printf("<tr class='%s'><td>%s:</td><td>%d</td></tr>", cssClass, name, value);
+	}
+	else
+	{
+		response->printf("<tr><td>%s:</td><td>%d</td></tr>", name, value);
+	}
+}
+
+void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, String value,
+							   const char* cssClass)
+{
+	// Handle the class attribute separately
+	if(cssClass)
+	{
+		response->printf("<tr class='%s'><td>%s:</td><td>%s</td></tr>", cssClass, name,
+						 value.c_str());
+	}
+	else
+	{
+		response->printf("<tr><td>%s:</td><td>%s</td></tr>", name, value.c_str());
+	}
+}
+
+void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, const char* value,
+							   const char* cssClass)
+{
+	if(cssClass)
+	{
+		response->printf("<tr class='%s'><td>%s:</td><td>%s</td></tr>", cssClass, name, value);
+	}
+	else
+	{
+		response->printf("<tr><td>%s:</td><td>%s</td></tr>", name, value);
+	}
+}
+
+template<typename... Args>
+void PageBuilder::sendColorGroup(AsyncResponseStream* response, int span,
+								 const char* background_color, Args&&... args)
+{
+	static_assert(sizeof...(args) == (span - 1), "Each span must have a color group");
+	response->print("<colgroup>");
+	response->printf("<col span=\"%d\" style=\"background-color:%s\">", span, background_color);
+	(response->printf("<col style=\"background-color:%s\">", args), ...);
+	response->print("</colgroup>");
+}
 void PageBuilder::sendTableStyle(AsyncResponseStream* response)
 {
 	response->print("<style>");

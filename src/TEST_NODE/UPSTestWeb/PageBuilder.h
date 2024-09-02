@@ -74,7 +74,6 @@ class PageBuilder
 	void sendNavbar(AsyncResponseStream* response);
 	void sendSidebar(AsyncResponseStream* response, const char* content = "");
 	void sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup);
-	void sendTableStyle(AsyncResponseStream* response);
 
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;
@@ -85,19 +84,6 @@ class PageBuilder
 
 	void sendButton(AsyncResponseStream* response, const char* title, const char* action,
 					const char* css = "");
-
-	void sendTableRow(AsyncResponseStream* response, const char* name, uint32_t value,
-					  const char* cssClass = nullptr);
-
-	void sendTableRow(AsyncResponseStream* response, const char* name, double value,
-					  const char* cssClass = nullptr);
-	void sendTableRow(AsyncResponseStream* response, const char* name, int value,
-					  const char* cssClass = nullptr);
-
-	void sendTableRow(AsyncResponseStream* response, const char* name, String value,
-					  const char* cssClass = nullptr);
-	void sendTableRow(AsyncResponseStream* response, const char* name, const char* value,
-					  const char* cssClass = nullptr);
 
 	void sendDebugForm(AsyncResponseStream* response, String slaveId, String reg, String function,
 					   String count);
@@ -114,6 +100,24 @@ class PageBuilder
 						const std::vector<const char*>& options);
 	void sendDropdown(AsyncResponseStream* response, const char* name,
 					  const std::vector<const char*>& options, const char* selected = nullptr);
+
+	//--------------All Table related ------------------------//
+	void sendTableCaption(AsyncResponseStream* response, const char* caption);
+	void sendTableRow(AsyncResponseStream* response, const char* name, int value,
+					  const char* cssClass = nullptr);
+	void sendTableRow(AsyncResponseStream* response, const char* name, double value,
+					  const char* cssClass = nullptr);
+	void sendTableRow(AsyncResponseStream* response, const char* name, uint32_t value,
+					  const char* cssClass = nullptr);
+	void sendTableRow(AsyncResponseStream* response, const char* name, String value,
+					  const char* cssClass = nullptr);
+	void sendTableRow(AsyncResponseStream* response, const char* name, const char* value,
+					  const char* cssClass = nullptr);
+
+	template<typename... Args>
+	void sendColorGroup(AsyncResponseStream* response, int span, const char* backgound_color,
+						Args&&... args);
+	void sendTableStyle(AsyncResponseStream* response);
 };
 
 #endif // PAGE_BUILDER_H
