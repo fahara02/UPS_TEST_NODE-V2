@@ -46,7 +46,7 @@ const char NAVBAR_HTML[] PROGMEM = R"rawliteral(
 
 // Sidebar HTML
 const char SIDEBAR_HTML[] PROGMEM = R"rawliteral(
- <div class="sidebar" id="sidebar">
+        <div class="sidebar" id="sidebar">
       <h2>Test Commands</h2>
       <button onclick="startTest()">Start</button>
       <button onclick="stopTest()">Stop</button>
@@ -83,45 +83,13 @@ const char SIDEBAR_HTML[] PROGMEM = R"rawliteral(
       <div class="toggler">
         <button class="mode-button" onclick="sendMode()">Mode</button>
         <div class="radio-group">
-          <label for="auto">
-            <input type="radio" id="auto" name="mode" value="AUTO" checked />
-            Auto
-          </label>
-          <label for="manual">
-            <input type="radio" id="manual" name="mode" value="MANUAL" /> Manual
-          </label>
+          <input type="radio" id="auto" name="mode" value="AUTO" checked />
+          <label for="auto">Auto</label>
+          <input type="radio" id="manual" name="mode" value="MANUAL" />
+          <label for="manual">Manual</label>
         </div>
       </div>
-
     </div>
-)rawliteral";
-
-const char SIDEBAR_TEST_CONTROL_PANEL_HTML[] PROGMEM = R"rawliteral(   <div class="dropdown">
-
-       <div class="dropdown">
-        <label for="addTest">UPS Tests:</label>
-        <select id="addTest">
-          <option value="1">Switch Test</option>
-          <option value="2">Backup Test</option>
-          <option value="3">Efficiency Test</option>
-          <option value="4">Input Voltage Test</option>
-          <option value="5">Waveform Test</option>
-          <option value="6">Tune PWM Test</option>
-        </select>
-      </div>
-        <label for="loadLevel">Load Level:</label>
-        <select id="loadLevel">
-          <option value="0">0%</option>
-          <option value="25">25%</option>
-          <option value="50">50%</option>
-          <option value="75">75%</option>
-          <option value="100">100%</option>
-        </select>
-      </div>
-      <button onclick="addTest()">Add Test</button>
-      <button onclick="deleteTest()">Delete Test</button>
-      <button onclick="sendTest()">Send Test</button>
-      <button onclick="clearTest()">Clear Test</button>
 )rawliteral";
 
 // User Command and Log HTML

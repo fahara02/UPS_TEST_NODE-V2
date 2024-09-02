@@ -3,41 +3,35 @@
 
 #include <pgmspace.h>
 const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
-    <script>
+     <script>
       document.addEventListener('DOMContentLoaded', function () {
         const sidebar = document.getElementById('sidebar');
-        const content = document.getElementById('content');
         const toggleButton = document.getElementById('toggleSidebar');
 
-        if (toggleButton && sidebar && content) {
+        if (toggleButton && sidebar) {
           toggleButton.addEventListener('click', () => {
             sidebar.classList.toggle('hidden');
-            content.classList.toggle('full-width');
           });
         } else {
-          console.error('One or more elements not found:', {
-            toggleButton,
-            sidebar,
-            content,
-          });
+          console.error('Sidebar or Toggle Button not found.');
         }
 
-        window.tests = []; 
+        window.tests = []; // Store all added tests
 
         window.addTest = function () {
-          var testSelect = document.getElementById('addTest');
-          var loadLevelSelect = document.getElementById('loadLevel');
-          var selectedTest = testSelect.options[testSelect.selectedIndex].text;
-          var loadLevel =
-            loadLevelSelect.options[loadLevelSelect.selectedIndex].value;
-          var testDetails = {
+          const testSelect = document.getElementById('addTest');
+          const loadLevelSelect = document.getElementById('loadLevel');
+          const selectedTest =
+            testSelect.options[testSelect.selectedIndex].text;
+          const loadLevel = loadLevelSelect.value;
+          const testDetails = {
             testName: selectedTest,
             loadLevel: loadLevel + '%',
           };
           window.tests.push(testDetails);
           appendLog(
-            'All tests: ' +
-              JSON.stringify(window.tests) +
+            'Added Test: ' +
+              JSON.stringify(testDetails) +
               ' at ' +
               new Date().toLocaleString()
           );
@@ -45,19 +39,19 @@ const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
 
         window.deleteTest = function () {
           if (window.tests.length > 0) {
-            var deletedTest = window.tests.pop();
+            const deletedTest = window.tests.pop();
             appendLog(
-              'Test deleted: ' +
+              'Deleted Test: ' +
                 JSON.stringify(deletedTest) +
                 ' at ' +
                 new Date().toLocaleString()
             );
-            appendLog('Remaining tests: ' + JSON.stringify(window.tests));
-            sendTestData(); 
+            appendLog('Remaining Tests: ' + JSON.stringify(window.tests));
           } else {
             appendLog('No tests to delete.');
           }
         };
+
         window.sendTest = function () {
           var sendTest = window.tests;
           appendLog(
@@ -66,7 +60,7 @@ const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
               ' at ' +
               new Date().toLocaleString()
           );
-          sendTestData(); 
+          sendTestData(); // Send the test data to the server whenever a test is added
         };
 
         window.clearTest = function () {
@@ -77,34 +71,35 @@ const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
             console.error('Element testCommand not found');
           }
         };
+
         window.appendLog = function (message) {
-          var testCommand = document.getElementById('testCommand');
-          if (testCommand) {
-            testCommand.innerHTML += message + '\n';
+          const testCommand = document.getElementById('testCommand');
+          const logs = document.getElementById('logs');
+          if (testCommand && logs) {
+            testCommand.textContent += message + '\n';
             testCommand.scrollTop = testCommand.scrollHeight;
           } else {
-            console.error('Element testCommand not found');
+            console.error('Log or Test Command element not found.');
           }
         };
 
         window.startTest = function () {
           alert('Test Started');
           appendLog('Test started at ' + new Date().toLocaleString());
-          sendCommand('start'); 
+          sendCommand('start');
         };
 
         window.stopTest = function () {
           alert('Test Stopped');
           appendLog('Test stopped at ' + new Date().toLocaleString());
-          sendCommand('stop'); 
+          sendCommand('stop');
         };
 
         window.pauseTest = function () {
           alert('Test Paused');
           appendLog('Test paused at ' + new Date().toLocaleString());
-          sendCommand('pause'); 
+          sendCommand('pause');
         };
-
         window.sendMode = function () {
           // Get the selected radio button
           var modeSelect = document.querySelector('input[name="mode"]:checked');
@@ -118,21 +113,22 @@ const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
           sendModeJson(mode);
         };
 
-        function sendTestData() {
-          fetch('/updateTestData', {
+        function sendModeJson(mode) {
+          fetch('/updateMode', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(window.tests), 
+            body: JSON.stringify({ mode: mode }), // Send mode as a JSON string
           })
             .then((response) => response.text())
             .then((data) => console.log('Server Response:', data))
             .catch((error) => console.error('Error:', error));
         }
-        function sendModeJson(mode) {
-          fetch('/updateMode', {
+
+        function sendTestData() {
+          fetch('/updateTestData', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: mode }), 
+            body: JSON.stringify(window.tests),
           })
             .then((response) => response.text())
             .then((data) => console.log('Server Response:', data))
@@ -143,7 +139,7 @@ const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
           fetch('/updateCommand', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command: command }), 
+            body: JSON.stringify({ command: command }), // Send status as a JSON string
           })
             .then((response) => response.text())
             .then((data) => console.log('Server Response:', data))

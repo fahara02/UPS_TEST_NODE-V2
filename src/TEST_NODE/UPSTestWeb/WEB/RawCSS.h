@@ -3,7 +3,7 @@
 #include <pgmspace.h>
 
 const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
-       <style>
+      <style>
       /* Reset and base styles */
       * {
         margin: 0;

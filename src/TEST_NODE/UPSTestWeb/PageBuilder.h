@@ -102,7 +102,8 @@ class PageBuilder
 					  const std::vector<const char*>& options, const char* selected = nullptr);
 
 	//--------------All Table related ------------------------//
-	void sendTableCaption(AsyncResponseStream* response, const char* caption);
+	void sendTableCaption(AsyncResponseStream* response, const char* caption,
+						  const char* style = "text-align:middle");
 	void sendTableRow(AsyncResponseStream* response, const char* name, int value,
 					  const char* cssClass = nullptr);
 	void sendTableRow(AsyncResponseStream* response, const char* name, double value,

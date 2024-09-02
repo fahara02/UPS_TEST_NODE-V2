@@ -336,18 +336,22 @@ void PageBuilder::sendScript(AsyncResponseStream* response)
 
 void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
 {
-	response->print("<div class=\"container\" id=\"content\">");
+	response->print("<div class=\"container\" >");
 
 	// Left side: User commands
 	response->print("<div class=\"user-command\">");
 	response->print("<h2>User Commands</h2>");
+	response->print("<div class=\"command-content\">");
 	response->print("<pre id=\"testCommand\"></pre>");
+
+	response->print("</div>");
 	response->print("</div>");
 
 	// Right side: Log output
 	String logs = logger.getBufferedLogs();
 	response->print("<div class=\"log-output\">");
 	response->print("<h2>Log Output</h2>");
+	response->print("<div class=\"log-content\">");
 	if(logs.length() > 0)
 	{
 		response->print("<pre style=\"color:green;\" id=\"logs\">");
@@ -358,7 +362,8 @@ void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* con
 	{
 		response->print("<p id=\"logs\">No logs available.</p>");
 	}
-	response->print("</div>");
+	response->print("</div>"); // Closing log-content div
+	response->print("</div>"); // Closing log-output div
 
 	response->print("</div>"); // Closing container div
 
@@ -376,10 +381,6 @@ void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* con
         }
         setInterval(refreshLogs, 2000);
     </script>)");
-
-	char buffer[CONTENT_HTML_LENGTH];
-	const char* contentHtml = copyFromPROGMEM(USER_COMMAND_AND_LOG_HTML, buffer);
-	response->print(contentHtml);
 }
 
 void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
@@ -391,8 +392,8 @@ void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
 
 void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup)
 {
-	response->print("<div id='custom-settings-page'>");
-	// Begin table
+	// response->print("<div id='custom-settings-page'>");
+	//  Begin table
 	response->print("<form method='post' action='/updateSettings'>");
 	response->print("<table border='1'>");
 	sendTableCaption(response, "UPS Specification");
@@ -446,7 +447,7 @@ void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup
 	response->print("</table>");
 	response->print("<button type='submit'>Save Settings</button>");
 	response->print("</form>");
-	response->print("</div>");
+	// response->print("</div>");
 }
 
 //----------------------------------HTML BLOCK FACTORY------------------//
@@ -551,9 +552,10 @@ void PageBuilder::sendDropdown(AsyncResponseStream* response, const char* name,
 
 // -----TABLE RELATED ----------------------------------------//
 
-void PageBuilder::sendTableCaption(AsyncResponseStream* response, const char* caption)
+void PageBuilder::sendTableCaption(AsyncResponseStream* response, const char* caption,
+								   const char* style)
 {
-	response->printf("<caption>%s</caption>", caption);
+	response->printf("<caption style=%s>%s</caption>", style, caption);
 }
 
 void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, int value,
