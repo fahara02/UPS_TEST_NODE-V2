@@ -29,11 +29,22 @@ const char HEADER_HTML[] PROGMEM = R"rawliteral(
 
 // Navbar HTML
 const char NAVBAR_HTML[] PROGMEM = R"rawliteral(
-  <div class="navbar">
+ <div class="navbar">
       <div class="navbar-title">Web Interface</div>
       <div class="buttons">
         <a href="/dashboard">Dashboard</a>
-        <a href="/settings">Settings</a>
+
+        <div class="dropdown">
+          <button class="dropbtn">Settings</button>
+          <div class="dropdown-content">
+            <a href="#ups-specification">UPS Specification</a>
+            <a href="#test-specification">Test Specification</a>
+            <a href="#report-specification">Report Specification</a>
+            <hr />
+            <button id="update-settings-button">Update</button>
+          </div>
+        </div>
+
         <a href="/network">Network</a>
         <a href="/modbus">Modbus</a>
         <a href="/test-report">Test Report</a>

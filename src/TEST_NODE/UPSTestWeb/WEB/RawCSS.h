@@ -3,7 +3,7 @@
 #include <pgmspace.h>
 
 const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
-      <style>
+     <style>
       /* Reset and base styles */
       * {
         margin: 0;
@@ -74,6 +74,86 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
       }
       .navbar .button:hover {
         background-color: #005a99;
+      }
+
+      /* Dropdown Styles */
+      .dropdown {
+        position: relative;
+        display: inline-block;
+      }
+
+      .dropbtn {
+        background-color: #0077cc; /* Match navbar background */
+        color: white;
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+        border-radius: 5px;
+        transition: background-color 0.3s;
+      }
+
+      .dropbtn:hover {
+        background-color: #005a99;
+      }
+
+      .dropdown-content {
+        display: none;
+        position: absolute;
+        background-color: #f4f4f4; /* Match side panel background */
+        min-width: 220px;
+        box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+        z-index: 1;
+        border-radius: 5px;
+      }
+
+      .dropdown-content a,
+      .dropdown-content button {
+        color: #333; /* Match side panel text color */
+        padding: 12px 20px;
+        text-decoration: none;
+        display: block;
+        text-align: left;
+        font-weight: bold;
+        font-size: 14px;
+        border: none;
+        background: none;
+        width: 100%;
+        box-sizing: border-box;
+        transition: background-color 0.3s;
+      }
+
+      .dropdown-content a:hover,
+      .dropdown-content button:hover {
+        background-color: #e0e0e0; /* Hover color for options */
+      }
+
+      .dropdown:hover .dropdown-content {
+        display: block;
+      }
+
+      /* Update button styling */
+      #update-settings-button {
+        cursor: pointer;
+        background-color: #0066b3; /* Button color matching the navbar */
+        color: white;
+        font-weight: bold;
+        border-radius: 5px;
+        padding: 10px 20px;
+        font-size: 16px; /* Font size increased */
+        text-align: center;
+        width: 100%;
+        box-sizing: border-box;
+        transition: background-color 0.3s;
+      }
+
+      #update-settings-button:hover {
+        background-color: #005a99; /* Darken button on hover */
+      }
+
+      #update-settings-button:hover {
+        background-color: #275a8e; /* Darken button on hover */
       }
 
       /* Sidebar Styles */
