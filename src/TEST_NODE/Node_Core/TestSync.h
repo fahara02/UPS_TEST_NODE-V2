@@ -19,7 +19,6 @@ extern StateMachine& stateMachine;
 
 const EventBits_t ALL_TEST_BITS = (1 << MAX_TEST) - 1;
 const EventBits_t ALL_CMD_BITS = (1 << MAX_USER_COMMAND) - 1;
-const EventBits_t ALL_SYNC_BITS = (1 << MAX_SYNC_COMMAND) - 1;
 
 class TestSync
 {
@@ -42,11 +41,6 @@ class TestSync
 	bool iscmdAcknowledged();
 	bool isTestEnabled();
 
-	EventGroupHandle_t getEventGroupSync() const
-	{
-		return eventGroupSync;
-	}
-
   private:
 	TestSync();
 
@@ -54,8 +48,6 @@ class TestSync
 	bool _enableCurrentTest = false;
 
 	std::atomic<State> _currentState;
-
-	EventGroupHandle_t eventGroupSync = NULL;
 
 	RequiredTest _testList[MAX_TEST];
 
@@ -65,13 +57,15 @@ class TestSync
 	void createSynctask();
 
 	static void userCommandObserverTask(void* pvParameters);
-	static void testSyncTask(void* pvParameters);
+	static void testSyncObserverTask(void* pvParameters);
 
 	void startTest(TestType test);
 	void stopTest(TestType test);
 	void stopAllTest();
 	void parseTestJson(JsonObject jsonObj);
 	void checkForDeletedTests();
+
+	TaskHandle_t commandObserverTaskHandle = nullptr;
 
 	TestSync(const TestSync&) = delete;
 	TestSync& operator=(const TestSync&) = delete;

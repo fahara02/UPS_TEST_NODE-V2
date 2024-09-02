@@ -9,6 +9,7 @@ EventGroupHandle_t EventHelper::userCommandEventGroup = nullptr;
 EventGroupHandle_t EventHelper::userUpdateEventGroup = nullptr;
 EventGroupHandle_t EventHelper::dataEventGroup = nullptr;
 EventGroupHandle_t EventHelper::testControlEvent = nullptr;
+EventGroupHandle_t EventHelper::syncControlEvent = nullptr;
 
 const EventBits_t EventHelper::SYSTEM_EVENT_BITS_MASK =
 	static_cast<EventBits_t>(SystemEvent::NONE) | static_cast<EventBits_t>(SystemEvent::ERROR) |
@@ -53,6 +54,8 @@ const EventBits_t EventHelper::ALL_TEST_BITS_MASK =
 	static_cast<EventBits_t>(TestType::WaveformTest) |
 	static_cast<EventBits_t>(TestType::TunePWMTest);
 
+const EventBits_t ALL_SYNC_BITS_MASK = (1 << MAX_SYNC_COMMAND) - 1;
+
 void EventHelper::initializeEventGroups()
 {
 	if(systemEventGroup == nullptr)
@@ -75,6 +78,8 @@ void EventHelper::initializeEventGroups()
 
 	if(testControlEvent == nullptr)
 		testControlEvent = xEventGroupCreate();
+	if(syncControlEvent == nullptr)
+		syncControlEvent = xEventGroupCreate();
 }
 
 // Clean up FreeRTOS event groups (call this before shutdown)
@@ -121,6 +126,11 @@ void EventHelper::cleanupEventGroups()
 		vEventGroupDelete(testControlEvent);
 		testControlEvent = nullptr;
 	}
+	if(syncControlEvent != nullptr)
+	{
+		vEventGroupDelete(testControlEvent);
+		syncControlEvent = nullptr;
+	}
 }
 
 void EventHelper::setBits(SystemEvent e)
@@ -153,6 +163,10 @@ void EventHelper::setBits(TestType e)
 {
 	xEventGroupSetBits(testControlEvent, static_cast<EventBits_t>(e));
 }
+void EventHelper::setBits(SyncCommand e)
+{
+	xEventGroupSetBits(syncControlEvent, static_cast<EventBits_t>(e));
+}
 // Clear bits for specific event types
 void EventHelper::clearBits(SystemEvent e)
 {
@@ -181,6 +195,10 @@ void EventHelper::clearBits(DataEvent e)
 void EventHelper::clearBits(TestType e)
 {
 	xEventGroupClearBits(testControlEvent, static_cast<EventBits_t>(e));
+}
+void EventHelper::clearBits(SyncCommand e)
+{
+	xEventGroupClearBits(syncControlEvent, static_cast<EventBits_t>(e));
 }
 
 // Reset all bits in specific event groups
@@ -211,5 +229,9 @@ void EventHelper::resetDataEventBits()
 void EventHelper::resetAllTestBits()
 {
 	xEventGroupClearBits(testControlEvent, ALL_TEST_BITS_MASK);
+}
+void EventHelper::resetAllSyncBits()
+{
+	xEventGroupClearBits(syncControlEvent, ALL_SYNC_BITS_MASK);
 }
 } // namespace Node_Core

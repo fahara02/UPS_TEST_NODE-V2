@@ -3,6 +3,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "NodeConstants.h"
 #include "StateDefines.h"
 #include "TestData.h"
 
@@ -86,6 +87,8 @@ class EventHelper
 	static void setBits(UserUpdateEvent e);
 	static void setBits(DataEvent e);
 	static void setBits(TestType e);
+	static void setBits(SyncCommand e);
+
 	static void clearBits(SystemEvent e);
 	static void clearBits(SystemInitEvent e);
 	static void clearBits(TestEvent e);
@@ -93,6 +96,8 @@ class EventHelper
 	static void clearBits(UserUpdateEvent e);
 	static void clearBits(DataEvent e);
 	static void clearBits(TestType e);
+	static void clearBits(SyncCommand e);
+
 	static void resetSystemEventBits();
 	static void resetSystemInitEventBits();
 	static void resetTestEventBits();
@@ -100,6 +105,7 @@ class EventHelper
 	static void resetUserUpdateEventBits();
 	static void resetDataEventBits();
 	static void resetAllTestBits();
+	static void resetAllSyncBits();
 
 	static EventGroupHandle_t systemEventGroup;
 	static EventGroupHandle_t systemInitEventGroup;
@@ -108,6 +114,8 @@ class EventHelper
 	static EventGroupHandle_t userUpdateEventGroup;
 	static EventGroupHandle_t dataEventGroup;
 	static EventGroupHandle_t testControlEvent;
+	static EventGroupHandle_t syncControlEvent;
+
 	static void initializeEventGroups();
 
   protected:
@@ -121,6 +129,7 @@ class EventHelper
 	static const EventBits_t USER_UPDATE_EVENT_BITS_MASK;
 	static const EventBits_t DATA_EVENT_BITS_MASK;
 	static const EventBits_t ALL_TEST_BITS_MASK;
+	static const EventBits_t ALL_SYNC_BITS_MASK;
 };
 
 } // namespace Node_Core
