@@ -21,7 +21,7 @@
 
 using namespace Node_Core;
 extern Logger& logger;
-
+constexpr size_t TOP_HTML_LENGTH = sizeof(TOP_HTML) - 1;
 constexpr size_t HEADER_HTML_LENGTH = sizeof(HEADER_HTML) - 1;
 constexpr size_t SIDEBAR_HTML_LENGTH = sizeof(SIDEBAR_HTML) - 1;
 constexpr size_t NAVBAR_HTML_LENGTH = sizeof(NAVBAR_HTML) - 1;
@@ -65,6 +65,7 @@ class PageBuilder
 	void setupPages(TestSync& testSync);
 	const char* copyFromPROGMEM(const char copyFrom[], char sendTo[]);
 
+	void sendHtmlHead(AsyncResponseStream* response);
 	void sendHeader(AsyncResponseStream* response);
 
 	void sendHeaderTrailer(AsyncResponseStream* response);
@@ -91,9 +92,7 @@ class PageBuilder
 					  const std::vector<const char*>& options, const char* selected = nullptr);
 	void sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType);
 
-	void sendNavbar(AsyncResponseStream* response, const char* title, const char* routes[],
-					const char* btn1class = "button", const char* btn2class = "button",
-					const char* btn3class = "button");
+	void sendNavbar(AsyncResponseStream* response);
 	void sendSidebar(AsyncResponseStream* response, const char* content = "");
 
 	// Utility function

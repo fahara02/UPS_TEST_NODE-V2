@@ -9,12 +9,11 @@ void PageBuilder::setupPages(TestSync& syncTest)
 	// Handle the main page
 	_server->on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
 		auto* response = request->beginResponseStream("text/html");
-		this->sendHeader(response);
+		this->sendHtmlHead(response);
 		this->sendStyle(response);
 		this->sendHeaderTrailer(response);
-
-		const char* routes[] = {"/", "/settings", "/network", "/modbus", "/report"};
-		this->sendNavbar(response, "UPS TESTING PANEL", routes);
+		this->sendHeader(response);
+		this->sendNavbar(response);
 		this->sendSidebar(response);
 		this->sendUserCommand(response);
 		this->sendScript(response);
@@ -83,17 +82,28 @@ void PageBuilder::setupPages(TestSync& syncTest)
 			}
 		});
 	_server->addHandler(testDataHandler);
-
-	// Handle POST request to update status
-	_server->on("/updateStatus", HTTP_POST, [](AsyncWebServerRequest* request) {
+	// Handle POST request to updateMode
+	_server->on("/updateMode", HTTP_POST, [](AsyncWebServerRequest* request) {
 		if(!request->hasParam("body", true))
 		{
 			request->send(400, "text/plain", "Invalid request: No body found.");
 			return;
 		}
 
-		String status = request->getParam("body", true)->value();
-		request->send(200, "text/plain", "Status received: " + status);
+		String mode = request->getParam("body", true)->value();
+		request->send(200, "text/plain", "Mode received: " + mode);
+	});
+
+	// Handle POST request to updateCommand
+	_server->on("/updateCommand", HTTP_POST, [](AsyncWebServerRequest* request) {
+		if(!request->hasParam("body", true))
+		{
+			request->send(400, "text/plain", "Invalid request: No body found.");
+			return;
+		}
+
+		String command = request->getParam("body", true)->value();
+		request->send(200, "text/plain", "command received: " + command);
 	});
 
 	// Handle 404 errors
@@ -247,7 +257,24 @@ const char* PageBuilder::copyFromPROGMEM(const char copyFrom[], char sendTo[])
 	// Return the destination buffer
 	return sendTo;
 }
-
+void PageBuilder::sendHtmlHead(AsyncResponseStream* response)
+{
+	char buffer[TOP_HTML_LENGTH];
+	const char* headerHtml = copyFromPROGMEM(TOP_HTML, buffer);
+	response->printf(TOP_HTML);
+}
+void PageBuilder::sendStyle(AsyncResponseStream* response)
+{
+	char buffer[CSS_LENGTH];
+	const char* CSS = copyFromPROGMEM(STYLE_BLOCK_CSS, buffer);
+	response->print(CSS);
+}
+void PageBuilder::sendHeaderTrailer(AsyncResponseStream* response)
+{
+	char buffer[HEADER_TRAILER_HTML_LENGTH];
+	const char* headerTrailerHtml = copyFromPROGMEM(HEADER_TRAILER_HTML, buffer);
+	response->print(headerTrailerHtml);
+}
 void PageBuilder::sendHeader(AsyncResponseStream* response)
 {
 	char buffer[HEADER_HTML_LENGTH];
@@ -255,37 +282,12 @@ void PageBuilder::sendHeader(AsyncResponseStream* response)
 	response->printf(HEADER_HTML);
 }
 
-void PageBuilder::sendStyle(AsyncResponseStream* response)
-{
-	char buffer[CSS_LENGTH];
-	const char* CSS = copyFromPROGMEM(STYLE_BLOCK_CSS, buffer);
-	response->print(CSS);
-}
-
-void PageBuilder::sendHeaderTrailer(AsyncResponseStream* response)
-{
-	char buffer[HEADER_TRAILER_HTML_LENGTH];
-	const char* headerTrailerHtml = copyFromPROGMEM(HEADER_TRAILER_HTML, buffer);
-	response->print(headerTrailerHtml);
-}
-void PageBuilder::sendNavbar(AsyncResponseStream* response, const char* title, const char* routes[],
-							 const char* btn1class, const char* btn2class, const char* btn3class)
+void PageBuilder::sendNavbar(AsyncResponseStream* response)
 {
 	char buffer[NAVBAR_HTML_LENGTH];
 	const char* navbarHtml = copyFromPROGMEM(NAVBAR_HTML, buffer);
 
-	response->printf(navbarHtml,
-					 title, // title
-					 routes[0], // Dashboard route
-					 routes[1], // Settings route
-					 routes[2], // Network route
-					 routes[3], // Modbus route
-					 routes[4], // Test Report route
-
-					 btn1class, // Action for Shutdown button
-					 btn2class, // CSS class for Shutdown button
-					 btn3class // Action for Restart button
-	);
+	response->printf(navbarHtml);
 }
 
 void PageBuilder::sendSidebar(AsyncResponseStream* response, const char* content)
@@ -300,6 +302,54 @@ void PageBuilder::sendScript(AsyncResponseStream* response)
 	char buffer[JSS_LENGTH];
 	const char* JSS = copyFromPROGMEM(MAIN_SCRIPT_JSS, buffer);
 	response->print(JSS);
+}
+
+void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
+{
+	response->print("<div class=\"container\" id=\"content\">");
+
+	// Left side: User commands
+	response->print("<div class=\"user-command\">");
+	response->print("<h2>User Commands</h2>");
+	response->print("<pre id=\"testCommand\"></pre>");
+	response->print("</div>");
+
+	// Right side: Log output
+	String logs = logger.getBufferedLogs();
+	response->print("<div class=\"log-output\">");
+	response->print("<h2>Log Output</h2>");
+	if(logs.length() > 0)
+	{
+		response->print("<pre style=\"color:green;\" id=\"logs\">");
+		response->printf("%s", logs.c_str());
+		response->print("</pre>");
+	}
+	else
+	{
+		response->print("<p id=\"logs\">No logs available.</p>");
+	}
+	response->print("</div>");
+
+	response->print("</div>"); // Closing container div
+
+	// JavaScript for auto-refresh
+	response->print(R"(<script>
+        function refreshLogs() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/log', true);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    document.getElementById('logs').innerHTML = xhr.responseText;
+                }
+            };
+            xhr.send();
+        }
+        setInterval(refreshLogs, 2000);
+    </script>)");
+
+	char buffer[CONTENT_HTML_LENGTH];
+	const char* contentHtml = copyFromPROGMEM(USER_COMMAND_AND_LOG_HTML, buffer);
+	response->print(contentHtml);
 }
 
 void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
@@ -390,52 +440,4 @@ void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, 
 					 "<td>%d</td>"
 					 "</tr>",
 					 name, value);
-}
-
-void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
-{
-	response->print("<div class=\"container\" id=\"content\">");
-
-	// Left side: User commands
-	response->print("<div class=\"user-command\">");
-	response->print("<h2>User Commands</h2>");
-	response->print("<pre id=\"testCommand\"></pre>");
-	response->print("</div>");
-
-	// Right side: Log output
-	String logs = logger.getBufferedLogs();
-	response->print("<div class=\"log-output\">");
-	response->print("<h2>Log Output</h2>");
-	if(logs.length() > 0)
-	{
-		response->print("<pre style=\"color:green;\" id=\"logs\">");
-		response->printf("%s", logs.c_str());
-		response->print("</pre>");
-	}
-	else
-	{
-		response->print("<p id=\"logs\">No logs available.</p>");
-	}
-	response->print("</div>");
-
-	response->print("</div>"); // Closing container div
-
-	// JavaScript for auto-refresh
-	response->print(R"(<script>
-        function refreshLogs() {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/log', true);
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    document.getElementById('logs').innerHTML = xhr.responseText;
-                }
-            };
-            xhr.send();
-        }
-        setInterval(refreshLogs, 2000);
-    </script>)");
-
-	char buffer[CONTENT_HTML_LENGTH];
-	const char* contentHtml = copyFromPROGMEM(USER_COMMAND_AND_LOG_HTML, buffer);
-	response->print(contentHtml);
 }
