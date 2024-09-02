@@ -21,6 +21,34 @@ void PageBuilder::setupPages(TestSync& syncTest)
 		request->send(response);
 	});
 
+	_server->on("/dashboard", HTTP_GET, [this](AsyncWebServerRequest* request) {
+		auto* response = request->beginResponseStream("text/html");
+		this->sendHtmlHead(response);
+		this->sendStyle(response);
+		this->sendHeaderTrailer(response);
+		this->sendHeader(response);
+		this->sendNavbar(response);
+		this->sendSidebar(response);
+		this->sendUserCommand(response);
+		this->sendScript(response);
+		this->sendPageTrailer(response);
+		request->send(response);
+	});
+
+	_server->on("/settings", HTTP_GET, [this](AsyncWebServerRequest* request) {
+		auto* response = request->beginResponseStream("text/html");
+		this->sendHtmlHead(response);
+		this->sendStyle(response);
+		this->sendHeaderTrailer(response);
+		this->sendHeader(response);
+		this->sendNavbar(response);
+		UPSTesterSetup& testerSetup = UPSTesterSetup::getInstance();
+		this->sendSettingTable(response, testerSetup);
+		this->sendScript(response);
+		this->sendPageTrailer(response);
+		request->send(response);
+	});
+
 	// Handle GET request for logs
 	_server->on("/log", HTTP_GET, [](AsyncWebServerRequest* request) {
 		String logs = logger.getBufferedLogs();
@@ -359,6 +387,64 @@ void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
 	response->print(pageTrailerHtml);
 }
 
+void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup)
+{
+	// Begin table
+	response->print("<form method='post' action='/updateSettings'>");
+	response->print("<table border='1'>");
+
+	// Retrieve SetupSpec and SetupTest instances
+	SetupSpec& spec = testerSetup.specSetup(); // Retrieve SetupSpec
+	SetupTest& test = testerSetup.testSetup(); // Retrieve SetupTest
+
+	// Editable dropdown or input fields for SetupSpec
+	sendTableRow(response, "Rating (VA)", spec.Rating_va);
+	sendInputField(response, "Rating_va", spec.Rating_va);
+
+	sendTableRow(response, "Rated Voltage (V)", spec.RatedVoltage_volt);
+	sendInputField(response, "RatedVoltage_volt", spec.RatedVoltage_volt);
+
+	sendTableRow(response, "Rated Current (A)", spec.RatedCurrent_amp);
+	sendInputField(response, "RatedCurrent_amp", spec.RatedCurrent_amp);
+
+	sendTableRow(response, "Min Input Voltage (V)", spec.MinInputVoltage_volt);
+	sendInputField(response, "MinInputVoltage_volt", spec.MinInputVoltage_volt);
+
+	sendTableRow(response, "Max Input Voltage (V)", spec.MaxInputVoltage_volt);
+	sendInputField(response, "MaxInputVoltage_volt", spec.MaxInputVoltage_volt);
+
+	sendTableRow(response, "Avg Switch Time (ms)", spec.AvgSwitchTime_ms);
+	sendInputField(response, "AvgSwitchTime_ms", spec.AvgSwitchTime_ms);
+
+	sendTableRow(response, "Avg Backup Time (ms)", spec.AvgBackupTime_ms);
+	sendInputField(response, "AvgBackupTime_ms", spec.AvgBackupTime_ms);
+
+	// Handle the Test settings similarly, providing individual editable fields
+	sendTableRow(response, "Test Standard", test.TestStandard);
+	sendInputField(response, "TestStandard", test.TestStandard);
+
+	sendTableRow(response, "Test Mode", static_cast<int>(test.mode));
+	sendDropdown(response, "TestMode", {"AUTO", "MANUAL"}, "AUTO"); // Example Dropdown
+
+	sendTableRow(response, "Test VA Rating", test.testVARating);
+	sendInputField(response, "TestVARating", test.testVARating);
+
+	sendTableRow(response, "Input Voltage (V)", test.inputVoltage_volt);
+	sendInputField(response, "InputVoltage_volt", test.inputVoltage_volt);
+
+	// More fields...
+
+	// Add the last update timestamp for both SetupSpec and SetupTest
+	sendTableRow(response, "Last Update (Spec)", spec.lastUpdateTime());
+	sendTableRow(response, "Last Update (Test)", test.lastUpdateTime());
+
+	// End table and form
+	response->print("</table>");
+	response->print("<button type='submit'>Save Settings</button>");
+	response->print("</form>");
+}
+
+//----------------------------------HTML BLOCK FACTORY------------------//
 void PageBuilder::sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType)
 {
 	// Open the <div> tag
@@ -440,4 +526,16 @@ void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, 
 					 "<td>%d</td>"
 					 "</tr>",
 					 name, value);
+}
+
+void PageBuilder::sendInputField(AsyncResponseStream* response, const char* name, uint32_t value)
+{
+	response->printf("<tr><td>%s:</td>", name);
+	response->printf("<td><input type='number' name='%s' value='%d'></td></tr>", name, value);
+}
+
+void PageBuilder::sendInputField(AsyncResponseStream* response, const char* name, const char* value)
+{
+	response->printf("<tr><td>%s:</td>", name);
+	response->printf("<td><input type='text' name='%s' value='%s'></td></tr>", name, value);
 }

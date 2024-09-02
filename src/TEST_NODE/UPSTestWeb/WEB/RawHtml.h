@@ -92,7 +92,36 @@ const char SIDEBAR_HTML[] PROGMEM = R"rawliteral(
           </label>
         </div>
       </div>
+
     </div>
+)rawliteral";
+
+const char SIDEBAR_TEST_CONTROL_PANEL_HTML[] PROGMEM = R"rawliteral(   <div class="dropdown">
+
+       <div class="dropdown">
+        <label for="addTest">UPS Tests:</label>
+        <select id="addTest">
+          <option value="1">Switch Test</option>
+          <option value="2">Backup Test</option>
+          <option value="3">Efficiency Test</option>
+          <option value="4">Input Voltage Test</option>
+          <option value="5">Waveform Test</option>
+          <option value="6">Tune PWM Test</option>
+        </select>
+      </div>
+        <label for="loadLevel">Load Level:</label>
+        <select id="loadLevel">
+          <option value="0">0%</option>
+          <option value="25">25%</option>
+          <option value="50">50%</option>
+          <option value="75">75%</option>
+          <option value="100">100%</option>
+        </select>
+      </div>
+      <button onclick="addTest()">Add Test</button>
+      <button onclick="deleteTest()">Delete Test</button>
+      <button onclick="sendTest()">Send Test</button>
+      <button onclick="clearTest()">Clear Test</button>
 )rawliteral";
 
 // User Command and Log HTML

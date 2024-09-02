@@ -63,43 +63,40 @@ class PageBuilder
 	{
 	}
 	void setupPages(TestSync& testSync);
-	const char* copyFromPROGMEM(const char copyFrom[], char sendTo[]);
 
 	void sendHtmlHead(AsyncResponseStream* response);
 	void sendHeader(AsyncResponseStream* response);
-
 	void sendHeaderTrailer(AsyncResponseStream* response);
 	void sendPageTrailer(AsyncResponseStream* response);
 	void sendUserCommand(AsyncResponseStream* response, const char* content = "");
 	void sendStyle(AsyncResponseStream* response);
 	void sendScript(AsyncResponseStream* response);
-
-	void sendButton(AsyncResponseStream* response, const char* title, const char* action,
-					const char* css = "");
-
-	void sendTableRow(AsyncResponseStream* response, const char* name, uint32_t value);
-
-	void sendTableRow(AsyncResponseStream* response, const char* name, String value);
-
-	void sendDebugForm(AsyncResponseStream* response, String slaveId, String reg, String function,
-					   String count);
-
-	void sendMinCss(AsyncResponseStream* response);
-
-	void sendToggleButton(AsyncResponseStream* response, const char* name, bool state);
-
-	void sendDropdown(AsyncResponseStream* response, const char* name,
-					  const std::vector<const char*>& options, const char* selected = nullptr);
-	void sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType);
-
 	void sendNavbar(AsyncResponseStream* response);
 	void sendSidebar(AsyncResponseStream* response, const char* content = "");
+
+	void sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup);
 
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;
 
   private:
 	AsyncWebServer* _server;
+	const char* copyFromPROGMEM(const char copyFrom[], char sendTo[]);
+
+	void sendButton(AsyncResponseStream* response, const char* title, const char* action,
+					const char* css = "");
+	void sendTableRow(AsyncResponseStream* response, const char* name, uint32_t value);
+	void sendTableRow(AsyncResponseStream* response, const char* name, String value);
+	void sendDebugForm(AsyncResponseStream* response, String slaveId, String reg, String function,
+					   String count);
+	void sendMinCss(AsyncResponseStream* response);
+	void sendToggleButton(AsyncResponseStream* response, const char* name, bool state);
+	void sendDropdown(AsyncResponseStream* response, const char* name,
+					  const std::vector<const char*>& options, const char* selected = nullptr);
+	void sendMargin(AsyncResponseStream* response, int pixel, MarginType marginType);
+
+	void sendInputField(AsyncResponseStream* response, const char* name, uint32_t value);
+	void sendInputField(AsyncResponseStream* response, const char* name, const char* value);
 };
 
 #endif // PAGE_BUILDER_H

@@ -27,11 +27,11 @@ class UPSTesterSetup
   public:
 	static UPSTesterSetup& getInstance();
 
-	SetupSpec specSetup()
+	SetupSpec& specSetup()
 	{
 		return _spec;
 	};
-	SetupTest testSetup()
+	SetupTest& testSetup()
 	{
 		return _testSetting;
 	};
