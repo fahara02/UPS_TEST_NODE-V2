@@ -41,15 +41,20 @@ class TestSync
 	bool iscmdAcknowledged();
 	bool isTestEnabled();
 
+	State getState();
+	JsonDocument _testDoc;
+
   private:
 	TestSync();
 
 	bool _cmdAcknowledged = false;
 	bool _enableCurrentTest = false;
+	bool _parsingOngoing = false;
 
 	std::atomic<State> _currentState;
 
 	RequiredTest _testList[MAX_TEST];
+	int _testID[MAX_TEST];
 
 	StateMachine& stateMachine = StateMachine::getInstance();
 

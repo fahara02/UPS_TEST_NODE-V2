@@ -288,9 +288,9 @@ struct SetupTask
 	int mainTest_taskIdlePriority = 1;
 	int mainsISR_taskIdlePriority = 1;
 	int upsISR_taskIdlePriority = 1;
-	uint32_t mainTest_taskStack = 12000;
-	uint32_t mainsISR_taskStack = 4096;
-	uint32_t upsISR_taskStack = 4096;
+	uint32_t mainTest_taskStack = 4096;
+	uint32_t mainsISR_taskStack = 1024;
+	uint32_t upsISR_taskStack = 1024;
 	unsigned long lastsetting_updated = 0UL;
 	enum class Field
 	{

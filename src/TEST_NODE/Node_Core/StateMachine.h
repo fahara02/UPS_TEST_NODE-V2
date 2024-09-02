@@ -90,9 +90,9 @@ class StateMachine
 	static void handleReport();
 	static void handleError();
 
-	static const std::array<Transition, 20> regular_transitions;
+	static const std::array<Transition, 21> regular_transitions;
 	static const std::array<Transition, 12> special_case_transitions;
-	static const std::array<Transition, 32> transition_table;
+	static const std::array<Transition, 33> transition_table;
 
 	static const Transition* getRegularTransitions();
 	static const Transition* getSpecialCaseTransitions();

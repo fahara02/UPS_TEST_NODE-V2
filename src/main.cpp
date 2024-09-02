@@ -17,11 +17,13 @@
 #include "UPSTestNode.h"
 #include "EventHelper.h"
 #include <nvs_flash.h>
+#include "TestSync.h"
 
 using namespace Node_Core;
 
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
+TestSync& SyncTest = TestSync::getInstance();
 
 UPSTesterSetup& TesterSetup = UPSTesterSetup::getInstance();
 SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
@@ -121,9 +123,9 @@ void modbusRTUTask(void* pvParameters)
 {
 	while(true)
 	{
-		logger.log(LogLevel::WARNING, "Resuming modbus task");
-		// mb.task();
-		vTaskDelay(pdMS_TO_TICKS(2000)); // Task delay
+		logger.log(LogLevel::WARNING, "modbus task...");
+		//  mb.task();
+		vTaskDelay(pdMS_TO_TICKS(500)); // Task delay
 	}
 	vTaskDelete(NULL);
 }
@@ -190,7 +192,7 @@ void setup()
 	BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
 
 	logger.log(LogLevel::INFO, "initiating test sync");
-	TestSync& SyncTest = TestSync::getInstance();
+
 	SyncTest.init();
 	logger.log(LogLevel::INFO, "initiating modbus");
 	modbusRTU_Init();

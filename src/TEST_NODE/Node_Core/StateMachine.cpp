@@ -213,7 +213,7 @@ static void notifyStateReverese()
 static void notifyUser(Event e)
 {
 }
-const std::array<StateMachine::Transition, 20> StateMachine::regular_transitions = {
+const std::array<StateMachine::Transition, 21> StateMachine::regular_transitions = {
 	{Row<State::DEVICE_ON, Event::SELF_CHECK_OK, State::DEVICE_OK, Event::NONE>::get_transition(
 		 DefaultAction),
 	 Row<State::DEVICE_OK, Event::SETTING_LOADED, State::DEVICE_SETUP,
@@ -221,6 +221,8 @@ const std::array<StateMachine::Transition, 20> StateMachine::regular_transitions
 	 Row<State::DEVICE_SETUP, Event::LOAD_BANK_CHECKED, State::DEVICE_READY,
 		 Event::NONE>::get_transition(),
 	 Row<State::DEVICE_READY, Event::NEW_TEST, State::READY_TO_PROCEED,
+		 Event::NONE>::get_transition(),
+	 Row<State::READY_TO_PROCEED, Event::NEW_TEST, State::READY_TO_PROCEED,
 		 Event::NONE>::get_transition(),
 	 Row<State::DEVICE_READY, Event::REJECT_CURRENT_TEST, State::DEVICE_READY,
 		 Event::NONE>::get_transition(),
@@ -297,8 +299,8 @@ const std::array<StateMachine::Transition, 12> StateMachine::special_case_transi
 	 })}};
 
 // Define the combined transition table
-const std::array<StateMachine::Transition, 32> StateMachine::transition_table = [] {
-	std::array<Transition, 32> result = {};
+const std::array<StateMachine::Transition, 33> StateMachine::transition_table = [] {
+	std::array<Transition, 33> result = {};
 
 	// Copy the regular transitions
 	std::copy(StateMachine::regular_transitions.begin(), StateMachine::regular_transitions.end(),

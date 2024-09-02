@@ -7,12 +7,14 @@ TestSync& TestSync::getInstance()
 }
 
 TestSync::TestSync() :
-	_cmdAcknowledged(false), _enableCurrentTest(false), _currentState{State::DEVICE_ON}
+	_cmdAcknowledged(false), _enableCurrentTest(false), _parsingOngoing(false),
+	_currentState{State::DEVICE_ON}
 
 {
 	for(int i = 0; i < MAX_TEST; ++i)
 	{
 		_testList[i] = RequiredTest();
+		_testID[i] = i * 2 + 31;
 	}
 }
 
@@ -28,10 +30,13 @@ void TestSync::init()
 
 void TestSync::createSynctask()
 {
-	xTaskCreatePinnedToCore(userCommandObserverTask, "commandObserver", 4096, NULL, 3,
+	TestSync& SyncTest = TestSync::getInstance();
+	xTaskCreatePinnedToCore(userCommandObserverTask, "commandObserver", 8192, NULL, 1,
 							&commandObserverTaskHandle, 0);
-	xTaskCreatePinnedToCore(userUpdateObserverTask, "commandObserver", 4096, NULL, 3,
+	xTaskCreatePinnedToCore(userUpdateObserverTask, "updateObserver", 8192, NULL, 1,
 							&updateObserverTaskHandle, 0);
+
+	logger.log(LogLevel::INFO, "testSync task created initialization");
 }
 
 void TestSync::reportEvent(Event event)
@@ -43,6 +48,10 @@ State TestSync::refreshState()
 {
 	_currentState.store(stateMachine.getCurrentState());
 	return _currentState.load();
+}
+State getState()
+{
+	return stateMachine.getCurrentState();
 }
 
 bool TestSync::iscmdAcknowledged()
@@ -70,41 +79,6 @@ bool TestSync::isTestEnabled()
 	return _enableCurrentTest;
 }
 
-void TestSync::parseIncomingJson(JsonVariant json)
-{
-	// Reset all tests as inactive
-	for(int i = 0; i < MAX_TEST; i++)
-	{
-		_testList[i].isActive = false;
-	}
-
-	if(json.is<JsonObject>())
-	{
-		logger.log(LogLevel::TEST, "TEST SYNC FUNCTION RECEIVING THIS");
-		serializeJsonPretty(json, Serial);
-		JsonObject jsonObj = json.as<JsonObject>();
-
-		if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
-		{
-			parseTestJson(jsonObj);
-		}
-		else if(jsonObj.containsKey("startCommand") || jsonObj.containsKey("stopCommand") ||
-				jsonObj.containsKey("autoCommand") || jsonObj.containsKey("manualCommand") ||
-				jsonObj.containsKey("pauseCommand") || jsonObj.containsKey("resumeCommand"))
-		{
-			// parseUserCommandJson(jsonObj);
-		}
-		else
-		{
-			logger.log(LogLevel::ERROR, "Required fields missing");
-		}
-	}
-	else
-	{
-		logger.log(LogLevel::ERROR, "Unknown JSON format!!!");
-	}
-}
-
 void TestSync::startTest(TestType test)
 {
 	if(isTestEnabled())
@@ -130,13 +104,62 @@ void TestSync::stopAllTest()
 	vTaskDelay(pdMS_TO_TICKS(50));
 }
 
+void TestSync::parseIncomingJson(JsonVariant json)
+{
+	// Reset all tests as inactive
+	for(int i = 0; i < MAX_TEST; i++)
+	{
+		_testList[i].isActive = false;
+	}
+
+	if(json.is<JsonObject>())
+	{
+		logger.log(LogLevel::TEST, "TEST SYNC FUNCTION RECEIVING THIS");
+		serializeJsonPretty(json, Serial);
+
+		JsonObject jsonObj = json.as<JsonObject>();
+
+		if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
+		{
+			// DeserializationError error = deserializeJson(_testDoc, json);
+			if(!_parsingOngoing)
+			{
+				logger.log(LogLevel::SUCCESS, "Send to Json test parser");
+				parseTestJson(jsonObj);
+			}
+		}
+		else if(jsonObj.containsKey("startCommand") || jsonObj.containsKey("stopCommand") ||
+				jsonObj.containsKey("autoCommand") || jsonObj.containsKey("manualCommand") ||
+				jsonObj.containsKey("pauseCommand") || jsonObj.containsKey("resumeCommand"))
+		{
+			// parseUserCommandJson(jsonObj);
+		}
+		else
+		{
+			logger.log(LogLevel::ERROR, "Required fields missing");
+		}
+	}
+	else
+	{
+		logger.log(LogLevel::ERROR, "Unknown JSON format!!!");
+	}
+}
+
 void TestSync::parseTestJson(JsonObject jsonObj)
 {
+	logger.log(LogLevel::TEST, "parseTest JSON INPUT");
+	serializeJsonPretty(jsonObj, Serial);
+
 	bool isExistingTest = false;
+
 	String testName = jsonObj["testName"];
 	String loadLevel = jsonObj["loadLevel"];
 	TestType testType = getTestTypeFromString(testName);
 	LoadPercentage loadPercentage = getLoadLevelFromString(loadLevel);
+
+	logger.log(LogLevel::TEST, "parseTest JSON CHECK,Printing again");
+	Serial.println(testTypeToString(testType));
+	Serial.println(loadPercentageToString(loadPercentage));
 
 	if(testType == static_cast<TestType>(0))
 	{
@@ -150,38 +173,53 @@ void TestSync::parseTestJson(JsonObject jsonObj)
 		return;
 	}
 
-	for(int i = 0; i < MAX_TEST; i++)
-	{
-		if(_testList[i].testType == testType)
-		{
-			isExistingTest = true;
-			_testList[i].loadLevel = loadPercentage;
-			_testList[i].isActive = true;
-			break;
-		}
-	}
+	if(!_parsingOngoing)
 
-	if(!isExistingTest)
 	{
+		logger.log(LogLevel::TEST, "into parsing zone");
+		_parsingOngoing = true;
+
 		for(int i = 0; i < MAX_TEST; i++)
 		{
-			if(!_testList[i].isActive)
+			logger.log(LogLevel::TEST, "parsing no %d", i);
+			if(_testList[i].testId == _testID[i] && _testList[i].testType == testType)
 			{
-				_testList[i].testId = i + 1;
-				_testList[i].testType = testType;
+				isExistingTest = true;
 				_testList[i].loadLevel = loadPercentage;
 				_testList[i].isActive = true;
-				logger.log(LogLevel::SUCCESS, "Received new test requirement");
-				logger.log(LogLevel::INFO, "TestName:", testTypeToString(_testList[i].testType));
-				logger.log(LogLevel::INFO,
-						   "LoadLevel percent:", loadPercentageToString(_testList[i].loadLevel));
 
-				handleUserUpdate(UserUpdateEvent::NEW_TEST);
-				return;
+				break;
 			}
 		}
-		logger.log(LogLevel::WARNING, "Test list is full, unable to add new test.");
+		logger.log(LogLevel::TEST, "checking boolean flag");
+
+		if(!isExistingTest)
+		{
+			logger.log(LogLevel::TEST, "parseTest NEW TEST CHECKED");
+			for(int i = 0; i < MAX_TEST; i++)
+			{
+				if(!_testList[i].isActive)
+				{
+					_testList[i].testId = _testID[i];
+					_testList[i].testType = testType;
+					_testList[i].loadLevel = loadPercentage;
+					_testList[i].isActive = true;
+					logger.log(LogLevel::SUCCESS, "Received new test requirement");
+					logger.log(LogLevel::INFO, "TestName:%s",
+							   testTypeToString(_testList[i].testType));
+					logger.log(LogLevel::INFO, "LoadLevel percent:%s",
+							   loadPercentageToString(_testList[i].loadLevel));
+
+					handleUserUpdate(UserUpdateEvent::NEW_TEST);
+					return;
+				}
+			}
+			logger.log(LogLevel::WARNING, "Test list is full, unable to add new test.");
+		}
+		_parsingOngoing = false;
 	}
+
+	logger.log(LogLevel::TEST, "parseTest JSON EXIT");
 }
 
 void TestSync::checkForDeletedTests()
@@ -208,17 +246,20 @@ void TestSync::checkForDeletedTests()
 }
 void TestSync::handleUserUpdate(UserUpdateEvent update)
 {
+	TestSync& SyncTest = TestSync::getInstance();
 	switch(update)
 	{
 		case UserUpdateEvent::NEW_TEST:
+
 			EventHelper::setBits(UserUpdateEvent::NEW_TEST);
 			EventHelper::clearBits(UserUpdateEvent::DELETE_TEST);
-			logger.log(LogLevel::TEST, "updating New Test Event for State Change");
+
+			logger.log(LogLevel::SUCCESS, "Handled New Test Event in handleUserUpdat() ");
+
 			refreshState();
 			break;
 		case UserUpdateEvent::DELETE_TEST:
-			EventHelper::setBits(UserUpdateEvent::DELETE_TEST);
-			EventHelper::clearBits(UserUpdateEvent::NEW_TEST);
+
 			refreshState();
 			break;
 		case UserUpdateEvent::DATA_ENTRY:
@@ -333,12 +374,13 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 									  static_cast<EventBits_t>(UserCommandEvent::MANUAL) |
 									  static_cast<EventBits_t>(UserCommandEvent::PAUSE) |
 									  static_cast<EventBits_t>(UserCommandEvent::RESUME);
+	State syncState = instance.refreshState();
+	logger.log(LogLevel::INFO, "Sync Class state is:%s", stateToString(syncState));
 
 	while(xEventGroupWaitBits(EventHelper::userCommandEventGroup, CMD_BITS_MASK, pdFALSE, pdFALSE,
 							  portMAX_DELAY))
 	{
 		int cmdResult = xEventGroupGetBits(EventHelper::userCommandEventGroup);
-
 		logger.log(LogLevel::SUCCESS, "New User Command Received");
 
 		if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::AUTO)) != 0)
@@ -346,14 +388,12 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			instance.refreshState();
 			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
 			instance.acknowledgeCMD();
-			return;
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::MANUAL)) != 0)
 		{
 			instance.refreshState();
 			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
 			instance.acknowledgeCMD();
-			return;
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::START)) != 0)
 		{
@@ -364,7 +404,6 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 				instance.startTest(instance._testList[0].testType);
 			}
 			instance.acknowledgeCMD();
-			return;
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::STOP)) != 0)
 		{
@@ -373,16 +412,13 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::MANUAL)) != 0)
 			{
 				instance.stopTest(instance._testList[0].testType);
-				return;
 			}
 			else
 			{
 				instance.stopAllTest();
 				instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
-				return;
 			}
 			instance.acknowledgeCMD();
-			return;
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::PAUSE)) != 0)
 		{
@@ -391,7 +427,6 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
 			instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
 			instance.acknowledgeCMD();
-			return;
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::RESUME)) != 0)
 		{
@@ -399,12 +434,12 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
 			instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
 			instance.acknowledgeCMD();
-			return;
 		}
 		vTaskDelay(pdMS_TO_TICKS(200));
 	}
 	vTaskDelete(NULL);
 }
+
 void TestSync::userUpdateObserverTask(void* pvParameters)
 {
 	TestSync& instance = TestSync::getInstance();
@@ -413,15 +448,18 @@ void TestSync::userUpdateObserverTask(void* pvParameters)
 										 static_cast<EventBits_t>(UserUpdateEvent::NEW_TEST) |
 										 static_cast<EventBits_t>(UserUpdateEvent::DELETE_TEST);
 
-	while(true)
+	while(xEventGroupWaitBits(EventHelper::userUpdateEventGroup, UPDATE_BITS_MASK, pdFALSE, pdFALSE,
+							  portMAX_DELAY))
 	{
-		EventBits_t updateBits = xEventGroupWaitBits(
-			EventHelper::userUpdateEventGroup, UPDATE_BITS_MASK, pdFALSE, pdFALSE, portMAX_DELAY);
+		int updateBits = xEventGroupGetBits(EventHelper::userUpdateEventGroup);
 
 		logger.log(LogLevel::SUCCESS, "Implementing updates from Test Sync");
+		State syncState = instance.refreshState();
+		logger.log(LogLevel::INFO, "Sync Class state is:%s", stateToString(syncState));
 
 		if((updateBits & static_cast<EventBits_t>(UserUpdateEvent::NEW_TEST)) != 0)
 		{
+			logger.log(LogLevel::SUCCESS, "handling for bit set NEW TEST");
 			instance.refreshState();
 			instance.enableCurrentTest();
 			logger.log(LogLevel::TEST, "Invoking State Change...");

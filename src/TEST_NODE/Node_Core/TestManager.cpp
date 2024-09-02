@@ -52,10 +52,10 @@ void TestManager::init()
 	}
 	UpdateSettings();
 	setupPins();
-	createISRTasks();
+	// createISRTasks();
 	initializeTestInstances();
 	createManagerTasks();
-	createTestTasks();
+	// createTestTasks();
 
 	// pauseAllTest();
 
@@ -190,12 +190,12 @@ void TestManager::createTestTasks()
 	SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
 	BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 	xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
-	xTaskCreatePinnedToCore(switchTest.SwitchTestTask, "MainsTestManager", 12000, NULL,
+	xTaskCreatePinnedToCore(switchTest.SwitchTestTask, "MainsTestManager", 4096, NULL,
 							_cfgTask.mainTest_taskIdlePriority, &switchTestTaskHandle, 0);
 	logger.log(LogLevel::SUCCESS, "Switch Test task created");
 	logger.log(LogLevel::INFO, "Creating Backuptest task ");
 	xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
-	xTaskCreatePinnedToCore(backupTest.BackupTestTask, "MainsTestManager", 12000, NULL,
+	xTaskCreatePinnedToCore(backupTest.BackupTestTask, "MainsTestManager", 4096, NULL,
 							_cfgTask.mainTest_taskIdlePriority, &backupTestTaskHandle, 0);
 	logger.log(LogLevel::SUCCESS, "Switch Test task created");
 }
@@ -204,20 +204,22 @@ void TestManager::TestManagerTask(void* pvParameters)
 {
 	logger.log(LogLevel::INFO, "Resuming Test Manager task");
 
-	vTaskDelay(pdMS_TO_TICKS(1000));
-	while(true)
+	while(xEventGroupWaitBits(EventHelper::syncControlEvent,
+							  static_cast<EventBits_t>(SyncCommand::MANAGER_ACTIVE), pdFALSE,
+							  pdTRUE, portMAX_DELAY))
 	{
 		TestManager& instance = TestManager::getInstance();
 		State managerState = instance.refreshState();
-		xEventGroupWaitBits(EventHelper::syncControlEvent,
-							static_cast<EventBits_t>(SyncCommand::MANAGER_ACTIVE), pdFALSE, pdFALSE,
-							portMAX_DELAY);
+		// xEventGroupWaitBits(EventHelper::syncControlEvent,
+		// 					static_cast<EventBits_t>(SyncCommand::MANAGER_ACTIVE), pdFALSE, pdFALSE,
+		// 					portMAX_DELAY);
 
 		if(managerState == State::DEVICE_READY)
 		{
 			managerState = instance.refreshState();
-			logger.log(LogLevel::INFO, "Manager state is:", stateToString(managerState));
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			logger.log(LogLevel::INFO, "Manager state is:%s", stateToString(managerState));
+			// Serial.print(stateToString(managerState));
+			vTaskDelay(pdMS_TO_TICKS(100));
 		}
 
 		for(int i = 0; i < instance._numTest; ++i)

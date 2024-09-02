@@ -156,7 +156,10 @@ void EventHelper::setBits(UserCommandEvent e)
 }
 void EventHelper::setBits(UserUpdateEvent e)
 {
+	logger.log(LogLevel::SUCCESS, "set bits for event:", e);
 	xEventGroupSetBits(userUpdateEventGroup, static_cast<EventBits_t>(e));
+	EventBits_t eBit = xEventGroupGetBits(userUpdateEventGroup);
+	logger.logBinary(LogLevel::TEST, eBit);
 }
 
 void EventHelper::setBits(DataEvent e)

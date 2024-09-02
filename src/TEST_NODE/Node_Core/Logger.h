@@ -260,14 +260,14 @@ class Logger
 	}
 
 	// Log function for binary output
-	// void logBinary(LogLevel level, uint32_t result)
-	// {
-	// 	String output = formatLogLevel(level);
-	// 	output += "Result in binary: ";
-	// 	Serial.print(output);
-	// 	Serial.println(result, BIN); // Print the result in binary format
-	// 	Serial.println("\033[0m"); // Reset color
-	// }
+	void logBinary(LogLevel level, uint32_t result)
+	{
+		String output = formatLogLevel(level);
+		output += "Result in binary: ";
+		Serial.print(output);
+		Serial.println(result, BIN); // Print the result in binary format
+		Serial.println("\033[0m"); // Reset color
+	}
 	// Log error from UPSError
 	void logError(UPSError error)
 	{
