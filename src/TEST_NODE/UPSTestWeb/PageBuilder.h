@@ -78,7 +78,6 @@ class PageBuilder
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;
 
-  private:
 	const char* copyFromPROGMEM(const char copyFrom[], char sendTo[]);
 
 	void sendButton(AsyncResponseStream* response, const char* title, const char* action,
