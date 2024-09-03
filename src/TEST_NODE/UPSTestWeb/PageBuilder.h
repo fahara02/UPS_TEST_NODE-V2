@@ -59,10 +59,9 @@ static const String WiFiQuality(int rssiValue)
 class PageBuilder
 {
   public:
-	PageBuilder(AsyncWebServer* server) : _server(server)
+	PageBuilder()
 	{
 	}
-	void setupPages(TestSync& testSync);
 
 	void sendHtmlHead(AsyncResponseStream* response);
 	void sendHeader(AsyncResponseStream* response);
@@ -80,7 +79,6 @@ class PageBuilder
 	String getWiFiQuality(int rssiValue) const;
 
   private:
-	AsyncWebServer* _server;
 	const char* copyFromPROGMEM(const char copyFrom[], char sendTo[]);
 
 	void sendButton(AsyncResponseStream* response, const char* title, const char* action,

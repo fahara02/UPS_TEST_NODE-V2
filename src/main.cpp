@@ -223,8 +223,8 @@ void setup()
 	Manager.passEvent(Event::LOAD_BANK_CHECKED);
 	vTaskDelay(pdTICKS_TO_MS(100));
 
-	PageBuilder builder(&server);
-	builder.setupPages(SyncTest);
+	// PageBuilder builder(&server);
+	// builder.setupPages(SyncTest);
 	server.begin();
 }
 void loop()

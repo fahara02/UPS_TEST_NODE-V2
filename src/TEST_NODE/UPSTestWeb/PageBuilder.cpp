@@ -2,159 +2,159 @@
 #include "AsyncJson.h"
 #include "ArduinoJson.h"
 
-#define ETAG "\"" __DATE__ " " __TIME__ "\""
 
-void PageBuilder::setupPages(TestSync& syncTest)
-{
-	// Handle the main page
-	_server->on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
-		auto* response = request->beginResponseStream("text/html");
-		this->sendHtmlHead(response);
-		this->sendStyle(response);
-		this->sendHeaderTrailer(response);
-		this->sendHeader(response);
-		this->sendNavbar(response);
-		this->sendSidebar(response);
-		this->sendUserCommand(response);
-		this->sendScript(response);
-		this->sendPageTrailer(response);
-		request->send(response);
-	});
 
-	_server->on("/dashboard", HTTP_GET, [this](AsyncWebServerRequest* request) {
-		auto* response = request->beginResponseStream("text/html");
-		this->sendHtmlHead(response);
-		this->sendStyle(response);
-		this->sendHeaderTrailer(response);
-		this->sendHeader(response);
-		this->sendNavbar(response);
-		this->sendSidebar(response);
-		this->sendUserCommand(response);
-		this->sendScript(response);
-		this->sendPageTrailer(response);
-		request->send(response);
-	});
+// void PageBuilder::setupPages(TestSync& syncTest)
+// {
+// 	// Handle the main page
+// 	_server->on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
+// 		auto* response = request->beginResponseStream("text/html");
+// 		this->sendHtmlHead(response);
+// 		this->sendStyle(response);
+// 		this->sendHeaderTrailer(response);
+// 		this->sendHeader(response);
+// 		this->sendNavbar(response);
+// 		this->sendSidebar(response);
+// 		this->sendUserCommand(response);
+// 		this->sendScript(response);
+// 		this->sendPageTrailer(response);
+// 		request->send(response);
+// 	});
 
-	_server->on("/settings/ups-specification", HTTP_GET, [this](AsyncWebServerRequest* request) {
-		auto* response = request->beginResponseStream("text/html");
-		this->sendHtmlHead(response);
-		this->sendStyle(response);
-		this->sendTableStyle(response);
-		this->sendHeaderTrailer(response);
-		this->sendHeader(response);
-		this->sendNavbar(response);
-		UPSTesterSetup& testerSetup = UPSTesterSetup::getInstance();
-		this->sendSettingTable(response, testerSetup, "UPS SPECIFICATION", SettingType::SPEC);
+// 	_server->on("/dashboard", HTTP_GET, [this](AsyncWebServerRequest* request) {
+// 		auto* response = request->beginResponseStream("text/html");
+// 		this->sendHtmlHead(response);
+// 		this->sendStyle(response);
+// 		this->sendHeaderTrailer(response);
+// 		this->sendHeader(response);
+// 		this->sendNavbar(response);
+// 		this->sendSidebar(response);
+// 		this->sendUserCommand(response);
+// 		this->sendScript(response);
+// 		this->sendPageTrailer(response);
+// 		request->send(response);
+// 	});
 
-		this->sendScript(response);
-		this->sendPageTrailer(response);
-		request->send(response);
-	});
-	_server->on("/settings/test-specification", HTTP_GET, [this](AsyncWebServerRequest* request) {
-		auto* response = request->beginResponseStream("text/html");
-		this->sendHtmlHead(response);
-		this->sendStyle(response);
-		this->sendTableStyle(response);
-		this->sendHeaderTrailer(response);
-		this->sendHeader(response);
-		this->sendNavbar(response);
-		UPSTesterSetup& testerSetup = UPSTesterSetup::getInstance();
-		this->sendSettingTable(response, testerSetup, "TEST SPECIFICATION", SettingType::TEST);
+// 	_server->on("/settings/ups-specification", HTTP_GET, [this](AsyncWebServerRequest* request) {
+// 		auto* response = request->beginResponseStream("text/html");
+// 		this->sendHtmlHead(response);
+// 		this->sendStyle(response);
+// 		this->sendTableStyle(response);
+// 		this->sendHeaderTrailer(response);
+// 		this->sendHeader(response);
+// 		this->sendNavbar(response);
+// 		UPSTesterSetup& testerSetup = UPSTesterSetup::getInstance();
+// 		this->sendSettingTable(response, testerSetup, "UPS SPECIFICATION", SettingType::SPEC);
 
-		this->sendScript(response);
-		this->sendPageTrailer(response);
-		request->send(response);
-	});
-	// Handle GET request for logs
-	_server->on("/log", HTTP_GET, [](AsyncWebServerRequest* request) {
-		String logs = logger.getBufferedLogs();
-		if(logs.length() > 0)
-		{
-			request->send(200, "text/plain", logs);
-		}
-		else
-		{
-			request->send(200, "text/plain", "No logs available.");
-		}
-	});
+// 		this->sendScript(response);
+// 		this->sendPageTrailer(response);
+// 		request->send(response);
+// 	});
+// 	_server->on("/settings/test-specification", HTTP_GET, [this](AsyncWebServerRequest* request) {
+// 		auto* response = request->beginResponseStream("text/html");
+// 		this->sendHtmlHead(response);
+// 		this->sendStyle(response);
+// 		this->sendTableStyle(response);
+// 		this->sendHeaderTrailer(response);
+// 		this->sendHeader(response);
+// 		this->sendNavbar(response);
+// 		UPSTesterSetup& testerSetup = UPSTesterSetup::getInstance();
+// 		this->sendSettingTable(response, testerSetup, "TEST SPECIFICATION", SettingType::TEST);
 
-	// Handle POST request for updating test data
-	auto* testDataHandler = new AsyncCallbackJsonWebHandler(
-		"/updateTestData", [](AsyncWebServerRequest* request, JsonVariant& json) {
-			// Print the received JSON to the serial monitor for debugging
-			Serial.println("Received JSON Data:");
-			serializeJsonPretty(json, Serial);
+// 		this->sendScript(response);
+// 		this->sendPageTrailer(response);
+// 		request->send(response);
+// 	});
+// 	// Handle GET request for logs
+// 	_server->on("/log", HTTP_GET, [](AsyncWebServerRequest* request) {
+// 		String logs = logger.getBufferedLogs();
+// 		if(logs.length() > 0)
+// 		{
+// 			request->send(200, "text/plain", logs);
+// 		}
+// 		else
+// 		{
+// 			request->send(200, "text/plain", "No logs available.");
+// 		}
+// 	});
 
-			// Check if the JSON data is an array
-			if(json.is<JsonArray>())
-			{
-				JsonArray jsonArray = json.as<JsonArray>();
+// 	// Handle POST request for updating test data
+// 	auto* testDataHandler = new AsyncCallbackJsonWebHandler(
+// 		"/updateTestData", [](AsyncWebServerRequest* request, JsonVariant& json) {
+// 			// Print the received JSON to the serial monitor for debugging
+// 			Serial.println("Received JSON Data:");
+// 			serializeJsonPretty(json, Serial);
 
-				// Iterate through the array and process each JSON object
-				for(JsonVariant value: jsonArray)
-				{
-					if(value.is<JsonObject>())
-					{
-						JsonObject jsonObj = value.as<JsonObject>();
+// 			// Check if the JSON data is an array
+// 			if(json.is<JsonArray>())
+// 			{
+// 				JsonArray jsonArray = json.as<JsonArray>();
 
-						// Validate and process the expected fields
-						if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
-						{
-							Serial.print("testName: ");
-							Serial.println(jsonObj["testName"].as<String>());
-							Serial.print("loadLevel: ");
-							Serial.println(jsonObj["loadLevel"].as<String>());
-							TestSync& SyncTest = TestSync::getInstance();
-							SyncTest.parseIncomingJson(jsonObj);
-						}
-						else
-						{
-							Serial.println("Error: Required fields missing in JSON.");
-						}
-					}
-					else
-					{
-						Serial.println("Error: Expected JSON objects in array.");
-					}
-				}
-				request->send(200, "application/json", "{\"status\":\"success\"}");
-			}
-			else
-			{
-				Serial.println("Error: Invalid JSON format.");
-				request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
-			}
-		});
-	_server->addHandler(testDataHandler);
-	// Handle POST request to updateMode
-	_server->on("/updateMode", HTTP_POST, [](AsyncWebServerRequest* request) {
-		if(!request->hasParam("body", true))
-		{
-			request->send(400, "text/plain", "Invalid request: No body found.");
-			return;
-		}
+// 				// Iterate through the array and process each JSON object
+// 				for(JsonVariant value: jsonArray)
+// 				{
+// 					if(value.is<JsonObject>())
+// 					{
+// 						JsonObject jsonObj = value.as<JsonObject>();
 
-		String mode = request->getParam("body", true)->value();
-		request->send(200, "text/plain", "Mode received: " + mode);
-	});
+// 						// Validate and process the expected fields
+// 						if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
+// 						{
+// 							Serial.print("testName: ");
+// 							Serial.println(jsonObj["testName"].as<String>());
+// 							Serial.print("loadLevel: ");
+// 							Serial.println(jsonObj["loadLevel"].as<String>());
+// 							TestSync& SyncTest = TestSync::getInstance();
+// 							SyncTest.parseIncomingJson(jsonObj);
+// 						}
+// 						else
+// 						{
+// 							Serial.println("Error: Required fields missing in JSON.");
+// 						}
+// 					}
+// 					else
+// 					{
+// 						Serial.println("Error: Expected JSON objects in array.");
+// 					}
+// 				}
+// 				request->send(200, "application/json", "{\"status\":\"success\"}");
+// 			}
+// 			else
+// 			{
+// 				Serial.println("Error: Invalid JSON format.");
+// 				request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+// 			}
+// 		});
+// 	_server->addHandler(testDataHandler);
+// 	// Handle POST request to updateMode
+// 	_server->on("/updateMode", HTTP_POST, [](AsyncWebServerRequest* request) {
+// 		if(!request->hasParam("body", true))
+// 		{
+// 			request->send(400, "text/plain", "Invalid request: No body found.");
+// 			return;
+// 		}
 
-	// Handle POST request to updateCommand
-	_server->on("/updateCommand", HTTP_POST, [](AsyncWebServerRequest* request) {
-		if(!request->hasParam("body", true))
-		{
-			request->send(400, "text/plain", "Invalid request: No body found.");
-			return;
-		}
+// 		String mode = request->getParam("body", true)->value();
+// 		request->send(200, "text/plain", "Mode received: " + mode);
+// 	});
 
-		String command = request->getParam("body", true)->value();
-		request->send(200, "text/plain", "command received: " + command);
-	});
+// 	// Handle POST request to updateCommand
+// 	_server->on("/updateCommand", HTTP_POST, [](AsyncWebServerRequest* request) {
+// 		if(!request->hasParam("body", true))
+// 		{
+// 			request->send(400, "text/plain", "Invalid request: No body found.");
+// 			return;
+// 		}
 
-	// Handle 404 errors
-	_server->onNotFound([](AsyncWebServerRequest* request) {
-		request->send(404, "text/plain", "404 Not Found");
-	});
-}
+// 		String command = request->getParam("body", true)->value();
+// 		request->send(200, "text/plain", "command received: " + command);
+// 	});
+
+// 	// Handle 404 errors
+// 	_server->onNotFound([](AsyncWebServerRequest* request) {
+// 		request->send(404, "text/plain", "404 Not Found");
+// 	});
+// }
 
 const char* PageBuilder::copyFromPROGMEM(const char copyFrom[], char sendTo[])
 {
