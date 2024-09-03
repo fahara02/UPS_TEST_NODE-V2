@@ -2,8 +2,6 @@
 #include "AsyncJson.h"
 #include "ArduinoJson.h"
 
-
-
 // void PageBuilder::setupPages(TestSync& syncTest)
 // {
 // 	// Handle the main page

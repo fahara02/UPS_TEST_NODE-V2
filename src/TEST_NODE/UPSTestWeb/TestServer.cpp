@@ -7,25 +7,38 @@
 
 void TestServer::servePages(UPSTesterSetup& _setup, TestSync& _sync)
 {
-	// Handle GET requests
-	std::vector<String> getUris = {"/", "/dashboard", "/settings/ups-specification",
-								   "/settings/test-specification", "/log"};
-	for(const auto& uri: getUris)
-	{
-		_server->on(uri.c_str(), HTTP_GET, [this, uri, &_setup](AsyncWebServerRequest* request) {
-			this->handleGETRequest(uri, request, _setup);
-		});
-	}
+	// Handle individual GET requests
+	_server->on("/", HTTP_GET, [this, &_setup](AsyncWebServerRequest* request) {
+		this->handleRootRequest(request);
+	});
 
-	// Handle POST requests
-	std::vector<String> postUris = {"/updateMode", "/updateCommand"};
-	for(const auto& uri: postUris)
-	{
-		_server->on(uri.c_str(), HTTP_POST,
-					[this, uri, &_setup, &_sync](AsyncWebServerRequest* request) {
-						this->handlePOSTRequest(uri, request, _setup, _sync);
-					});
-	}
+	_server->on("/dashboard", HTTP_GET, [this, &_setup](AsyncWebServerRequest* request) {
+		this->handleDashboardRequest(request);
+	});
+
+	_server->on(
+		"/settings/ups-specification", HTTP_GET, [this, &_setup](AsyncWebServerRequest* request) {
+			this->handleSettingRequest(request, _setup, "UPS_SPECIFICATION", SettingType::SPEC);
+		});
+
+	_server->on(
+		"/settings/test-specification", HTTP_GET, [this, &_setup](AsyncWebServerRequest* request) {
+			this->handleSettingRequest(request, _setup, "TEST_SPECIFICATION", SettingType::TEST);
+		});
+
+	_server->on("/log", HTTP_GET, [this](AsyncWebServerRequest* request) {
+		this->handleLogRequest(request);
+	});
+
+	// Handle individual POST requests
+	_server->on("/updateMode", HTTP_POST, [this, &_setup, &_sync](AsyncWebServerRequest* request) {
+		this->handleUpdateModeRequest(request, _setup, _sync);
+	});
+
+	_server->on("/updateCommand", HTTP_POST,
+				[this, &_setup, &_sync](AsyncWebServerRequest* request) {
+					this->handleUserCommandRequest(request, _setup, _sync);
+				});
 
 	auto* testDataHandler = new AsyncCallbackJsonWebHandler(
 		"/updateTestData", [this, &_sync](AsyncWebServerRequest* request, JsonVariant& json) {
@@ -39,73 +52,71 @@ void TestServer::servePages(UPSTesterSetup& _setup, TestSync& _sync)
 	});
 }
 
-void TestServer::handleGETRequest(const String& uri, AsyncWebServerRequest* request,
-								  UPSTesterSetup& _setup)
+void TestServer::handleRootRequest(AsyncWebServerRequest* request)
 {
 	auto* response = request->beginResponseStream("text/html");
-
 	this->webPage->sendHtmlHead(response);
 	this->webPage->sendStyle(response);
 	this->webPage->sendHeaderTrailer(response);
 	this->webPage->sendHeader(response);
 	this->webPage->sendNavbar(response);
 	this->webPage->sendSidebar(response);
-
-	if(uri == "/settings/ups-specification")
-	{
-		this->webPage->sendTableStyle(response);
-		// UPSTesterSetup& testerSetup = UPSTesterSetup::getInstance();
-		this->webPage->sendSettingTable(response, _setup, "UPS SPECIFICATION", SettingType::SPEC);
-	}
-	else if(uri == "/settings/test-specification")
-	{
-		this->webPage->sendTableStyle(response);
-		// UPSTesterSetup& testerSetup = UPSTesterSetup::getInstance();
-		this->webPage->sendSettingTable(response, _setup, "TEST SPECIFICATION", SettingType::TEST);
-	}
-	else if(uri == "/dashboard" || uri == "/")
-	{
-		this->webPage->sendUserCommand(response);
-	}
-	else if(uri == "/log")
-	{
-		String logs = logger.getBufferedLogs();
-		request->send(200, "text/plain", logs.length() > 0 ? logs : "No logs available.");
-		return;
-	}
-	else
-	{
-		// Handle other GET URIs or send a default page.
-	}
-
+	this->webPage->sendUserCommand(response);
 	this->webPage->sendScript(response);
 	this->webPage->sendPageTrailer(response);
 	request->send(response);
 }
 
-void TestServer::handlePOSTRequest(const String& uri, AsyncWebServerRequest* request,
-								   UPSTesterSetup& _setup, TestSync& _sync)
+void TestServer::handleDashboardRequest(AsyncWebServerRequest* request)
 {
-	if(uri == "/updateMode" || uri == "/updateCommand")
-	{
-		if(!request->hasParam("body", true))
-		{
-			request->send(400, "text/plain", "Invalid request: No body found.");
-			return;
-		}
+	this->handleRootRequest(request);
+}
+void TestServer::handleLogRequest(AsyncWebServerRequest* request)
+{
+	String logs = logger.getBufferedLogs();
+	request->send(200, "text/plain", logs.length() > 0 ? logs : "No logs available.");
+}
+void TestServer::handleSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
+									  const char* setting_name, SettingType type)
+{
+	auto* response = request->beginResponseStream("text/html");
+	this->webPage->sendHtmlHead(response);
+	this->webPage->sendStyle(response);
+	this->webPage->sendTableStyle(response);
+	this->webPage->sendHeaderTrailer(response);
+	this->webPage->sendHeader(response);
+	this->webPage->sendNavbar(response);
+	this->webPage->sendSidebar(response);
+	this->webPage->sendSettingTable(response, _setup, setting_name, type);
+	this->webPage->sendScript(response);
+	this->webPage->sendPageTrailer(response);
+	request->send(response);
+}
 
-		String value = request->getParam("body", true)->value();
-		String responseText = (uri == "/updateMode") ? "Mode received: " : "Command received: ";
-		request->send(200, "text/plain", responseText + value);
-	}
-	else if(uri == "/updateTestData")
+void TestServer::handleUpdateModeRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
+										 TestSync& _sync)
+{
+	if(!request->hasParam("body", true))
 	{
-		// Handle the JSON data
+		request->send(400, "text/plain", "Invalid request: No body found.");
+		return;
 	}
-	else
+
+	String value = request->getParam("body", true)->value();
+	request->send(200, "text/plain", "Mode received: " + value);
+}
+
+void TestServer::handleUserCommandRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
+										  TestSync& _sync)
+{
+	if(!request->hasParam("body", true))
 	{
-		// Handle other POST URIs
+		request->send(400, "text/plain", "Invalid request: No body found.");
+		return;
 	}
+
+	String value = request->getParam("body", true)->value();
+	request->send(200, "text/plain", "Command received: " + value);
 }
 
 void TestServer::handleTestDataRequest(AsyncWebServerRequest* request, JsonVariant& json,
@@ -130,7 +141,6 @@ void TestServer::handleTestDataRequest(AsyncWebServerRequest* request, JsonVaria
 					Serial.println(jsonObj["testName"].as<String>());
 					Serial.print("loadLevel: ");
 					Serial.println(jsonObj["loadLevel"].as<String>());
-					// TestSync& SyncTest = TestSync::getInstance();
 					_sync.parseIncomingJson(jsonObj);
 				}
 				else

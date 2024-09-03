@@ -62,7 +62,10 @@ class PageBuilder
 	PageBuilder()
 	{
 	}
-
+	// PageBuilder(AsyncWebServer* server) : _server(server)
+	// {
+	// }
+	void setupPages(TestSync& syncTest);
 	void sendHtmlHead(AsyncResponseStream* response);
 	void sendHeader(AsyncResponseStream* response);
 	void sendHeaderTrailer(AsyncResponseStream* response);
@@ -75,6 +78,8 @@ class PageBuilder
 	void sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup,
 						  const char* caption, SettingType type);
 
+	//   private:
+	// 	AsyncWebServer* _server;
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;
 

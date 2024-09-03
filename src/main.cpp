@@ -224,8 +224,8 @@ void setup()
 	Manager.passEvent(Event::LOAD_BANK_CHECKED);
 	vTaskDelay(pdTICKS_TO_MS(100));
 
-	//  builder.setupPages(SyncTest);
-	// PageBuilder web;
+	// PageBuilder web(&server);
+	// web.setupPages(SyncTest);
 	TestServer testServer(&server);
 	testServer.servePages(TesterSetup, SyncTest);
 	server.begin();
