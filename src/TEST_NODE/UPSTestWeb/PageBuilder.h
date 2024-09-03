@@ -73,7 +73,8 @@ class PageBuilder
 	void sendScript(AsyncResponseStream* response);
 	void sendNavbar(AsyncResponseStream* response);
 	void sendSidebar(AsyncResponseStream* response, const char* content = "");
-	void sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup);
+	void sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup,
+						  const char* caption, SettingType type);
 
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;

@@ -280,7 +280,7 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         font-family: monospace;
         white-space: pre-wrap;
       }
-
+      
       /* Responsive Adjustments */
       @media (max-width: 768px) {
         .navbar,
