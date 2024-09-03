@@ -37,9 +37,9 @@ const char NAVBAR_HTML[] PROGMEM = R"rawliteral(
         <div class="dropdown">
           <button class="dropbtn">Settings</button>
           <div class="dropdown-content">
-            <a href="#ups-specification">UPS Specification</a>
-            <a href="#test-specification">Test Specification</a>
-            <a href="#report-specification">Report Specification</a>
+            <a href="/settings/ups-specification">UPS Specification</a>
+            <a href="/settings/test-specification">Test Specification</a>
+            <a href="/settings/report-specification">Report Specification</a>
             <hr />
             <button id="update-settings-button">Update</button>
           </div>
@@ -101,11 +101,12 @@ const char SIDEBAR_HTML[] PROGMEM = R"rawliteral(
         </div>
       </div>
     </div>
+   
 )rawliteral";
 
 // User Command and Log HTML
 const char USER_COMMAND_AND_LOG_HTML[] PROGMEM = R"rawliteral(
- 
+    
     <div class="container">
       <!-- User Commands -->
       <div class="user-command">

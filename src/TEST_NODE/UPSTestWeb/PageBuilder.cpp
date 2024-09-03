@@ -35,7 +35,7 @@ void PageBuilder::setupPages(TestSync& syncTest)
 		request->send(response);
 	});
 
-	_server->on("/settings", HTTP_GET, [this](AsyncWebServerRequest* request) {
+	_server->on("/settings/ups-specification", HTTP_GET, [this](AsyncWebServerRequest* request) {
 		auto* response = request->beginResponseStream("text/html");
 		this->sendHtmlHead(response);
 		this->sendStyle(response);
@@ -392,7 +392,7 @@ void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
 
 void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup)
 {
-	// response->print("<div id='custom-settings-page'>");
+	response->print("<div id='custom-settings-page'>");
 	//  Begin table
 	response->print("<form method='post' action='/updateSettings'>");
 	response->print("<table border='1'>");
@@ -447,7 +447,7 @@ void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup
 	response->print("</table>");
 	response->print("<button type='submit'>Save Settings</button>");
 	response->print("</form>");
-	// response->print("</div>");
+	response->print("</div>");
 }
 
 //----------------------------------HTML BLOCK FACTORY------------------//
