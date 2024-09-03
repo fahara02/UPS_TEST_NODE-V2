@@ -19,6 +19,7 @@
 #include <nvs_flash.h>
 #include "TestSync.h"
 #include "TestServer.h"
+#include "UPSTime.h"
 
 using namespace Node_Core;
 
@@ -134,6 +135,8 @@ void modbusRTUTask(void* pvParameters)
 void setup()
 
 {
+	setupTime();
+	xTaskCreate(TimeKeeperTask, "TimeKeeperTask", 4096, NULL, 1, NULL);
 	Serial.begin(115200);
 	// Initialize NVS
 	esp_err_t err = nvs_flash_init();

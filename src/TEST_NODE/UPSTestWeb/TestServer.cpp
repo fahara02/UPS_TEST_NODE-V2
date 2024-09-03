@@ -93,7 +93,7 @@ void TestServer::handleSettingRequest(AsyncWebServerRequest* request, UPSTesterS
 	this->webPage->sendHeaderTrailer(response);
 	this->webPage->sendHeader(response);
 	this->webPage->sendNavbar(response);
-	this->webPage->sendSidebar(response);
+
 	this->webPage->sendSettingTable(response, _setup, setting_name, type);
 	this->webPage->sendScript(response);
 	this->webPage->sendPageTrailer(response);

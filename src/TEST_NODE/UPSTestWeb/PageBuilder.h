@@ -112,7 +112,8 @@ class PageBuilder
 					  const char* cssClass = nullptr);
 	void sendTableRow(AsyncResponseStream* response, const char* name, const char* value,
 					  const char* cssClass = nullptr);
-
+	void sendTableRow(AsyncResponseStream* response, const char* name, time_t timeValue,
+					  const char* cssClass);
 	template<typename... Args>
 	void sendColorGroup(AsyncResponseStream* response, int span, const char* backgound_color,
 						Args&&... args);

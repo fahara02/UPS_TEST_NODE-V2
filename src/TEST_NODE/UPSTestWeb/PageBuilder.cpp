@@ -292,6 +292,7 @@ void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup
 		sendTableRow(response, "Avg Backup Time (ms)", static_cast<double>(spec.AvgBackupTime_ms));
 		sendInputField(response, "AvgBackupTime_ms", spec.AvgBackupTime_ms);
 		sendTableRow(response, "Last Update (Spec)", spec.lastUpdateTime());
+		sendTableRow(response, "Todays Date Time", __DATE__ " " __TIME__);
 	}
 	else if(type == SettingType::TEST)
 	{
@@ -307,6 +308,7 @@ void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup
 		sendInputField(response, "InputVoltage_volt", test.inputVoltage_volt, UPS_MIN_INPUT_VOLT,
 					   UPS_MAX_INPUT_VOLT);
 		sendTableRow(response, "Last Update (Test)", test.lastUpdateTime());
+		sendTableRow(response, "Todays Date Time", __DATE__ " " __TIME__);
 		// Example Dropdown
 	}
 
@@ -487,6 +489,25 @@ void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, 
 	else
 	{
 		response->printf("<tr><td>%s:</td><td>%s</td></tr>", name, value);
+	}
+}
+
+void PageBuilder::sendTableRow(AsyncResponseStream* response, const char* name, time_t timeValue,
+							   const char* cssClass)
+{
+	// Convert time_t to a human-readable string
+	struct tm* timeinfo = localtime(&timeValue);
+	char timeStr[20]; // Adjust the size if needed
+	std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", timeinfo);
+
+	// Handle the class attribute separately
+	if(cssClass)
+	{
+		response->printf("<tr class='%s'><td>%s:</td><td>%s</td></tr>", cssClass, name, timeStr);
+	}
+	else
+	{
+		response->printf("<tr><td>%s:</td><td>%s</td></tr>", name, timeStr);
 	}
 }
 

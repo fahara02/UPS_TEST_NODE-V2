@@ -3,9 +3,9 @@
 #include "Arduino.h"
 #include <IPAddress.h>
 #include <stdint.h>
-#include <ctime>
+#include <time.h>
+#include "ctime"
 #include <cstring>
-#include <tuple>
 #include "NodeConstants.h"
 
 namespace Node_Core
@@ -79,88 +79,100 @@ struct SetupSpec
 
 	bool setField(Field field, uint32_t value)
 	{
+		bool updated = false;
+
 		switch(field)
 		{
 			case Field::RatingVa:
 				if(value >= UPS_MIN_VA && value <= UPS_MAX_VA)
 				{
 					Rating_va = static_cast<uint16_t>(value);
-					Serial.println("rating va is updated");
-					return true;
+					Serial.println("Rating VA updated");
+					updated = true;
 				}
-				return false;
 				break;
+
 			case Field::RatedVoltage:
 				if(value >= UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT)
 				{
 					RatedVoltage_volt = static_cast<uint16_t>(value);
-					Serial.println("rated v is updated");
-					return true;
+					Serial.println("Rated voltage updated");
+					updated = true;
 				}
-				return false;
-
 				break;
+
 			case Field::RatedCurrent:
-				if(value >= UPS_MIN_OUTPUT_mAMP && value <= UPS_MIN_OUTPUT_mAMP)
+				if(value >= UPS_MIN_OUTPUT_mAMP && value <= UPS_MAX_OUTPUT_mAMP)
 				{
 					RatedCurrent_amp = static_cast<uint16_t>(value) / 1000;
-					return true;
+					updated = true;
 				}
-				return false;
 				break;
+
 			case Field::MinInputVoltage:
 				if(value >= UPS_MIN_INPUT_VOLT && value < UPS_MAX_INPUT_VOLT)
 				{
 					MinInputVoltage_volt = static_cast<uint16_t>(value);
-					return true;
+					updated = true;
 				}
-				return false;
 				break;
+
 			case Field::MaxInputVoltage:
 				if(value > UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT)
 				{
 					MaxInputVoltage_volt = static_cast<uint16_t>(value);
-					return true;
+					updated = true;
 				}
-				return false;
 				break;
+
 			case Field::AvgSwitchTime:
 				if(value <= UPS_MAX_SWITCHING_TIME_MS)
 				{
 					AvgSwitchTime_ms = value;
-					return true;
+					updated = true;
 				}
-				return false;
 				break;
+
 			case Field::AvgBackupTime:
 				if(value >= UPS_MIN_BACKUP_TIME_MS)
 				{
 					AvgBackupTime_ms = value;
-					return true;
+					updated = true;
 				}
-				return false;
 				break;
 		}
-		lastsetting_updated = millis(); // Update the timestamp to the current time.
-		return true;
+
+		if(updated)
+		{
+			lastsetting_updated = millis(); // Update the milliseconds timestamp
+			lastSettingtime = time(nullptr); // Update the real-time timestamp
+			return true;
+		}
+
+		return false;
 	}
 
 	unsigned lastUpdate() const
 	{
-		return lastsetting_updated;
+		return lastsetting_updated; // Return the milliseconds timestamp
 	}
+
 	const char* lastUpdateTime() const
 	{
-		std::time_t t = lastsetting_updated;
-		std::strftime(last_update_str, sizeof(last_update_str), "%Y-%m-%d %H:%M:%S",
-					  std::localtime(&t));
+		struct tm* timeinfo = localtime(&lastSettingtime);
+		if(!timeinfo)
+		{
+			std::strncpy(last_update_str, "Invalid Time", sizeof(last_update_str));
+			return last_update_str;
+		}
+		std::strftime(last_update_str, sizeof(last_update_str), "%b %d %Y %H:%M:%S", timeinfo);
 		return last_update_str;
 	}
 
   private:
 	SettingType typeofSetting = SettingType::SPEC;
-	unsigned long lastsetting_updated = 0UL;
-	unsigned long lastupdate_time = 0UL;
+	unsigned long lastsetting_updated = 0UL; // Store the last update time in milliseconds
+	time_t lastSettingtime = 0; // Store the real-time timestamp
 	mutable char last_update_str[20];
 };
 
