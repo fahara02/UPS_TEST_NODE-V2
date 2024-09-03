@@ -40,6 +40,13 @@ void TestServer::servePages(UPSTesterSetup& _setup, TestSync& _sync)
 					this->handleUserCommandRequest(request, _setup, _sync);
 				});
 
+	_server->on("/updateSettings/spec", HTTP_POST, [this, &_setup](AsyncWebServerRequest* request) {
+		this->handleUpdateSettingRequest(request, _setup, SettingType::SPEC);
+	});
+	_server->on("/updateSettings/test", HTTP_POST, [this, &_setup](AsyncWebServerRequest* request) {
+		this->handleUpdateSettingRequest(request, _setup, SettingType::TEST);
+	});
+
 	auto* testDataHandler = new AsyncCallbackJsonWebHandler(
 		"/updateTestData", [this, &_sync](AsyncWebServerRequest* request, JsonVariant& json) {
 			this->handleTestDataRequest(request, json, _sync);
@@ -91,6 +98,78 @@ void TestServer::handleSettingRequest(AsyncWebServerRequest* request, UPSTesterS
 	this->webPage->sendScript(response);
 	this->webPage->sendPageTrailer(response);
 	request->send(response);
+}
+
+void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
+											SettingType type)
+{
+	String responseMessage;
+
+	if(type == SettingType::SPEC)
+	{
+		SetupSpec& spec = _setup.specSetup();
+
+		if(request->hasParam("Rating_va", true))
+		{
+			String ratingVa = request->getParam("Rating_va", true)->value();
+			spec.setField(SetupSpec::Field::RatingVa, ratingVa.toDouble());
+			responseMessage += "Spec Settings rated VA updated successfully.<br>";
+		}
+
+		if(request->hasParam("RatedVoltage_volt", true))
+		{
+			String ratedVolt = request->getParam("RatedVoltage_volt", true)->value();
+			spec.setField(SetupSpec::Field::RatedVoltage, ratedVolt.toDouble());
+			responseMessage += "Spec Settings rated voltage updated successfully.<br>";
+		}
+	}
+
+	if(type == SettingType::TEST)
+	{
+		SetupTest& test = _setup.testSetup();
+
+		// Update TestStandard field (const char*)
+		if(request->hasParam("TestStandard", true))
+		{
+			String testStandardStr = request->getParam("TestStandard", true)->value();
+			test.TestStandard = testStandardStr.c_str(); // Assign string to const char*
+			responseMessage += "Test Settings standard updated successfully.<br>";
+		}
+
+		// Update TestMode field (enum TestMode)
+		if(request->hasParam("TestMode", true))
+		{
+			String modeStr = request->getParam("TestMode", true)->value();
+			TestMode mode;
+
+			// Assuming your TestMode enum has values like AUTO, MANUAL, etc.
+			if(modeStr == "AUTO")
+			{
+				mode = TestMode::AUTO;
+			}
+			else if(modeStr == "MANUAL")
+			{
+				mode = TestMode::MANUAL;
+			}
+			else
+			{
+				request->send(400, "text/html", "Invalid Test Mode.");
+				return; // Early exit if invalid mode
+			}
+
+			test.mode = mode;
+			responseMessage += "Test Settings mode updated successfully.<br>";
+		}
+	}
+
+	if(responseMessage.isEmpty())
+	{
+		request->send(400, "text/html", "No valid settings updated.");
+	}
+	else
+	{
+		request->send(200, "text/html", responseMessage);
+	}
 }
 
 void TestServer::handleUpdateModeRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,

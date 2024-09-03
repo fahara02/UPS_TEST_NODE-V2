@@ -12,6 +12,7 @@
 #include "UPSTesterSetup.h"
 #include "UPSTest.h"
 #include "NodeConstants.h"
+#include "Settings.h"
 
 using namespace Node_Core;
 

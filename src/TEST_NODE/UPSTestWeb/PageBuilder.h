@@ -2,18 +2,17 @@
 #define PAGE_BUILDER_H
 
 #include <pgmspace.h>
-#include <Update.h>
-#include <vector>
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
+#include "TestSync.h"
+
 #include "NodeConstants.h"
 #include "Settings.h"
 #include "TestData.h"
 #include "UPSdebug.h"
-#include "TestSync.h"
+
 #include "TestManager.h"
 #include "UPSTesterSetup.h"
-
 #include "Logger.h"
 #include "RawHTML.h"
 #include "RawCSS.h"
@@ -62,9 +61,7 @@ class PageBuilder
 	PageBuilder()
 	{
 	}
-	// PageBuilder(AsyncWebServer* server) : _server(server)
-	// {
-	// }
+
 	void setupPages(TestSync& syncTest);
 	void sendHtmlHead(AsyncResponseStream* response);
 	void sendHeader(AsyncResponseStream* response);
@@ -78,8 +75,6 @@ class PageBuilder
 	void sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup,
 						  const char* caption, SettingType type);
 
-	//   private:
-	// 	AsyncWebServer* _server;
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;
 

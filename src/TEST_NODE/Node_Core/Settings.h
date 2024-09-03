@@ -85,6 +85,7 @@ struct SetupSpec
 				if(value >= UPS_MIN_VA && value <= UPS_MAX_VA)
 				{
 					Rating_va = static_cast<uint16_t>(value);
+					Serial.println("rating va is updated");
 					return true;
 				}
 				return false;
@@ -93,6 +94,7 @@ struct SetupSpec
 				if(value >= UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT)
 				{
 					RatedVoltage_volt = static_cast<uint16_t>(value);
+					Serial.println("rated v is updated");
 					return true;
 				}
 				return false;
@@ -140,7 +142,7 @@ struct SetupSpec
 				break;
 		}
 		lastsetting_updated = millis(); // Update the timestamp to the current time.
-		lastupdate_time = std::time(nullptr);
+		return true;
 	}
 
 	unsigned lastUpdate() const
@@ -201,9 +203,11 @@ struct SetupTest
 		{
 			case Field::TestStandard:
 				TestStandard = reinterpret_cast<const char*>(value);
+				Serial.println("standard v is updated");
 				break;
 			case Field::Mode:
 				mode = static_cast<TestMode>(value);
+				Serial.println("mode is updated");
 				break;
 			case Field::TestVARating:
 				if(value >= UPS_MIN_VA && value <= UPS_MAX_VA)

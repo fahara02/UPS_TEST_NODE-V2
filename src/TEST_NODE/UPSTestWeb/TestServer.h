@@ -2,6 +2,17 @@
 #define TEST_SERVER_H
 #include "PageBuilder.h"
 #include "ArduinoJson.h"
+#include <Update.h>
+#include <vector>
+#include <WiFiManager.h>
+#include <ESPAsyncWebServer.h>
+#include "NodeConstants.h"
+#include "Settings.h"
+#include "TestData.h"
+#include "UPSdebug.h"
+
+#include "TestManager.h"
+#include "UPSTesterSetup.h"
 class TestServer
 {
   public:
@@ -28,7 +39,7 @@ class TestServer
 							  const char* setting_name, SettingType type);
 	// HTTP_POST
 	void handleUpdateSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
-									const char* setting_name, SettingType type);
+									SettingType type);
 	void handleUpdateModeRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
 								 TestSync& _sync);
 	void handleUserUpdateRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
