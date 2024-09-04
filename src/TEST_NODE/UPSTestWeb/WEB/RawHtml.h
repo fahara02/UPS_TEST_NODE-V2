@@ -110,76 +110,89 @@ const char SIDEBAR_HTML[] PROGMEM = R"rawliteral(
 // Power monitor right after it
 const char POWER_MONITOR_HTML[] PROGMEM = R"rawliteral(
     
-    <div class="power-monitor">
-    <h2>Power Monitor</h2>
+       <div class="power-monitor">
+        <h2>Power Monitor</h2>
 
-    <!-- Power Factor Displays -->
-    <div class="card-container">
-      <div class="card">
-        <div class="card-title">Input Power Factor</div>
-        <div class="card-value" id="inputPowerFactor">0.0</div>
-      </div>
-      <div class="card">
-        <div class="card-title">Output Power Factor</div>
-        <div class="card-value" id="outputPowerFactor">0.0</div>
+        <!-- Power Factor Displays -->
+        <div class="card-container">
+          <div class="card">
+            <div class="card-title">Input Power Factor</div>
+            <div class="card-value" id="inputPowerFactor">0.0</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Output Power Factor</div>
+            <div class="card-value" id="outputPowerFactor">0.0</div>
+          </div>
+        </div>
+
+        <!-- Voltage Displays -->
+        <div class="card-container">
+          <div class="card">
+            <div class="card-title">Input Voltage</div>
+            <div class="card-value" id="inputVoltage">0.0 V</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Output Voltage</div>
+            <div class="card-value" id="outputVoltage">0.0 V</div>
+          </div>
+        </div>
+
+        <!-- Current Displays -->
+        <div class="card-container">
+          <div class="card">
+            <div class="card-title">Input Current</div>
+            <div class="card-value" id="inputCurrent">0.0 A</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Output Current</div>
+            <div class="card-value" id="outputCurrent">0.0 A</div>
+          </div>
+        </div>
+
+        <!-- Wattage Displays -->
+        <div class="card-container">
+          <div class="card">
+            <div class="card-title">Input Wattage</div>
+            <div class="card-value" id="inputWattage">0.0 W</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Output Wattage</div>
+            <div class="card-value" id="outputWattage">0.0 W</div>
+          </div>
+        </div>
+        <div class="bottom-bar">
+          <div class="switches">
+            <!-- Load On/Off Switch -->
+            <div class="toggle-container">
+              <span id="loadStateLabel">Load Off</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggleLoadSwitch" />
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <!-- Simulate Power Cut/Restore Power Switch -->
+            <div class="toggle-container">
+              <span id="powerCutLabel">Mains Off </span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="togglePowerCutSwitch" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <!-- LED Indicators -->
+            <div class="led-indicators">
+              <div class="led blue" id="ledLoadOn" title="Load On"></div>
+              <div class="led green" id="ledReady" title="Ready"></div>
+              <div
+                class="led red"
+                id="ledTestRunning"
+                title="Test Running"
+              ></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-
-    <!-- Voltage Displays -->
-    <div class="card-container">
-      <div class="card">
-        <div class="card-title">Input Voltage</div>
-        <div class="card-value" id="inputVoltage">0.0 V</div>
-      </div>
-      <div class="card">
-        <div class="card-title">Output Voltage</div>
-        <div class="card-value" id="outputVoltage">0.0 V</div>
-      </div>
-    </div>
-
-    <!-- Current Displays -->
-    <div class="card-container">
-      <div class="card">
-        <div class="card-title">Input Current</div>
-        <div class="card-value" id="inputCurrent">0.0 A</div>
-      </div>
-      <div class="card">
-        <div class="card-title">Output Current</div>
-        <div class="card-value" id="outputCurrent">0.0 A</div>
-      </div>
-    </div>
-
-    <!-- Wattage Displays -->
-    <div class="card-container">
-      <div class="card">
-        <div class="card-title">Input Wattage</div>
-        <div class="card-value" id="inputWattage">0.0 W</div>
-      </div>
-      <div class="card">
-        <div class="card-title">Output Wattage</div>
-        <div class="card-value" id="outputWattage">0.0 W</div>
-      </div>
-    </div>
-
-    <!-- Load On/Off Switch -->
-    <div class="toggle-container">
-      <label for="toggleLoadSwitch">Load:</label>
-      <label class="toggle-switch">
-        <input type="checkbox" id="toggleLoadSwitch" />
-        <span class="slider"></span>
-      </label>
-    </div>
-
-    <!-- Simulate Power Cut/Restore Power Switch -->
-    <div class="toggle-container">
-      <label for="togglePowerCutSwitch">Restore Power:</label>
-      <label class="toggle-switch">
-        <input type="checkbox" id="togglePowerCutSwitch" />
-        <span class="slider"></span>
-      </label>
-    </div>
-  </div>
-</div>
 )rawliteral";
 // JSS PART WILL GO HERE
 

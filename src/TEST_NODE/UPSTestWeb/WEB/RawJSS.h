@@ -3,7 +3,7 @@
 
 #include <pgmspace.h>
 const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
-     <script>
+    <script>
       document.addEventListener('DOMContentLoaded', function () {
         const sidebar = document.getElementById('sidebar');
         const toggleButton = document.getElementById('toggleSidebar');
@@ -100,6 +100,7 @@ const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
           appendLog('Test paused at ' + new Date().toLocaleString());
           sendCommand('pause');
         };
+
         window.sendMode = function () {
           // Get the selected radio button
           var modeSelect = document.querySelector('input[name="mode"]:checked');
@@ -145,49 +146,40 @@ const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
             .then((data) => console.log('Server Response:', data))
             .catch((error) => console.error('Error:', error));
         }
-
-        
         document
-        .getElementById('toggleLoadSwitch')
-        .addEventListener('change', function () {
-          var switchState = this.checked;
+          .getElementById('toggleLoadSwitch')
+          .addEventListener('change', function () {
+            var switchState = this.checked;
+            document.getElementById('loadStateLabel').innerText = switchState
+              ? 'Load On'
+              : 'Load Off';
+          });
+
+        document
+          .getElementById('togglePowerCutSwitch')
+          .addEventListener('change', function () {
+            var switchState = this.checked;
+            document.getElementById('powerCutLabel').innerText = switchState
+              ? 'Mains On'
+              : 'Mains Off';
+          });
+
+        // Example functions for toggling switches
+        function toggleLoad() {
+          var switchState = document.getElementById('toggleLoadSwitch').checked;
           document.getElementById('loadStateLabel').innerText = switchState
             ? 'Load On'
             : 'Load Off';
-        });
+        }
 
-      document
-        .getElementById('togglePowerCutSwitch')
-        .addEventListener('change', function () {
-          var switchState = this.checked;
+        function togglePowerCut() {
+          var switchState = document.getElementById(
+            'togglePowerCutSwitch'
+          ).checked;
           document.getElementById('powerCutLabel').innerText = switchState
-            ? 'Simulate Power Cut'
-            : 'Restore Power';
-        });
-
-      // Example functions for toggling switches
-      function toggleLoad() {
-        var switchState = document.getElementById('toggleLoadSwitch').checked;
-        document.getElementById('loadStateLabel').innerText = switchState
-          ? 'Load On'
-          : 'Load Off';
-      }
-
-      function togglePowerCut() {
-        var switchState = document.getElementById(
-          'togglePowerCutSwitch'
-        ).checked;
-        document.getElementById('powerCutLabel').innerText = switchState
-          ? 'Power Cut'
-          : 'Restore Power';
-      }
-
-
-
-
-
-
-
+            ? 'Mains On'
+            : 'Mains Off';
+        }
       });
     </script>
 )rawliteral";

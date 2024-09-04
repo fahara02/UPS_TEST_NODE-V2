@@ -301,26 +301,45 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
       }
 
       /* Toggle Switch Styles */
+      /* Bottom Bar Styles */
+      .bottom-bar {
+        display: flex;
+        justify-content: space-between; /* Distribute space evenly between switches and LEDs */
+        align-items: center; /* Align items vertically */
+        margin-top: 20px; /* Space above the bottom bar */
+        padding: 10px; /* Padding around the bottom bar */
+        background-color: #f1f1f1; /* Light background color for the bottom bar */
+        border-top: 1px solid #ddd; /* Light border at the top of the bottom bar */
+      }
+
+      /* Switch Container Styles */
+      .switches {
+        display: flex;
+        align-items: center;
+      }
+
+      /* Toggle Container Styles */
       .toggle-container {
         display: flex;
         align-items: center;
-        margin-bottom: 20px;
-        flex-direction: row; /* Ensure horizontal layout */
+        margin-right: 30px; /* Space between toggle containers */
       }
 
+      /* Toggle Switch Styles */
       .toggle-container label {
         font-size: 16px;
         font-weight: bold;
-        margin-right: 15px;
+        margin-right: 10px; /* Space between label and switch */
         color: #333; /* Dark text for better readability */
       }
 
       .toggle-switch {
         position: relative;
-        width: 60px; /* Adjust width as needed */
-        height: 30px; /* Adjust height as needed */
+        width: 60px; /* Width of the switch */
+        height: 30px; /* Height of the switch */
       }
 
+      /* Slider Styles */
       .toggle-switch input {
         opacity: 0;
         width: 0;
@@ -359,6 +378,86 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         transform: translateX(
           30px
         ); /* Adjust translation according to switch width */
+      }
+
+      /* LED Indicator Styles */
+      /* LED Indicator Styles */
+      .led-indicators {
+        display: flex;
+        align-items: center; /* Align LEDs vertically */
+        justify-content: center; /* Center LEDs horizontally */
+      }
+
+      .led {
+        width: 30px; /* Increase size to match slider circle */
+        height: 30px; /* Increase size to match slider circle */
+        border-radius: 50%;
+        background: radial-gradient(
+          circle at 15px 15px,
+          #fff,
+          #ddd
+        ); /* Gradient for 3D effect */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Shadow for 3D effect */
+        margin: 0 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative; /* Positioning for the inner light effect */
+      }
+
+      .led::before {
+        content: '';
+        width: 18px; /* Slightly smaller than the LED circle */
+        height: 18px; /* Slightly smaller than the LED circle */
+        border-radius: 50%;
+        background-color: #fff;
+        position: absolute;
+        top: 6px; /* Centered within the LED circle */
+        left: 6px; /* Centered within the LED circle */
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.3); /* Light inner shadow for realism */
+        z-index: 1;
+      }
+
+      /* Color Styles */
+      .led.blue {
+        background: radial-gradient(
+          circle at 15px 15px,
+          #a3c8ff,
+          #007bff
+        ); /* Blue gradient */
+      }
+
+      .led.green {
+        background: radial-gradient(
+          circle at 15px 15px,
+          #c8f6c2,
+          #28a745
+        ); /* Green gradient */
+      }
+
+      .led.red {
+        background: radial-gradient(
+          circle at 15px 15px,
+          #f8c2c2,
+          #dc3545
+        ); /* Red gradient */
+      }
+
+      /* Classes for blinking behavior */
+      .led.blink {
+        animation: blink 1s infinite;
+      }
+
+      @keyframes blink {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
       }
 
       /* Card Styles */
