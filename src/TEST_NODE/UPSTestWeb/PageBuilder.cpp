@@ -264,6 +264,117 @@ void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
 	response->print(pageTrailerHtml);
 }
 
+// void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup,
+// 								   const char* caption, SettingType type)
+// {
+// 	response->print("<div id='custom-settings-page'>");
+// 	// response->printf("<form method='post' action='/updateSettings/%s'>", settingToString(type));
+// 	if(type == SettingType::SPEC)
+// 	{
+// 		response->print("<form method='post' action='/settings/ups-specification'>");
+// 	}
+// 	else if(type == SettingType::TEST)
+// 	{
+// 		response->print("<form method='post' action='/settings/test-specification'>");
+// 	}
+
+// 	//  Begin table
+// 	response->print("<table border='1'>");
+
+// 	SetupSpec& spec = testerSetup.specSetup();
+// 	SetupTest& test = testerSetup.testSetup();
+// 	sendTableCaption(response, caption);
+// 	if(type == SettingType::SPEC)
+// 	{
+// 		sendSpecTable(response, spec);
+// 	}
+// 	else if(type == SettingType::TEST)
+// 	{
+// 		sendTestTable(response, test);
+// 	}
+// 	sendTableStyle(response);
+// 	response->print("</table>");
+// 	response->print("<button type='submit'>Save Settings</button>");
+// 	response->print("</form>");
+// 	response->print("</div>");
+// }
+
+// void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup,
+// 								   const char* caption, SettingType type)
+// {
+// 	response->print("<div id='custom-settings-page'>");
+// 	response->print("<div class='settings-container' style='display: flex; flex-direction: row;'>");
+
+// 	// Left side: Settings Table
+// 	response->print("<div class='settings-table' style='flex: 2;'>");
+
+// 	if(type == SettingType::SPEC)
+// 	{
+// 		response->print(
+// 			"<form id='settingsForm' method='post' action='/settings/ups-specification' "
+// 			"onsubmit='return handleSubmit(event);'>");
+// 	}
+// 	else if(type == SettingType::TEST)
+// 	{
+// 		response->print(
+// 			"<form id='settingsForm' method='post' action='/settings/test-specification' "
+// 			"onsubmit='return handleSubmit(event);'>");
+// 	}
+
+// 	// Begin table
+// 	response->print("<table border='1'>");
+
+// 	SetupSpec& spec = testerSetup.specSetup();
+// 	SetupTest& test = testerSetup.testSetup();
+// 	sendTableCaption(response, caption);
+// 	if(type == SettingType::SPEC)
+// 	{
+// 		sendSpecTable(response, spec);
+// 	}
+// 	else if(type == SettingType::TEST)
+// 	{
+// 		sendTestTable(response, test);
+// 	}
+// 	sendTableStyle(response);
+// 	response->print("</table>");
+// 	response->print("<button type='submit'>Save Settings</button>");
+// 	response->print("</form>");
+// 	response->print("</div>");
+
+// 	// Right side: Update Message
+// 	response->print("<div class='update-message' style='flex: 1; padding-left: 20px;'>");
+// 	response->print("<h2 style='margin-top: 0;'>Update Status</h2>");
+// 	response->print("<div id='updateStatus' style='padding: 10px; border: 1px solid #ddd; "
+// 					"border-radius: 4px; background-color: #f9f9f9;'>No updates yet.</div>");
+// 	response->print("</div>"); // Closing update-message div
+
+// 	response->print("</div>"); // Closing settings-container div
+
+// 	// JavaScript for handling form submission and updating status message
+// 	response->print(R"(
+//         <script>
+//             function handleSubmit(event) {
+//                 event.preventDefault();
+//                 var form = event.target;
+//                 var xhr = new XMLHttpRequest();
+//                 xhr.open('POST', form.action, true);
+//                 xhr.onload = function() {
+//                     var statusDiv = document.getElementById('updateStatus');
+//                     if (xhr.status === 200) {
+//                         statusDiv.innerHTML = '<p style="color: green;">Settings saved
+//                         successfully!</p>';
+//                     } else {
+//                         statusDiv.innerHTML = '<p style="color: red;">Failed to save settings.
+//                         Please try again.</p>';
+//                     }
+//                 };
+//                 xhr.send(new FormData(form));
+//                 return false;
+//             }
+//         </script>)");
+
+// 	response->print("</div>");
+// }
 void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup,
 								   const char* caption, SettingType type, const char* redirect_uri)
 {
@@ -337,6 +448,79 @@ void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup
             }
         </script>)");
 }
+
+// void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup,
+// 								   const char* caption, SettingType type)
+// {   //-----------THIS VERSION WORKS BUT MANUAL URI-------------------------//
+// 	response->print("<div id='custom-settings-page'>");
+// 	response->print("<div class='settings-container' style='display: flex; flex-direction: row;'>");
+
+// 	// Left side: Settings Table
+// 	response->print("<div class='settings-table' style='flex: 2;'>");
+
+// response->printf("<form id='settingsForm' method='post' action='/settings/ups-specification' "
+// 				 "onsubmit='return "
+// 				 "handleSubmit(event);'>");
+
+// 	// Begin table
+// 	response->print("<table border='1'>");
+
+// 	SetupSpec& spec = testerSetup.specSetup();
+// 	SetupTest& test = testerSetup.testSetup();
+// 	sendTableCaption(response, caption);
+
+// 	if(type == SettingType::SPEC)
+// 	{
+// 		sendSpecTable(response, spec);
+// 	}
+// 	else if(type == SettingType::TEST)
+// 	{
+// 		sendTestTable(response, test);
+// 	}
+
+// 	sendTableStyle(response);
+// 	response->print("</table>");
+// 	response->print("<button type='submit'>Save Settings</button>");
+// 	response->print("</form>");
+// 	response->print("</div>");
+
+// 	// Right side: Update Message
+// 	response->print("<div class='update-message' style='flex: 1; padding-left: 20px;'>");
+// 	response->print("<h2 style='margin-top: 0;'>Update Status</h2>");
+// 	response->print("<div id='updateStatus' style='padding: 10px; border: 1px solid #ddd; "
+// 					"border-radius: 4px; background-color: #f9f9f9;'>No updates yet.</div>");
+// 	response->print("</div>");
+
+// 	response->print("</div>");
+// 	response->print("</div>");
+
+// 	// JavaScript for handling form submission and updating status message
+// 	response->print(R"(
+//         <script>
+//             function handleSubmit(event) {
+//                 event.preventDefault(); // Prevent default form submission
+
+//                 var form = event.target;
+//                 var formData = new FormData(form);
+
+//                 var xhr = new XMLHttpRequest();
+//                 xhr.open('POST', form.action, true);
+//                 xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); // Indicate AJAX
+//                 request xhr.onload = function() {
+//                     var statusDiv = document.getElementById('updateStatus');
+//                     if (xhr.status === 200) {
+//                         statusDiv.innerHTML = '<p style="color: green;">' + xhr.responseText +
+//                         '</p>';
+//                     } else {
+//                         statusDiv.innerHTML = '<p style="color: red;">Failed to save settings.
+//                         Please try again.</p>';
+//                     }
+//                 };
+//                 xhr.send(formData); // Send form data
+//                 return false; // Prevent the default form submission
+//             }
+//         </script>)");
+// }
 
 void PageBuilder::sendSpecTable(AsyncResponseStream* response, SetupSpec& spec)
 {
@@ -622,7 +806,53 @@ void PageBuilder::sendColorGroup(AsyncResponseStream* response, int span,
 	(response->printf("<col style=\"background-color:%s\">", args), ...);
 	response->print("</colgroup>");
 }
+// void PageBuilder::sendTableStyle(AsyncResponseStream* response)
+// {
+// 	response->print("<style>");
+// 	response->print("#custom-settings-page table { width: 50%; border-collapse: collapse; margin: "
+// 					"20px 0; font-size: 1em; font-family: sans-serif; min-width: 400px; }");
+// 	response->print("#custom-settings-page th, td { padding: 12px 15px; border: 1px solid #ddd; "
+// 					"text-align: left; }");
+// 	response->print("#custom-settings-page th { background-color: #f4f4f4; font-weight: bold; }");
+// 	response->print("#custom-settings-page tr:nth-child(even) { background-color: #f9f9f9; }");
+// 	response->print("#custom-settings-page tr:hover { background-color: #f1f1f1; }");
+// 	response->print("#custom-settings-page input[type='text'], #custom-settings-page "
+// 					"input[type='number'], #custom-settings-page select { width: 100%; padding: "
+// 					"8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }");
+// 	response->print("#custom-settings-page button { background-color: #4CAF50; color: white; "
+// 					"padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }");
+// 	response->print("#custom-settings-page button:hover { background-color: #45a049; }");
+// 	response->print("#custom-settings-page form { padding: 20px; background-color: #fff; "
+// 					"border-radius: 5px; box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1); }");
+// 	response->print("</style>");
+// }
 
+// void PageBuilder::sendTableStyle(AsyncResponseStream* response)
+// {
+// 	response->print("<style>");
+// 	response->print("#custom-settings-page { width: 100%; }");
+// 	response->print(".settings-container { display: flex; justify-content: space-between; }");
+// 	response->print(".settings-table { flex: 2; }");
+// 	response->print(".update-message { flex: 1; padding-left: 20px; }");
+// 	response->print("#custom-settings-page table { width: 100%; border-collapse: collapse; margin: "
+// 					"20px 0; font-size: 1em; font-family: Arial, sans-serif; min-width: 400px; }");
+// 	response->print("#custom-settings-page th, td { padding: 12px 15px; border: 1px solid #ddd; "
+// 					"text-align: left; }");
+// 	response->print("#custom-settings-page th { background-color: #f4f4f4; font-weight: bold; }");
+// 	response->print("#custom-settings-page tr:nth-child(even) { background-color: #f9f9f9; }");
+// 	response->print("#custom-settings-page tr:hover { background-color: #f1f1f1; }");
+// 	response->print("#custom-settings-page input[type='text'], #custom-settings-page "
+// 					"input[type='number'], #custom-settings-page select { width: 100%; padding: "
+// 					"8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }");
+// 	response->print("#custom-settings-page button { background-color: #4CAF50; color: white; "
+// 					"padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }");
+// 	response->print("#custom-settings-page button:hover { background-color: #45a049; }");
+// 	response->print("#custom-settings-page form { padding: 20px; background-color: #fff; "
+// 					"border-radius: 5px; box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1); }");
+// 	response->print("#updateStatus { padding: 10px; border: 1px solid #ddd; border-radius: 4px; "
+// 					"background-color: #f9f9f9; }");
+// 	response->print("</style>");
+// }
 void PageBuilder::sendTableStyle(AsyncResponseStream* response)
 {
 	response->print("<style>");
