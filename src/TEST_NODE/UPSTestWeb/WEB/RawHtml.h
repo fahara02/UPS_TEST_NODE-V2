@@ -9,6 +9,7 @@ const char TOP_HTML[] PROGMEM = R"rawliteral(
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>UPS Automatic Testing Interface</title>
+    <link rel="icon" href="/favicon.png" type="image/png" />
 )rawliteral";
 
 // CSS PART WILL GO HERE

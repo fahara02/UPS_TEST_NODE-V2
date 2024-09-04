@@ -35,6 +35,7 @@ class TestServer
 			return;
 		}
 		_fileHandler.serveFile(*_server, "/Logo-Full.svg", "/Logo-Full.svg", "image/svg+xml");
+		_fileHandler.serveFile(*_server, "/favicon.png", "/favicon.png", "image/png");
 		servePages(_setup, _sync);
 	}
 	void servePages(UPSTesterSetup& _setup, TestSync& _sync);

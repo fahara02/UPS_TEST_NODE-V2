@@ -20,18 +20,29 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
       }
 
       /* Header Styles */
-      header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 20px;
-        background-color: #333;
-        color: white;
-      }
-      header img {
-        height: 50px;
-        margin-right: 20px;
-      }
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #333;
+  color: white;
+  padding: 10px 20px; /* This controls the top bar's height */
+}
+
+header .logo-container {
+  background-color: white;
+  display: flex;
+  align-items: center;
+  padding: 0 5px;
+  margin-right: 20px;
+  height: 50px; /* Set a fixed height to match the top bar */
+}
+
+header img {
+  height: 100%;
+  margin: 0;
+}
+
       header h1 {
         flex-grow: 1;
         text-align: center;
@@ -163,7 +174,7 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         color: white;
         padding: 20px;
         position: fixed;
-        top: 100px; /* Adjusted to be below header and navbar */
+        top: 129px; /* Adjusted to be below header and navbar */
         left: 0;
         height: calc(100% - 100px); /* Adjust height accordingly */
         transition: transform 0.3s ease, visibility 0.3s ease;
