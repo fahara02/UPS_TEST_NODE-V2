@@ -26,7 +26,7 @@ constexpr size_t SIDEBAR_HTML_LENGTH = sizeof(SIDEBAR_HTML) - 1;
 constexpr size_t NAVBAR_HTML_LENGTH = sizeof(NAVBAR_HTML) - 1;
 constexpr size_t HEADER_TRAILER_HTML_LENGTH = sizeof(HEADER_TRAILER_HTML) - 1;
 constexpr size_t LAST_TRAILER_HTML_LENGTH = sizeof(LAST_TRAILER_HTML) - 1;
-constexpr size_t CONTENT_HTML_LENGTH = sizeof(USER_COMMAND_AND_LOG_HTML) - 1;
+constexpr size_t POWER_MONITOR_HTML_LENGTH = sizeof(POWER_MONITOR_HTML) - 1;
 constexpr size_t CSS_LENGTH = sizeof(STYLE_BLOCK_CSS) - 1;
 constexpr size_t JSS_LENGTH = sizeof(MAIN_SCRIPT_JSS) - 1;
 
@@ -100,6 +100,8 @@ class PageBuilder
 					  const std::vector<const char*>& options, const char* selected = nullptr);
 	void sendSpecTable(AsyncResponseStream* response, SetupSpec& spec);
 	void sendTestTable(AsyncResponseStream* response, SetupTest& test);
+	void sendPowerMonitor(AsyncResponseStream* response);
+
 	//--------------All Table related ------------------------//
 	void sendTableCaption(AsyncResponseStream* response, const char* caption,
 						  const char* style = "text-align:middle");

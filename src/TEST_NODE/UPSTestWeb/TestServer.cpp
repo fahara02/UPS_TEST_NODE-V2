@@ -73,6 +73,7 @@ void TestServer::handleRootRequest(AsyncWebServerRequest* request)
 	this->webPage->sendNavbar(response);
 	this->webPage->sendSidebar(response);
 	this->webPage->sendUserCommand(response);
+	this->webPage->sendPowerMonitor(response);
 	this->webPage->sendScript(response);
 	this->webPage->sendPageTrailer(response);
 	request->send(response);

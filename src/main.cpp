@@ -184,7 +184,7 @@ void setup()
 		ESP.restart();
 
 	// Initialize Serial for debugging
-	logger.init(&Serial, LogLevel::INFO, 40);
+	logger.init(&Serial, LogLevel::INFO, 20);
 	logger.log(LogLevel::INFO, "Serial started........");
 
 	logger.log(LogLevel::INFO, "creating semaphores..");

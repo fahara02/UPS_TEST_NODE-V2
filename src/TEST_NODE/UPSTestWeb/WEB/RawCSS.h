@@ -3,7 +3,7 @@
 #include <pgmspace.h>
 
 const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
-     <style>
+   <style>
       /* Reset and base styles */
       * {
         margin: 0;
@@ -20,29 +20,18 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
       }
 
       /* Header Styles */
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: #333;
-  color: white;
-  padding: 10px 20px; /* This controls the top bar's height */
-}
-
-header .logo-container {
-  background-color: white;
-  display: flex;
-  align-items: center;
-  padding: 0 5px;
-  margin-right: 20px;
-  height: 50px; /* Set a fixed height to match the top bar */
-}
-
-header img {
-  height: 100%;
-  margin: 0;
-}
-
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        background-color: #333;
+        color: white;
+      }
+      header img {
+        height: 50px;
+        margin-right: 20px;
+      }
       header h1 {
         flex-grow: 1;
         text-align: center;
@@ -160,10 +149,6 @@ header img {
       }
 
       #update-settings-button:hover {
-        background-color: #005a99; /* Darken button on hover */
-      }
-
-      #update-settings-button:hover {
         background-color: #275a8e; /* Darken button on hover */
       }
 
@@ -256,42 +241,159 @@ header img {
       }
 
       /* Main Content Styles */
+      /* Main Content Styles */
       .container {
         display: flex;
         flex: 1;
         margin: 20px;
-        margin-left: 250px; /* Adjusted to accommodate sidebar width */
+        margin-left: 220px; /* Adjusted to accommodate sidebar width */
         transition: margin-left 0.3s ease;
       }
+
       .sidebar.hidden ~ .container {
         margin-left: 50px;
       }
+
       .user-command,
-      .log-output {
-        width: 50%;
+      .log-output,
+      .power-monitor {
         padding: 20px;
         border-radius: 8px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Softer shadow */
         overflow-y: auto;
-        background-color: #fff;
+        background-color: #f8f9fa; /* Light background for better readability */
       }
+
       .user-command {
+        flex: 0.3; /* Reduced width */
         margin-right: 20px;
       }
-      .user-command h2,
-      .log-output h2 {
-        margin-bottom: 10px;
-        font-size: 18px;
-        border-bottom: 1px solid #ddd;
-        padding-bottom: 5px;
-      }
+
+      /* Log Output Styles */
       .log-output {
-        background-color: #1e1e1e;
-        color: #00ff00;
-        font-family: monospace;
+        flex: 0.3; /* Adjust width if needed */
+        background-color: #212529; /* Dark background for logs */
+        color: #e9ecef; /* Light text for contrast */
+        font-family: 'Courier New', Courier, monospace;
         white-space: pre-wrap;
+        padding: 15px; /* Added padding for better spacing */
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Softer shadow */
       }
-      
+
+      .log-output pre {
+        font-size: 12px; /* Reduced font size for better fit */
+        line-height: 1.5; /* Adjust line height for readability */
+      }
+
+      .power-monitor {
+        flex: 1.4; /* Increased width */
+        margin-left: 20px;
+      }
+
+      .user-command h2,
+      .log-output h2,
+      .power-monitor h2 {
+        margin-bottom: 15px;
+        font-size: 20px; /* Increased font size */
+        border-bottom: 2px solid #ddd; /* Thicker border */
+        padding-bottom: 10px;
+      }
+
+      /* Toggle Switch Styles */
+      .toggle-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-direction: row; /* Ensure horizontal layout */
+      }
+
+      .toggle-container label {
+        font-size: 16px;
+        font-weight: bold;
+        margin-right: 15px;
+        color: #333; /* Dark text for better readability */
+      }
+
+      .toggle-switch {
+        position: relative;
+        width: 60px; /* Adjust width as needed */
+        height: 30px; /* Adjust height as needed */
+      }
+
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 15px;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: '';
+        height: 22px;
+        width: 22px;
+        border-radius: 50%;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+      }
+
+      input:checked + .slider {
+        background-color: #4caf50;
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(
+          30px
+        ); /* Adjust translation according to switch width */
+      }
+
+      /* Card Styles */
+      .card-container {
+        display: flex;
+        flex-wrap: wrap; /* Allows cards to wrap if there's not enough space */
+        gap: 20px; /* Space between cards */
+        margin-bottom: 20px;
+      }
+
+      .card {
+        background-color: #fff; /* Light background */
+        border-radius: 8px;
+        padding: 15px;
+        width: calc(50% - 20px); /* Adjust width as needed */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Softer shadow */
+        text-align: center;
+      }
+
+      .card-title {
+        font-size: 16px; /* Increased font size */
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .card-value {
+        font-size: 28px; /* Increased font size */
+        color: #fff;
+        background-color: #343a40; /* Darker background for value */
+        padding: 15px;
+        border-radius: 5px;
+        display: inline-block;
+        font-family: 'Courier New', Courier, monospace; /* Digital meter-like font */
+      }
+
       /* Responsive Adjustments */
       @media (max-width: 768px) {
         .navbar,

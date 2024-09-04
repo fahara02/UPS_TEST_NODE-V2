@@ -145,6 +145,49 @@ const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
             .then((data) => console.log('Server Response:', data))
             .catch((error) => console.error('Error:', error));
         }
+
+        
+        document
+        .getElementById('toggleLoadSwitch')
+        .addEventListener('change', function () {
+          var switchState = this.checked;
+          document.getElementById('loadStateLabel').innerText = switchState
+            ? 'Load On'
+            : 'Load Off';
+        });
+
+      document
+        .getElementById('togglePowerCutSwitch')
+        .addEventListener('change', function () {
+          var switchState = this.checked;
+          document.getElementById('powerCutLabel').innerText = switchState
+            ? 'Simulate Power Cut'
+            : 'Restore Power';
+        });
+
+      // Example functions for toggling switches
+      function toggleLoad() {
+        var switchState = document.getElementById('toggleLoadSwitch').checked;
+        document.getElementById('loadStateLabel').innerText = switchState
+          ? 'Load On'
+          : 'Load Off';
+      }
+
+      function togglePowerCut() {
+        var switchState = document.getElementById(
+          'togglePowerCutSwitch'
+        ).checked;
+        document.getElementById('powerCutLabel').innerText = switchState
+          ? 'Power Cut'
+          : 'Restore Power';
+      }
+
+
+
+
+
+
+
       });
     </script>
 )rawliteral";

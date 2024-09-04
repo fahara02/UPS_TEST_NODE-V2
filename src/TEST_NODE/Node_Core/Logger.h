@@ -304,7 +304,7 @@ class Logger
 	Print* _output;
 	LogLevel _minLevel; // Minimum log level
 	size_t _bufferSize;
-	static const size_t BUFFER_SIZE = 40;
+	static const size_t BUFFER_SIZE = 19;
 	bool _timestampsEnabled;
 	bool _eepromEnabled; // EEPROM storage flag
 	std::deque<String> _logBuffer;

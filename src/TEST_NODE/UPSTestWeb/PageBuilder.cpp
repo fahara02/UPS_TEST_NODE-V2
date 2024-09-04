@@ -210,9 +210,8 @@ void PageBuilder::sendScript(AsyncResponseStream* response)
 
 void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
 {
-	response->print("<div class=\"container\" >");
-
 	// Left side: User commands
+	response->print("<div class=\"container\">"); // it will be closed by power monitor group
 	response->print("<div class=\"user-command\">");
 	response->print("<h2>User Commands</h2>");
 	response->print("<div class=\"command-content\">");
@@ -239,8 +238,6 @@ void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* con
 	response->print("</div>"); // Closing log-content div
 	response->print("</div>"); // Closing log-output div
 
-	response->print("</div>"); // Closing container div
-
 	// JavaScript for auto-refresh
 	response->print(R"(<script>
         function refreshLogs() {
@@ -256,7 +253,12 @@ void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* con
         setInterval(refreshLogs, 2000);
     </script>)");
 }
-
+void PageBuilder::sendPowerMonitor(AsyncResponseStream* response)
+{
+	char buffer[POWER_MONITOR_HTML_LENGTH];
+	const char* powermonitorHtml = copyFromPROGMEM(POWER_MONITOR_HTML, buffer);
+	response->print(powermonitorHtml);
+}
 void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
 {
 	char buffer[LAST_TRAILER_HTML_LENGTH];
