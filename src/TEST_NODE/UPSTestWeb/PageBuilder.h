@@ -73,7 +73,7 @@ class PageBuilder
 	void sendNavbar(AsyncResponseStream* response);
 	void sendSidebar(AsyncResponseStream* response, const char* content = "");
 	void sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup,
-						  const char* caption, SettingType type);
+						  const char* caption, SettingType type, const char* redirect_uri);
 
 	// Utility function
 	String getWiFiQuality(int rssiValue) const;
@@ -98,7 +98,8 @@ class PageBuilder
 						const std::vector<const char*>& options);
 	void sendDropdown(AsyncResponseStream* response, const char* name,
 					  const std::vector<const char*>& options, const char* selected = nullptr);
-
+	void sendSpecTable(AsyncResponseStream* response, SetupSpec& spec);
+	void sendTestTable(AsyncResponseStream* response, SetupTest& test);
 	//--------------All Table related ------------------------//
 	void sendTableCaption(AsyncResponseStream* response, const char* caption,
 						  const char* style = "text-align:middle");

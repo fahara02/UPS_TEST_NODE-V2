@@ -1,5 +1,6 @@
 #include "TestServer.h"
 #include "AsyncJson.h"
+#include <map>
 
 // Other includes as necessary
 
@@ -15,20 +16,30 @@ void TestServer::servePages(UPSTesterSetup& _setup, TestSync& _sync)
 	_server->on("/dashboard", HTTP_GET, [this, &_setup](AsyncWebServerRequest* request) {
 		this->handleDashboardRequest(request);
 	});
-
-	_server->on(
-		"/settings/ups-specification", HTTP_GET, [this, &_setup](AsyncWebServerRequest* request) {
-			this->handleSettingRequest(request, _setup, "UPS_SPECIFICATION", SettingType::SPEC);
-		});
-
-	_server->on(
-		"/settings/test-specification", HTTP_GET, [this, &_setup](AsyncWebServerRequest* request) {
-			this->handleSettingRequest(request, _setup, "TEST_SPECIFICATION", SettingType::TEST);
-		});
-
 	_server->on("/log", HTTP_GET, [this](AsyncWebServerRequest* request) {
 		this->handleLogRequest(request);
 	});
+
+	_server->on("/settings/ups-specification", HTTP_GET,
+				[this, &_setup](AsyncWebServerRequest* request) {
+					this->handleSettingRequest(request, _setup, "UPS_SPECIFICATION",
+											   SettingType::SPEC, "/settings/ups-specification");
+				});
+
+	_server->on("/settings/test-specification", HTTP_GET,
+				[this, &_setup](AsyncWebServerRequest* request) {
+					this->handleSettingRequest(request, _setup, "TEST_SPECIFICATION",
+											   SettingType::TEST, "/settings/test-specification");
+				});
+
+	_server->on("/settings/ups-specification", HTTP_POST,
+				[this, &_setup](AsyncWebServerRequest* request) {
+					this->handleUpdateSettingRequest(request, _setup, SettingType::SPEC);
+				});
+	_server->on("/settings/test-specification", HTTP_POST,
+				[this, &_setup](AsyncWebServerRequest* request) {
+					this->handleUpdateSettingRequest(request, _setup, SettingType::TEST);
+				});
 
 	// Handle individual POST requests
 	_server->on("/updateMode", HTTP_POST, [this, &_setup, &_sync](AsyncWebServerRequest* request) {
@@ -39,13 +50,6 @@ void TestServer::servePages(UPSTesterSetup& _setup, TestSync& _sync)
 				[this, &_setup, &_sync](AsyncWebServerRequest* request) {
 					this->handleUserCommandRequest(request, _setup, _sync);
 				});
-
-	_server->on("/updateSettings/spec", HTTP_POST, [this, &_setup](AsyncWebServerRequest* request) {
-		this->handleUpdateSettingRequest(request, _setup, SettingType::SPEC);
-	});
-	_server->on("/updateSettings/test", HTTP_POST, [this, &_setup](AsyncWebServerRequest* request) {
-		this->handleUpdateSettingRequest(request, _setup, SettingType::TEST);
-	});
 
 	auto* testDataHandler = new AsyncCallbackJsonWebHandler(
 		"/updateTestData", [this, &_sync](AsyncWebServerRequest* request, JsonVariant& json) {
@@ -84,92 +88,22 @@ void TestServer::handleLogRequest(AsyncWebServerRequest* request)
 	request->send(200, "text/plain", logs.length() > 0 ? logs : "No logs available.");
 }
 void TestServer::handleSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
-									  const char* setting_name, SettingType type)
+									  const char* caption, SettingType type,
+									  const char* redirect_uri)
 {
 	auto* response = request->beginResponseStream("text/html");
 	this->webPage->sendHtmlHead(response);
 	this->webPage->sendStyle(response);
-	this->webPage->sendTableStyle(response);
+	// this->webPage->sendTableStyle(response);
 	this->webPage->sendHeaderTrailer(response);
 	this->webPage->sendHeader(response);
 	this->webPage->sendNavbar(response);
 
-	this->webPage->sendSettingTable(response, _setup, setting_name, type);
+	this->webPage->sendSettingTable(response, _setup, caption, type, redirect_uri);
+
 	this->webPage->sendScript(response);
 	this->webPage->sendPageTrailer(response);
 	request->send(response);
-}
-
-void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
-											SettingType type)
-{
-	String responseMessage;
-
-	if(type == SettingType::SPEC)
-	{
-		SetupSpec& spec = _setup.specSetup();
-
-		if(request->hasParam("Rating_va", true))
-		{
-			String ratingVa = request->getParam("Rating_va", true)->value();
-			spec.setField(SetupSpec::Field::RatingVa, ratingVa.toDouble());
-			responseMessage += "Spec Settings rated VA updated successfully.<br>";
-		}
-
-		if(request->hasParam("RatedVoltage_volt", true))
-		{
-			String ratedVolt = request->getParam("RatedVoltage_volt", true)->value();
-			spec.setField(SetupSpec::Field::RatedVoltage, ratedVolt.toDouble());
-			responseMessage += "Spec Settings rated voltage updated successfully.<br>";
-		}
-	}
-
-	if(type == SettingType::TEST)
-	{
-		SetupTest& test = _setup.testSetup();
-
-		// Update TestStandard field (const char*)
-		if(request->hasParam("TestStandard", true))
-		{
-			String testStandardStr = request->getParam("TestStandard", true)->value();
-			test.TestStandard = testStandardStr.c_str(); // Assign string to const char*
-			responseMessage += "Test Settings standard updated successfully.<br>";
-		}
-
-		// Update TestMode field (enum TestMode)
-		if(request->hasParam("TestMode", true))
-		{
-			String modeStr = request->getParam("TestMode", true)->value();
-			TestMode mode;
-
-			// Assuming your TestMode enum has values like AUTO, MANUAL, etc.
-			if(modeStr == "AUTO")
-			{
-				mode = TestMode::AUTO;
-			}
-			else if(modeStr == "MANUAL")
-			{
-				mode = TestMode::MANUAL;
-			}
-			else
-			{
-				request->send(400, "text/html", "Invalid Test Mode.");
-				return; // Early exit if invalid mode
-			}
-
-			test.mode = mode;
-			responseMessage += "Test Settings mode updated successfully.<br>";
-		}
-	}
-
-	if(responseMessage.isEmpty())
-	{
-		request->send(400, "text/html", "No valid settings updated.");
-	}
-	else
-	{
-		request->send(200, "text/html", responseMessage);
-	}
 }
 
 void TestServer::handleUpdateModeRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
@@ -240,3 +174,272 @@ void TestServer::handleTestDataRequest(AsyncWebServerRequest* request, JsonVaria
 		request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
 	}
 }
+
+void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
+											SettingType type)
+{
+	String responseMessage;
+	bool success = false;
+
+	if(type == SettingType::SPEC)
+	{
+		SetupSpec& spec = _setup.specSetup();
+
+		// Array of pairs for SetupSpec fields
+		const struct
+		{
+			const char* fieldName;
+			SetupSpec::Field field;
+		} specFields[] = {{"Rating_va", SetupSpec::Field::RatingVa},
+						  {"RatedVoltage_volt", SetupSpec::Field::RatedVoltage},
+						  {"RatedCurrent_amp", SetupSpec::Field::RatedCurrent},
+						  {"MinInputVoltage_volt", SetupSpec::Field::MinInputVoltage},
+						  {"MaxInputVoltage_volt", SetupSpec::Field::MaxInputVoltage},
+						  {"AvgSwitchTime_ms", SetupSpec::Field::AvgSwitchTime},
+						  {"AvgBackupTime_ms", SetupSpec::Field::AvgBackupTime}};
+
+		for(const auto& field: specFields)
+		{
+			if(request->hasParam(field.fieldName, true))
+			{
+				String paramValue = request->getParam(field.fieldName, true)->value();
+				success = spec.setField(field.field, paramValue.toDouble());
+				if(success)
+				{
+					responseMessage +=
+						"Spec Settings " + String(field.fieldName) + " updated successfully.<br>";
+				}
+				else
+				{
+					responseMessage +=
+						"Error: " + String(field.fieldName) + " set field rejected the param.<br>";
+				}
+			}
+		}
+	}
+	else if(type == SettingType::TEST)
+	{
+		SetupTest& test = _setup.testSetup();
+
+		// Array of pairs for SetupTest fields
+		const struct
+		{
+			const char* fieldName;
+			SetupTest::Field field;
+		} testFields[] = {{"TestStandard", SetupTest::Field::TestStandard},
+						  {"TestMode", SetupTest::Field::Mode},
+						  {"TestVARating", SetupTest::Field::TestVARating},
+						  {"InputVoltage_volt", SetupTest::Field::InputVoltage},
+						  {"TestDuration_ms", SetupTest::Field::TestDuration},
+						  {"MinValidSwitchTime", SetupTest::Field::MinValidSwitchTime},
+						  {"MaxValidSwitchTime", SetupTest::Field::MaxValidSwitchTime},
+						  {"MinValidBackupTime", SetupTest::Field::MinValidBackupTime},
+						  {"MaxValidBackupTime", SetupTest::Field::MaxValidBackupTime},
+						  {"ToleranceSwitchTime", SetupTest::Field::ToleranceSwitchTime},
+						  {"MaxBackupTime", SetupTest::Field::MaxBackupTime},
+						  {"ToleranceBackupTime", SetupTest::Field::ToleranceBackupTime},
+						  {"MaxRetest", SetupTest::Field::MaxRetest}};
+
+		for(const auto& field: testFields)
+		{
+			if(request->hasParam(field.fieldName, true))
+			{
+				String paramValue = request->getParam(field.fieldName, true)->value();
+				success = test.setField(field.field, paramValue.toDouble());
+				if(success)
+				{
+					responseMessage +=
+						"Test Settings " + String(field.fieldName) + " updated successfully.<br>";
+				}
+				else
+				{
+					responseMessage +=
+						"Error: " + String(field.fieldName) + " set field rejected the param.<br>";
+				}
+			}
+		}
+	}
+
+	// Send response based on the outcome
+	if(responseMessage.isEmpty())
+	{
+		request->send(400, "text/html", "No valid settings updated.");
+	}
+	else
+	{
+		request->send(200, "text/html", responseMessage);
+	}
+}
+
+// void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup&
+// _setup, 											SettingType type)
+// {
+// 	String responseMessage;
+// 	bool success = false;
+
+// 	if(type == SettingType::SPEC)
+// 	{
+// 		SetupSpec& spec = _setup.specSetup();
+
+// 		// Map of field names and corresponding enum fields for SetupSpec
+// 		std::map<String, SetupSpec::Field> specFields = {
+// 			{"Rating_va", SetupSpec::Field::RatingVa},
+// 			{"RatedVoltage_volt", SetupSpec::Field::RatedVoltage},
+// 			{"RatedCurrent_amp", SetupSpec::Field::RatedCurrent},
+// 			{"MinInputVoltage_volt", SetupSpec::Field::MinInputVoltage},
+// 			{"MaxInputVoltage_volt", SetupSpec::Field::MaxInputVoltage},
+// 			{"AvgSwitchTime_ms", SetupSpec::Field::AvgSwitchTime},
+// 			{"AvgBackupTime_ms", SetupSpec::Field::AvgBackupTime}};
+
+// 		for(const auto& field: specFields)
+// 		{
+// 			if(request->hasParam(field.first, true))
+// 			{
+// 				String paramValue = request->getParam(field.first, true)->value();
+// 				success = spec.setField(field.second, paramValue.toDouble());
+// 				if(success)
+// 				{
+// 					responseMessage +=
+// 						"Spec Settings " + field.first + " updated successfully.<br>";
+// 				}
+// 				else
+// 				{
+// 					responseMessage +=
+// 						"Error: " + field.first + " set field rejected the param.<br>";
+// 				}
+// 			}
+// 		}
+
+// 		request->redirect("/settings/ups-specification");
+// 	}
+// 	else if(type == SettingType::TEST)
+// 	{
+// 		SetupTest& test = _setup.testSetup();
+
+// 		// Map of field names and corresponding enum fields for SetupTest
+// 		std::map<String, SetupTest::Field> testFields = {
+// 			{"TestStandard", SetupTest::Field::TestStandard},
+// 			{"TestMode", SetupTest::Field::Mode},
+// 			{"TestVARating", SetupTest::Field::TestVARating},
+// 			{"InputVoltage_volt", SetupTest::Field::InputVoltage},
+// 			{"TestDuration_ms", SetupTest::Field::TestDuration},
+// 			{"MinValidSwitchTime", SetupTest::Field::MinValidSwitchTime},
+// 			{"MaxValidSwitchTime", SetupTest::Field::MaxValidSwitchTime},
+// 			{"MinValidBackupTime", SetupTest::Field::MinValidBackupTime},
+// 			{"MaxValidBackupTime", SetupTest::Field::MaxValidBackupTime},
+// 			{"ToleranceSwitchTime", SetupTest::Field::ToleranceSwitchTime},
+// 			{"MaxBackupTime", SetupTest::Field::MaxBackupTime},
+// 			{"ToleranceBackupTime", SetupTest::Field::ToleranceBackupTime},
+// 			{"MaxRetest", SetupTest::Field::MaxRetest}};
+
+// 		for(const auto& field: testFields)
+// 		{
+// 			if(request->hasParam(field.first, true))
+// 			{
+// 				String paramValue = request->getParam(field.first, true)->value();
+// 				success = test.setField(field.second, paramValue.toDouble());
+// 				if(success)
+// 				{
+// 					responseMessage +=
+// 						"Test Settings " + field.first + " updated successfully.<br>";
+// 				}
+// 				else
+// 				{
+// 					responseMessage +=
+// 						"Error: " + field.first + " set field rejected the param.<br>";
+// 				}
+// 			}
+// 		}
+// 		request->redirect("/settings/test-specification");
+// 	}
+
+// 	// Send response based on the outcome
+// 	if(responseMessage.isEmpty())
+// 	{
+// 		request->send(400, "text/html", "No valid settings updated.");
+// 	}
+// 	else
+// 	{
+// 		request->send(200, "text/html", responseMessage);
+// 	}
+// }
+
+// void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup&
+// _setup, 											SettingType type)
+// {
+// 	String responseMessage;
+// 	bool success = false;
+
+// 	if(type == SettingType::SPEC)
+// 	{
+// 		SetupSpec& spec = _setup.specSetup();
+
+// 		if(request->hasParam("Rating_va", true))
+// 		{
+// 			String ratingVa = request->getParam("Rating_va", true)->value();
+// 			success = spec.setField(SetupSpec::Field::RatingVa, ratingVa.toDouble());
+// 			if(success)
+// 			{
+// 				responseMessage += "Spec Settings rated VA updated successfully.<br>";
+// 			}
+// 			else
+// 			{
+// 				responseMessage += "Error: Ratin VA set field rejected the param.<br>";
+// 			}
+// 		}
+
+// 		if(request->hasParam("RatedVoltage_volt", true))
+// 		{
+// 			String ratedVolt = request->getParam("RatedVoltage_volt", true)->value();
+// 			spec.setField(SetupSpec::Field::RatedVoltage, ratedVolt.toDouble());
+// 			responseMessage += "Spec Settings rated voltage updated successfully.<br>";
+// 		}
+// 	}
+
+// 	if(type == SettingType::TEST)
+// 	{
+// 		SetupTest& test = _setup.testSetup();
+
+// 		// Update TestStandard field (const char*)
+// 		if(request->hasParam("TestStandard", true))
+// 		{
+// 			String testStandardStr = request->getParam("TestStandard", true)->value();
+// 			test.TestStandard = testStandardStr.c_str(); // Assign string to const char*
+// 			responseMessage += "Test Settings standard updated successfully.<br>";
+// 		}
+
+// 		// Update TestMode field (enum TestMode)
+// 		if(request->hasParam("TestMode", true))
+// 		{
+// 			String modeStr = request->getParam("TestMode", true)->value();
+// 			TestMode mode;
+
+// 			// Assuming your TestMode enum has values like AUTO, MANUAL, etc.
+// 			if(modeStr == "AUTO")
+// 			{
+// 				mode = TestMode::AUTO;
+// 			}
+// 			else if(modeStr == "MANUAL")
+// 			{
+// 				mode = TestMode::MANUAL;
+// 			}
+// 			else
+// 			{
+// 				request->send(400, "text/html", "Invalid Test Mode.");
+// 				return; // Early exit if invalid mode
+// 			}
+
+// 			test.mode = mode;
+// 			responseMessage += "Test Settings mode updated successfully.<br>";
+// 		}
+// 	}
+
+// 	if(responseMessage.isEmpty())
+// 	{
+// 		request->send(400, "text/html", "No valid settings updated.");
+// 	}
+// 	else
+// 	{
+// 		request->send(200, "text/html", responseMessage);
+// 	}
+// }

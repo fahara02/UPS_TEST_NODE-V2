@@ -62,7 +62,7 @@ struct SetupSpec
 	uint16_t RatedVoltage_volt = 230;
 	uint16_t RatedCurrent_amp = 6;
 	uint16_t MinInputVoltage_volt = 180;
-	uint16_t MaxInputVoltage_volt = 260;
+	uint16_t MaxInputVoltage_volt = 230;
 	unsigned long AvgSwitchTime_ms = 50UL;
 	unsigned long AvgBackupTime_ms = 300000UL;
 
@@ -102,9 +102,9 @@ struct SetupSpec
 				break;
 
 			case Field::RatedCurrent:
-				if(value >= UPS_MIN_OUTPUT_mAMP && value <= UPS_MAX_OUTPUT_mAMP)
+				if(value >= UPS_MIN_OUTPUT && value <= UPS_MAX_OUTPUT)
 				{
-					RatedCurrent_amp = static_cast<uint16_t>(value) / 1000;
+					RatedCurrent_amp = static_cast<uint16_t>(value);
 					updated = true;
 				}
 				break;

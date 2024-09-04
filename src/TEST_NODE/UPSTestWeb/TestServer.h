@@ -36,7 +36,7 @@ class TestServer
 	void handleDashboardRequest(AsyncWebServerRequest* request);
 
 	void handleSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
-							  const char* setting_name, SettingType type);
+							  const char* caption, SettingType type, const char* redirect_uri);
 	// HTTP_POST
 	void handleUpdateSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup& _setup,
 									SettingType type);

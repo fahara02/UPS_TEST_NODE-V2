@@ -265,57 +265,158 @@ void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
 }
 
 void PageBuilder::sendSettingTable(AsyncResponseStream* response, UPSTesterSetup& testerSetup,
-								   const char* caption, SettingType type)
+								   const char* caption, SettingType type, const char* redirect_uri)
 {
 	response->print("<div id='custom-settings-page'>");
-	//  Begin table
-	response->printf("<form method='post' action='/updateSettings/%s'>", settingToString(type));
+	response->print("<div class='settings-container' style='display: flex; flex-direction: row;'>");
+
+	// Left side: Settings Table
+	response->print("<div class='settings-table' style='flex: 2;'>");
+
+	// response->printf("<form id='settingsForm' method='post' action='/%s' onsubmit='return "
+	// 				 "handleSubmit(event);'>",
+	// 				 redirect_uri);  this dont works due to printf formatting issue
+	response->print("<form id='settingsForm' method='post' action='");
+	response->print(redirect_uri);
+	response->print("' onsubmit='return handleSubmit(event);'>");
+
+	// Begin table
 	response->print("<table border='1'>");
 
-	// Retrieve SetupSpec and SetupTest instances
-	SetupSpec& spec = testerSetup.specSetup(); // Retrieve SetupSpec
-	SetupTest& test = testerSetup.testSetup(); // Retrieve SetupTest
+	SetupSpec& spec = testerSetup.specSetup();
+	SetupTest& test = testerSetup.testSetup();
 	sendTableCaption(response, caption);
+
 	if(type == SettingType::SPEC)
 	{
-		sendTableRow(response, "Rating (VA)", static_cast<double>(spec.Rating_va));
-		sendInputField(response, "Rating_va", spec.Rating_va, UPS_MIN_VA, UPS_MAX_VA);
-		sendTableRow(response, "Rated Voltage (V)", static_cast<double>(spec.RatedVoltage_volt));
-		sendInputField(response, "RatedVoltage_volt", spec.RatedVoltage_volt, UPS_MIN_INPUT_VOLT,
-					   UPS_MAX_INPUT_VOLT);
-		sendTableRow(response, "Rated Current (A)", static_cast<double>(spec.RatedCurrent_amp));
-		sendInputField(response, "RatedCurrent_amp", spec.RatedCurrent_amp);
-
-		sendTableRow(response, "Avg Switch Time (ms)", static_cast<double>(spec.AvgSwitchTime_ms));
-		sendInputField(response, "AvgSwitchTime_ms", spec.AvgSwitchTime_ms);
-
-		sendTableRow(response, "Avg Backup Time (ms)", static_cast<double>(spec.AvgBackupTime_ms));
-		sendInputField(response, "AvgBackupTime_ms", spec.AvgBackupTime_ms);
-		sendTableRow(response, "Last Update (Spec)", spec.lastUpdateTime());
-		sendTableRow(response, "Todays Date Time", __DATE__ " " __TIME__);
+		sendSpecTable(response, spec);
 	}
 	else if(type == SettingType::TEST)
 	{
-		sendTableRow(response, "Test Standard", test.TestStandard);
-		sendInputField(response, "TestStandard", test.TestStandard);
-
-		sendTableRow(response, "Test Mode", static_cast<int>(test.mode));
-		sendDropdown(response, "TestMode", {"AUTO", "MANUAL"}, "AUTO");
-
-		sendTableRow(response, "Test VA Rating", static_cast<double>(test.testVARating));
-		sendInputField(response, "TestVARating", test.testVARating, UPS_MIN_VA, UPS_MAX_VA);
-		sendTableRow(response, "Input Voltage (V)", static_cast<double>(test.inputVoltage_volt));
-		sendInputField(response, "InputVoltage_volt", test.inputVoltage_volt, UPS_MIN_INPUT_VOLT,
-					   UPS_MAX_INPUT_VOLT);
-		sendTableRow(response, "Last Update (Test)", test.lastUpdateTime());
-		sendTableRow(response, "Todays Date Time", __DATE__ " " __TIME__);
-		// Example Dropdown
+		sendTestTable(response, test);
 	}
 
+	sendTableStyle(response);
 	response->print("</table>");
 	response->print("<button type='submit'>Save Settings</button>");
 	response->print("</form>");
 	response->print("</div>");
+
+	// Right side: Update Message
+	response->print("<div class='update-message' style='flex: 1; padding-left: 20px;'>");
+	response->print("<h2 style='margin-top: 0;'>Update Status</h2>");
+	response->print("<div id='updateStatus' style='padding: 10px; border: 1px solid #ddd; "
+					"border-radius: 4px; background-color: #f9f9f9;'>No updates yet.</div>");
+	response->print("</div>");
+
+	response->print("</div>");
+	response->print("</div>");
+
+	// JavaScript for handling form submission and updating status message
+	response->print(R"(
+        <script>
+            function handleSubmit(event) {
+                event.preventDefault(); // Prevent default form submission
+
+                var form = event.target;
+                var formData = new FormData(form);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', form.action, true);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); // Indicate AJAX request
+                xhr.onload = function() {
+                    var statusDiv = document.getElementById('updateStatus');
+                    if (xhr.status === 200) {
+                        statusDiv.innerHTML = '<p style="color: green;">' + xhr.responseText + '</p>';
+                    } else {
+                        statusDiv.innerHTML = '<p style="color: red;">Failed to save settings. Please try again.</p>';
+                    }
+                };
+                xhr.send(formData); // Send form data
+                return false; // Prevent the default form submission
+            }
+        </script>)");
+}
+
+void PageBuilder::sendSpecTable(AsyncResponseStream* response, SetupSpec& spec)
+{
+	sendTableRow(response, "Rating (VA)", static_cast<double>(spec.Rating_va));
+	sendInputField(response, "Rating_va", spec.Rating_va, UPS_MIN_VA, UPS_MAX_VA);
+	sendTableRow(response, "Rated Voltage (V)", static_cast<double>(spec.RatedVoltage_volt));
+	sendInputField(response, "RatedVoltage_volt", spec.RatedVoltage_volt, UPS_MIN_INPUT_VOLT,
+				   UPS_MAX_INPUT_VOLT);
+	sendTableRow(response, "Rated Current (A)", static_cast<double>(spec.RatedCurrent_amp));
+	sendInputField(response, "RatedCurrent_amp", spec.RatedCurrent_amp);
+
+	sendTableRow(response, "Minimum Input Voltage (V)",
+				 static_cast<double>(spec.MinInputVoltage_volt));
+	sendInputField(response, "MinInputVoltage_volt", spec.MinInputVoltage_volt, UPS_MIN_INPUT_VOLT,
+				   UPS_MIN_INPUT_VOLT_MAXCAP);
+	sendTableRow(response, "Maximum Input Voltage (V)",
+				 static_cast<double>(spec.MaxInputVoltage_volt));
+	sendInputField(response, "MaxInputVoltage_volt", spec.MaxInputVoltage_volt,
+				   UPS_MAX_INPUT_VOLT_MINCAP, UPS_MAX_INPUT_VOLT);
+
+	sendTableRow(response, "Avg Switch Time (ms)", static_cast<double>(spec.AvgSwitchTime_ms));
+	sendInputField(response, "AvgSwitchTime_ms", spec.AvgSwitchTime_ms);
+
+	sendTableRow(response, "Avg Backup Time (ms)", static_cast<double>(spec.AvgBackupTime_ms));
+	sendInputField(response, "AvgBackupTime_ms", spec.AvgBackupTime_ms);
+	sendTableRow(response, "Last Update (Spec)", spec.lastUpdateTime());
+	sendTableRow(response, "Todays Date Time", __DATE__ " " __TIME__);
+}
+void PageBuilder::sendTestTable(AsyncResponseStream* response, SetupTest& test)
+{
+	sendTableRow(response, "Test Standard", test.TestStandard);
+	sendInputField(response, "TestStandard", test.TestStandard);
+
+	sendTableRow(response, "Test Mode", static_cast<int>(test.mode));
+	sendDropdown(response, "TestMode", {"AUTO", "MANUAL"}, "AUTO");
+
+	sendTableRow(response, "Test VA Rating", static_cast<double>(test.testVARating));
+	sendInputField(response, "TestVARating", test.testVARating, UPS_MIN_VA, UPS_MAX_VA);
+
+	sendTableRow(response, "Input Voltage (V)", static_cast<double>(test.inputVoltage_volt));
+	sendInputField(response, "InputVoltage_volt", test.inputVoltage_volt, UPS_MIN_INPUT_VOLT,
+				   UPS_MAX_INPUT_VOLT);
+	sendTableRow(response, "TestDuration (ms)", static_cast<double>(test.testDuration_ms));
+	sendInputField(response, "TestDuration_ms", test.testDuration_ms, UPS_MIN_TEST_DURATION,
+				   UPS_MAX_TEST_DURATION);
+	sendTableRow(response, "MinValidSwitchTime (ms)",
+				 static_cast<double>(test.min_valid_switch_time_ms));
+	sendInputField(response, "MinValidSwitchTime", test.min_valid_switch_time_ms,
+				   UPS_MIN_SWITCHING_TIME_MS_SANITY_CHECK, UPS_MAX_SWITCHING_TIME_MS_SANITY_CHECK);
+	sendTableRow(response, "MaxValidSwitchTime (ms)",
+				 static_cast<double>(test.max_valid_switch_time_ms));
+	sendInputField(response, "MaxValidSwitchTime", test.max_valid_switch_time_ms,
+				   UPS_MIN_SWITCHING_TIME_MS_SANITY_CHECK, UPS_MAX_SWITCHING_TIME_MS_SANITY_CHECK);
+	sendTableRow(response, "ToleranceSwitchTime (ms)",
+				 static_cast<double>(test.ToleranceSwitchTime_ms));
+	sendInputField(response, "ToleranceSwitchTime", test.ToleranceSwitchTime_ms,
+				   UPS_MIN_SWITCH_TIME_TOLERANCE_MS, UPS_MAX_SWITCH_TIME_TOLERANCE_MS);
+	sendTableRow(response, "MinValidBackupTime (ms)",
+				 static_cast<double>(test.min_valid_backup_time_ms));
+	sendInputField(response, "MinValidBackupTime", test.min_valid_backup_time_ms,
+				   UPS_MIN_BACKUP_TIME_MS_SANITY_CHECK, UPS_MAX_BACKUP_TIME_MS_SANITY_CHECK);
+
+	sendTableRow(response, "MaxValidBackupTime (ms)",
+				 static_cast<double>(test.max_valid_backup_time_ms));
+	sendInputField(response, "MaxValidBackupTime", test.max_valid_backup_time_ms,
+				   UPS_MIN_BACKUP_TIME_MS_SANITY_CHECK, UPS_MAX_BACKUP_TIME_MS_SANITY_CHECK);
+
+	sendTableRow(response, "MaxBackupTime (min)", static_cast<double>(test.maxBackupTime_min));
+	sendInputField(response, "MaxBackupTime", test.maxBackupTime_min,
+				   UPS_MIN_BACKUP_TIME_MS_SANITY_CHECK, UPS_MAX_BACKUP_TIME_MINUTE_SANITY_CHECK);
+
+	sendTableRow(response, "ToleranceBackupTime (ms)",
+				 static_cast<double>(test.ToleranceBackUpTime_ms));
+	sendInputField(response, "ToleranceBackupTime", test.ToleranceBackUpTime_ms);
+
+	sendTableRow(response, "MaxRetest", static_cast<double>(test.MaxRetest));
+	sendInputField(response, "MaxRetest", test.MaxRetest);
+
+	sendTableRow(response, "Last Update (Test)", test.lastUpdateTime());
+	sendTableRow(response, "Todays Date Time", __DATE__ " " __TIME__);
 }
 
 //----------------------------------HTML BLOCK FACTORY------------------//
@@ -521,10 +622,11 @@ void PageBuilder::sendColorGroup(AsyncResponseStream* response, int span,
 	(response->printf("<col style=\"background-color:%s\">", args), ...);
 	response->print("</colgroup>");
 }
+
 void PageBuilder::sendTableStyle(AsyncResponseStream* response)
 {
 	response->print("<style>");
-	response->print("#custom-settings-page table { width: 50%; border-collapse: collapse; margin: "
+	response->print("#custom-settings-page table { width: 100%; border-collapse: collapse; margin: "
 					"20px 0; font-size: 1em; font-family: sans-serif; min-width: 400px; }");
 	response->print("#custom-settings-page th, td { padding: 12px 15px; border: 1px solid #ddd; "
 					"text-align: left; }");
