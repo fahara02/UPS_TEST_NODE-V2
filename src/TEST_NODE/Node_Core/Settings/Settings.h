@@ -55,6 +55,275 @@ static const char* settingToString(SettingType setting)
 			return "NONE";
 	}
 }
+// struct SetupSpec
+// {
+// 	uint16_t Rating_va;
+// 	uint16_t RatedVoltage_volt;
+// 	uint16_t RatedCurrent_amp;
+// 	uint16_t MinInputVoltage_volt;
+// 	uint16_t MaxInputVoltage_volt;
+// 	unsigned long AvgSwitchTime_ms;
+// 	unsigned long AvgBackupTime_ms;
+
+// 	enum class Field
+// 	{
+// 		RatingVa,
+// 		RatedVoltage,
+// 		RatedCurrent,
+// 		MinInputVoltage,
+// 		MaxInputVoltage,
+// 		AvgSwitchTime,
+// 		AvgBackupTime
+// 	};
+
+// 	// Removed the const specifier
+// 	struct SpecField
+// 	{
+// 		const char* fieldName;
+// 		Field field;
+// 	};
+
+// 	SpecField specFields[7];
+
+// 	SetupSpec() :
+// 		Rating_va(2000), RatedVoltage_volt(230), RatedCurrent_amp(6), MinInputVoltage_volt(180),
+// 		MaxInputVoltage_volt(230), AvgSwitchTime_ms(50UL), AvgBackupTime_ms(300000UL),
+// 		specFields{{"Rating_va", Field::RatingVa},
+// 				   {"RatedVoltage_volt", Field::RatedVoltage},
+// 				   {"RatedCurrent_amp", Field::RatedCurrent},
+// 				   {"MinInputVoltage_volt", Field::MinInputVoltage},
+// 				   {"MaxInputVoltage_volt", Field::MaxInputVoltage},
+// 				   {"AvgSwitchTime_ms", Field::AvgSwitchTime},
+// 				   {"AvgBackupTime_ms", Field::AvgBackupTime}}
+// 	{
+// 	}
+
+// 	bool setField(Field field, uint32_t value)
+// 	{
+// 		bool updated = false;
+
+// 		switch(field)
+// 		{
+// 			case Field::RatingVa:
+// 				if(value >= UPS_MIN_VA && value <= UPS_MAX_VA)
+// 				{
+// 					Rating_va = static_cast<uint16_t>(value);
+// 					Serial.println("Rating VA updated");
+// 					updated = true;
+// 				}
+// 				break;
+
+// 			case Field::RatedVoltage:
+// 				if(value >= UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT)
+// 				{
+// 					RatedVoltage_volt = static_cast<uint16_t>(value);
+// 					Serial.println("Rated voltage updated");
+// 					updated = true;
+// 				}
+// 				break;
+
+// 			case Field::RatedCurrent:
+// 				if(value >= UPS_MIN_OUTPUT && value <= UPS_MAX_OUTPUT)
+// 				{
+// 					RatedCurrent_amp = static_cast<uint16_t>(value);
+// 					updated = true;
+// 				}
+// 				break;
+
+// 			case Field::MinInputVoltage:
+// 				if(value >= UPS_MIN_INPUT_VOLT && value < UPS_MAX_INPUT_VOLT)
+// 				{
+// 					MinInputVoltage_volt = static_cast<uint16_t>(value);
+// 					updated = true;
+// 				}
+// 				break;
+
+// 			case Field::MaxInputVoltage:
+// 				if(value > UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT)
+// 				{
+// 					MaxInputVoltage_volt = static_cast<uint16_t>(value);
+// 					updated = true;
+// 				}
+// 				break;
+
+// 			case Field::AvgSwitchTime:
+// 				if(value <= UPS_MAX_SWITCHING_TIME_MS)
+// 				{
+// 					AvgSwitchTime_ms = value;
+// 					updated = true;
+// 				}
+// 				break;
+
+// 			case Field::AvgBackupTime:
+// 				if(value >= UPS_MIN_BACKUP_TIME_MS)
+// 				{
+// 					AvgBackupTime_ms = value;
+// 					updated = true;
+// 				}
+// 				break;
+// 		}
+
+// 		if(updated)
+// 		{
+// 			lastsetting_updated = millis(); // Update the milliseconds timestamp
+// 			lastSettingtime = time(nullptr); // Update the real-time timestamp
+// 			return true;
+// 		}
+
+// 		return false;
+// 	}
+
+// 	unsigned lastUpdate() const
+// 	{
+// 		return lastsetting_updated; // Return the milliseconds timestamp
+// 	}
+
+// 	const char* lastUpdateTime() const
+// 	{
+// 		struct tm* timeinfo = localtime(&lastSettingtime);
+// 		if(!timeinfo)
+// 		{
+// 			std::strncpy(last_update_str, "Invalid Time", sizeof(last_update_str));
+// 			return last_update_str;
+// 		}
+// 		std::strftime(last_update_str, sizeof(last_update_str), "%b %d %Y %H:%M:%S", timeinfo);
+// 		return last_update_str;
+// 	}
+
+//   private:
+// 	SettingType typeofSetting = SettingType::SPEC;
+// 	unsigned long lastsetting_updated = 0UL; // Store the last update time in milliseconds
+// 	time_t lastSettingtime = 0; // Store the real-time timestamp
+// 	mutable char last_update_str[20];
+// };
+
+#include <cstring> // For strcmp
+
+// struct SetupSpec
+// {
+// 	uint16_t Rating_va;
+// 	uint16_t RatedVoltage_volt;
+// 	uint16_t RatedCurrent_amp;
+// 	uint16_t MinInputVoltage_volt;
+// 	uint16_t MaxInputVoltage_volt;
+// 	unsigned long AvgSwitchTime_ms;
+// 	unsigned long AvgBackupTime_ms;
+
+// 	enum class Field
+// 	{
+// 		RatingVa,
+// 		RatedVoltage,
+// 		RatedCurrent,
+// 		MinInputVoltage,
+// 		MaxInputVoltage,
+// 		AvgSwitchTime,
+// 		AvgBackupTime
+// 	};
+
+// 	struct SpecField
+// 	{
+// 		const char* fieldName;
+// 		Field field;
+// 	};
+
+// 	static const SpecField specFields[7];
+
+// 	SetupSpec() :
+// 		Rating_va(2000), RatedVoltage_volt(230), RatedCurrent_amp(6), MinInputVoltage_volt(180),
+// 		MaxInputVoltage_volt(230), AvgSwitchTime_ms(50UL), AvgBackupTime_ms(300000UL)
+// 	{
+// 	}
+
+// 	bool setField(Field field, uint32_t value)
+// 	{
+// 		bool updated = false;
+
+// 		switch(field)
+// 		{
+// 			case Field::RatingVa:
+// 				Rating_va = static_cast<uint16_t>(value);
+// 				updated = true;
+// 				break;
+// 			case Field::RatedVoltage:
+// 				RatedVoltage_volt = static_cast<uint16_t>(value);
+// 				updated = true;
+// 				break;
+// 			case Field::RatedCurrent:
+// 				RatedCurrent_amp = static_cast<uint16_t>(value);
+// 				updated = true;
+// 				break;
+// 			case Field::MinInputVoltage:
+// 				MinInputVoltage_volt = static_cast<uint16_t>(value);
+// 				updated = true;
+// 				break;
+// 			case Field::MaxInputVoltage:
+// 				MaxInputVoltage_volt = static_cast<uint16_t>(value);
+// 				updated = true;
+// 				break;
+// 			case Field::AvgSwitchTime:
+// 				AvgSwitchTime_ms = value;
+// 				updated = true;
+// 				break;
+// 			case Field::AvgBackupTime:
+// 				AvgBackupTime_ms = value;
+// 				updated = true;
+// 				break;
+// 		}
+
+// 		if(updated)
+// 		{
+// 			lastsetting_updated = millis(); // Update the milliseconds timestamp
+// 			lastSettingtime = time(nullptr); // Update the real-time timestamp
+// 		}
+
+// 		return updated;
+// 	}
+
+// 	bool updateFieldByName(const char* fieldName, uint32_t value)
+// 	{
+// 		for(const auto& specField: specFields)
+// 		{
+// 			if(strcmp(specField.fieldName, fieldName) == 0)
+// 			{
+// 				return setField(specField.field, value);
+// 			}
+// 		}
+// 		return false; // Field name not found
+// 	}
+
+// 	unsigned lastUpdate() const
+// 	{
+// 		return lastsetting_updated; // Return the milliseconds timestamp
+// 	}
+
+// 	const char* lastUpdateTime() const
+// 	{
+// 		struct tm* timeinfo = localtime(&lastSettingtime);
+// 		if(!timeinfo)
+// 		{
+// 			std::strncpy(last_update_str, "Invalid Time", sizeof(last_update_str));
+// 			return last_update_str;
+// 		}
+// 		std::strftime(last_update_str, sizeof(last_update_str), "%b %d %Y %H:%M:%S", timeinfo);
+// 		return last_update_str;
+// 	}
+
+//   private:
+// 	SettingType typeofSetting = SettingType::SPEC;
+// 	unsigned long lastsetting_updated = 0UL; // Store the last update time in milliseconds
+// 	time_t lastSettingtime = 0; // Store the real-time timestamp
+// 	mutable char last_update_str[20];
+// };
+
+// // Define the specFields array outside the struct
+// static const SetupSpec::SpecField SetupSpec::specFields[] = {
+// 	{"Rating_va", SetupSpec::Field::RatingVa},
+// 	{"RatedVoltage_volt", SetupSpec::Field::RatedVoltage},
+// 	{"RatedCurrent_amp", SetupSpec::Field::RatedCurrent},
+// 	{"MinInputVoltage_volt", SetupSpec::Field::MinInputVoltage},
+// 	{"MaxInputVoltage_volt", SetupSpec::Field::MaxInputVoltage},
+// 	{"AvgSwitchTime_ms", SetupSpec::Field::AvgSwitchTime},
+// 	{"AvgBackupTime_ms", SetupSpec::Field::AvgBackupTime}};
 
 struct SetupSpec
 {
