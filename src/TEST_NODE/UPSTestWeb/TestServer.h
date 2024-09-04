@@ -13,22 +13,38 @@
 
 #include "TestManager.h"
 #include "UPSTesterSetup.h"
+#include "Filehandler.h"
 class TestServer
 {
   public:
-	TestServer(AsyncWebServer* server) : _server(server), webPage(new PageBuilder())
+	TestServer(AsyncWebServer* server, UPSTesterSetup& _setup, TestSync& _sync) :
+		_server(server), webPage(new PageBuilder()), _setup(UPSTesterSetup::getInstance()),
+		_sync(TestSync::getInstance())
 	{
 	}
 	~TestServer()
 	{
 		delete webPage; // Clean up dynamically allocated memory
 	}
+	void begin()
 
+	{
+		if(!_fileHandler.begin())
+		{
+			Serial.println("Failed to initialize the filesystem");
+			return;
+		}
+		_fileHandler.serveFile(*_server, "/Logo-Full.svg", "/Logo-Full.svg", "image/svg+xml");
+		servePages(_setup, _sync);
+	}
 	void servePages(UPSTesterSetup& _setup, TestSync& _sync);
 
   private:
 	AsyncWebServer* _server;
 	PageBuilder* webPage;
+	Node_Utility::FileHandler _fileHandler;
+	UPSTesterSetup& _setup;
+	TestSync& _sync;
 
 	// HTTP_GET
 	void handleRootRequest(AsyncWebServerRequest* request);

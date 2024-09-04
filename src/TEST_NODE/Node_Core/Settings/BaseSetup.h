@@ -1,5 +1,5 @@
-#ifndef SETUP_BASE_H
-#define SETUP_BASE_H
+#ifndef BASE_SETUP_H
+#define BASE_SETUP_H
 #include "Arduino.h"
 #include <IPAddress.h>
 #include <stdint.h>
@@ -7,6 +7,13 @@
 #include "ctime"
 #include <cstring>
 #include "NodeConstants.h"
+namespace Node_Core
+{
+struct SetupBus; // Forward declaration
+}
+
+namespace Node_Core
+{
 
 template<typename T, typename FieldEnum>
 struct BaseSetup
@@ -17,23 +24,14 @@ struct BaseSetup
 		FieldEnum field;
 	};
 
-	static const SpecField specFields[];
-
-	BaseSetup()
-	{
-		initializeDefaults();
-	}
-
-	virtual ~BaseSetup() = default;
-
 	bool updateFieldByName(const char* fieldName, uint32_t value)
 	{
-		for(const auto& specField: specFields)
+		T* derived = static_cast<T*>(this);
+		for(const auto& specField: derived->specFields)
 		{
 			if(strcmp(specField.fieldName, fieldName) == 0)
 			{
-				return setField(specField.field, value);
-				lastsetting_updated = millis();
+				return derived->setField(specField.field, value);
 			}
 		}
 		return false; // Field name not found
@@ -57,13 +55,17 @@ struct BaseSetup
 	}
 
   protected:
-	virtual void initializeDefaults() = 0; // Pure virtual method for default initialization
-
-	virtual bool setField(FieldEnum field, uint32_t value) = 0; // Pure virtual function
+	// Pure virtual method for default initialization
 
 	unsigned long lastsetting_updated = 0UL; // Store the last update time in milliseconds
 	time_t lastSettingtime = 0; // Store the real-time timestamp
 	mutable char last_update_str[20];
 };
+// template<typename T, typename FieldEnum>
+// const typename BaseSetup<T, FieldEnum>::SpecField BaseSetup<T, FieldEnum>::specFields[] = {
+// 	// Populate with actual values if needed
+// };
+// template class BaseSetup<Node_Core::SetupSpec, Node_Core::SetupSpec::Field>;
+} // namespace Node_Core
 
 #endif

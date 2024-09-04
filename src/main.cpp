@@ -7,7 +7,7 @@
 #include <ESPAsyncWebServer.h>
 
 #include <Preferences.h>
-#include <LittleFS.h>
+
 #include <Wire.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -20,6 +20,7 @@
 #include "TestSync.h"
 #include "TestServer.h"
 #include "UPSTime.h"
+#include "SetupBUS.h"
 
 using namespace Node_Core;
 
@@ -229,8 +230,9 @@ void setup()
 
 	// PageBuilder web(&server);
 	// web.setupPages(SyncTest);
-	TestServer testServer(&server);
-	testServer.servePages(TesterSetup, SyncTest);
+	TestServer testServer(&server, TesterSetup, SyncTest);
+	// testServer.servePages(TesterSetup, SyncTest);
+	testServer.begin();
 	server.begin();
 }
 void loop()
