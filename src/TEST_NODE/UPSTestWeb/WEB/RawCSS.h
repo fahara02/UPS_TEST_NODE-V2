@@ -174,7 +174,7 @@ header img {
         color: white;
         padding: 20px;
         position: fixed;
-        top: 129px; /* Adjusted to be below header and navbar */
+        top: 128px; /* Adjusted to be below header and navbar */
         left: 0;
         height: calc(100% - 100px); /* Adjust height accordingly */
         transition: transform 0.3s ease, visibility 0.3s ease;
