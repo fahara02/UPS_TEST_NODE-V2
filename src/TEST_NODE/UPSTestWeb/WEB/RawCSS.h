@@ -3,7 +3,7 @@
 #include <pgmspace.h>
 
 const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
-   <style>
+  <style>
       /* Reset and base styles */
       * {
         margin: 0;
@@ -306,7 +306,7 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
         display: flex;
         justify-content: space-between; /* Distribute space evenly between switches and LEDs */
         align-items: center; /* Align items vertically */
-        margin-top: 20px; /* Space above the bottom bar */
+        margin-top: 40px; /* Space above the bottom bar */
         padding: 10px; /* Padding around the bottom bar */
         background-color: #f1f1f1; /* Light background color for the bottom bar */
         border-top: 1px solid #ddd; /* Light border at the top of the bottom bar */
@@ -382,40 +382,49 @@ const char STYLE_BLOCK_CSS[] PROGMEM = R"rawliteral(
 
       /* LED Indicator Styles */
       /* LED Indicator Styles */
+      /* LED Indicator Styles */
       .led-indicators {
         display: flex;
-        align-items: center; /* Align LEDs vertically */
-        justify-content: center; /* Center LEDs horizontally */
+        justify-content: center; /* Center the LEDs horizontally */
+        margin-top: 20px; /* Add some space above the indicators */
       }
 
       .led {
-        width: 30px; /* Increase size to match slider circle */
-        height: 30px; /* Increase size to match slider circle */
+        width: 50px; /* Increased size */
+        height: 50px; /* Increased size */
         border-radius: 50%;
         background: radial-gradient(
-          circle at 15px 15px,
-          #fff,
-          #ddd
-        ); /* Gradient for 3D effect */
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Shadow for 3D effect */
-        margin: 0 10px;
+          circle,
+          #ffffff 0%,
+          #ddd 70%
+        ); /* 3D effect with radial gradient */
+        border: 2px solid #aaa; /* Subtle border for a 3D effect */
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3); /* Shadow for depth */
+        margin: 0 15px; /* Space between LEDs */
         display: flex;
         align-items: center;
         justify-content: center;
-        position: relative; /* Positioning for the inner light effect */
+      }
+
+      .led.blue {
+        background: radial-gradient(circle, #007bff 0%, #0056b3 70%);
+      }
+
+      .led.green {
+        background: radial-gradient(circle, #28a745 0%, #1e7e34 70%);
+      }
+
+      .led.red {
+        background: radial-gradient(circle, #dc3545 0%, #c82333 70%);
       }
 
       .led::before {
         content: '';
-        width: 18px; /* Slightly smaller than the LED circle */
-        height: 18px; /* Slightly smaller than the LED circle */
+        width: 20px; /* Smaller inner circle */
+        height: 20px; /* Smaller inner circle */
         border-radius: 50%;
         background-color: #fff;
-        position: absolute;
-        top: 6px; /* Centered within the LED circle */
-        left: 6px; /* Centered within the LED circle */
-        box-shadow: 0 0 4px rgba(0, 0, 0, 0.3); /* Light inner shadow for realism */
-        z-index: 1;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); /* Inner circle shadow */
       }
 
       /* Color Styles */
