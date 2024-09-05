@@ -56,6 +56,7 @@ void TestServer::servePages(UPSTesterSetup& _setup, TestSync& _sync)
 			this->handleTestDataRequest(request, json, _sync);
 		});
 	_server->addHandler(testDataHandler);
+	_server->addHandler(_ws);
 
 	// Handle 404 errors
 	_server->onNotFound([](AsyncWebServerRequest* request) {
@@ -74,6 +75,7 @@ void TestServer::handleRootRequest(AsyncWebServerRequest* request)
 	this->webPage->sendSidebar(response);
 	this->webPage->sendUserCommand(response);
 	this->webPage->sendPowerMonitor(response);
+
 	this->webPage->sendScript(response);
 	this->webPage->sendPageTrailer(response);
 	request->send(response);
@@ -272,175 +274,185 @@ void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPST
 	}
 }
 
-// void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup&
-// _setup, 											SettingType type)
+// void TestServer::initWebSocket()
 // {
-// 	String responseMessage;
-// 	bool success = false;
-
-// 	if(type == SettingType::SPEC)
-// 	{
-// 		SetupSpec& spec = _setup.specSetup();
-
-// 		// Map of field names and corresponding enum fields for SetupSpec
-// 		std::map<String, SetupSpec::Field> specFields = {
-// 			{"Rating_va", SetupSpec::Field::RatingVa},
-// 			{"RatedVoltage_volt", SetupSpec::Field::RatedVoltage},
-// 			{"RatedCurrent_amp", SetupSpec::Field::RatedCurrent},
-// 			{"MinInputVoltage_volt", SetupSpec::Field::MinInputVoltage},
-// 			{"MaxInputVoltage_volt", SetupSpec::Field::MaxInputVoltage},
-// 			{"AvgSwitchTime_ms", SetupSpec::Field::AvgSwitchTime},
-// 			{"AvgBackupTime_ms", SetupSpec::Field::AvgBackupTime}};
-
-// 		for(const auto& field: specFields)
-// 		{
-// 			if(request->hasParam(field.first, true))
-// 			{
-// 				String paramValue = request->getParam(field.first, true)->value();
-// 				success = spec.setField(field.second, paramValue.toDouble());
-// 				if(success)
-// 				{
-// 					responseMessage +=
-// 						"Spec Settings " + field.first + " updated successfully.<br>";
-// 				}
-// 				else
-// 				{
-// 					responseMessage +=
-// 						"Error: " + field.first + " set field rejected the param.<br>";
-// 				}
-// 			}
-// 		}
-
-// 		request->redirect("/settings/ups-specification");
-// 	}
-// 	else if(type == SettingType::TEST)
-// 	{
-// 		SetupTest& test = _setup.testSetup();
-
-// 		// Map of field names and corresponding enum fields for SetupTest
-// 		std::map<String, SetupTest::Field> testFields = {
-// 			{"TestStandard", SetupTest::Field::TestStandard},
-// 			{"TestMode", SetupTest::Field::Mode},
-// 			{"TestVARating", SetupTest::Field::TestVARating},
-// 			{"InputVoltage_volt", SetupTest::Field::InputVoltage},
-// 			{"TestDuration_ms", SetupTest::Field::TestDuration},
-// 			{"MinValidSwitchTime", SetupTest::Field::MinValidSwitchTime},
-// 			{"MaxValidSwitchTime", SetupTest::Field::MaxValidSwitchTime},
-// 			{"MinValidBackupTime", SetupTest::Field::MinValidBackupTime},
-// 			{"MaxValidBackupTime", SetupTest::Field::MaxValidBackupTime},
-// 			{"ToleranceSwitchTime", SetupTest::Field::ToleranceSwitchTime},
-// 			{"MaxBackupTime", SetupTest::Field::MaxBackupTime},
-// 			{"ToleranceBackupTime", SetupTest::Field::ToleranceBackupTime},
-// 			{"MaxRetest", SetupTest::Field::MaxRetest}};
-
-// 		for(const auto& field: testFields)
-// 		{
-// 			if(request->hasParam(field.first, true))
-// 			{
-// 				String paramValue = request->getParam(field.first, true)->value();
-// 				success = test.setField(field.second, paramValue.toDouble());
-// 				if(success)
-// 				{
-// 					responseMessage +=
-// 						"Test Settings " + field.first + " updated successfully.<br>";
-// 				}
-// 				else
-// 				{
-// 					responseMessage +=
-// 						"Error: " + field.first + " set field rejected the param.<br>";
-// 				}
-// 			}
-// 		}
-// 		request->redirect("/settings/test-specification");
-// 	}
-
-// 	// Send response based on the outcome
-// 	if(responseMessage.isEmpty())
-// 	{
-// 		request->send(400, "text/html", "No valid settings updated.");
-// 	}
-// 	else
-// 	{
-// 		request->send(200, "text/html", responseMessage);
-// 	}
+// 	_ws.onEvent(onWsEvent);
+// 	_server.addHandler(&ws);
 // }
+void TestServer::initWebSocket()
+{
+	_ws->onEvent([this](AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
+						void* arg, uint8_t* data, size_t len) {
+		this->onWsEvent(server, client, type, arg, data, len);
+	});
+	//_ws.onEvent(this->onWsEvent);
+	_server->addHandler(_ws);
+}
 
-// void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup&
-// _setup, 											SettingType type)
-// {
-// 	String responseMessage;
-// 	bool success = false;
+void TestServer::createWSCleanUpTask()
+{
+	xTaskCreate(wsClientCleanup, "WSCleanupTask", 1024, _ws, 1, NULL);
+}
+void TestServer::wsClientCleanup(void* pvParameters)
+{
+	AsyncWebSocket* ws = static_cast<AsyncWebSocket*>(pvParameters);
+	while(true)
+	{
+		ws->cleanupClients();
+		vTaskDelay(2000 / portTICK_PERIOD_MS);
+	}
+	vTaskDelete(NULL);
+}
+void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
+						   void* arg, uint8_t* data, size_t len)
+{
+	switch(type)
+	{
+		case WS_EVT_CONNECT:
+			Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
+						  client->remoteIP().toString().c_str());
+			break;
+		case WS_EVT_DISCONNECT:
+			Serial.printf("WebSocket client #%u disconnected\n", client->id());
+			break;
+		case WS_EVT_DATA:
+			handleWebSocketMessage(arg, data, len);
+			break;
+		case WS_EVT_PONG:
+		case WS_EVT_ERROR:
+			break;
+	}
+}
 
-// 	if(type == SettingType::SPEC)
-// 	{
-// 		SetupSpec& spec = _setup.specSetup();
+void TestServer::handleWebSocketMessage(void* arg, uint8_t* data, size_t len)
+{
+	AwsFrameInfo* info = (AwsFrameInfo*)arg;
+	if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
+	{
+		data[len] = 0; // Null-terminate the string
+		wsIncomingCommands cmd = getWebSocketCommand((char*)data);
+		if(cmd != wsIncomingCommands::INVALID_COMMAND)
+		{
+			handleWsIncomingCommands(cmd);
+			notifyClients();
+		}
+	}
+}
+wsIncomingCommands TestServer::getWebSocketCommand(const char* incomingCommand)
+{
+	if(strcmp(incomingCommand, "start") == 0)
 
-// 		if(request->hasParam("Rating_va", true))
-// 		{
-// 			String ratingVa = request->getParam("Rating_va", true)->value();
-// 			success = spec.setField(SetupSpec::Field::RatingVa, ratingVa.toDouble());
-// 			if(success)
-// 			{
-// 				responseMessage += "Spec Settings rated VA updated successfully.<br>";
-// 			}
-// 			else
-// 			{
-// 				responseMessage += "Error: Ratin VA set field rejected the param.<br>";
-// 			}
-// 		}
+		return wsIncomingCommands::TEST_START;
+	if(strcmp(incomingCommand, "stop") == 0)
+		return wsIncomingCommands::TEST_STOP;
+	if(strcmp(incomingCommand, "pause") == 0)
+		return wsIncomingCommands::TEST_PAUSE;
+	if(strcmp(incomingCommand, "AUTO") == 0)
+		return wsIncomingCommands::AUTO_MODE;
+	if(strcmp(incomingCommand, "MANUAL") == 0)
+		return wsIncomingCommands::MANUAL_MODE;
+	if(strcmp(incomingCommand, "Load On") == 0)
+		return wsIncomingCommands::LOAD_ON;
+	if(strcmp(incomingCommand, "Load Off") == 0)
+		return wsIncomingCommands::LOAD_OFF;
+	if(strcmp(incomingCommand, "Mains On") == 0)
+		return wsIncomingCommands::MAINS_ON;
+	if(strcmp(incomingCommand, "Mains Off") == 0)
+		return wsIncomingCommands::MAINS_OFF;
+	return wsIncomingCommands::INVALID_COMMAND;
+}
 
-// 		if(request->hasParam("RatedVoltage_volt", true))
-// 		{
-// 			String ratedVolt = request->getParam("RatedVoltage_volt", true)->value();
-// 			spec.setField(SetupSpec::Field::RatedVoltage, ratedVolt.toDouble());
-// 			responseMessage += "Spec Settings rated voltage updated successfully.<br>";
-// 		}
-// 	}
+String sendWebsocketCommands(wsOutgoingCommands cmd)
+{
+	int index = static_cast<int>(cmd);
+	size_t size = sizeof(outgoingCommandTable) / sizeof(outgoingCommandTable[0]);
 
-// 	if(type == SettingType::TEST)
-// 	{
-// 		SetupTest& test = _setup.testSetup();
+	// Check if the index is within valid range
+	if(index >= 0 && index < size)
+	{
+		return String(outgoingCommandTable[index]);
+	}
+	else
+	{
+		return String("INVALID_COMMAND");
+	}
+}
 
-// 		// Update TestStandard field (const char*)
-// 		if(request->hasParam("TestStandard", true))
-// 		{
-// 			String testStandardStr = request->getParam("TestStandard", true)->value();
-// 			test.TestStandard = testStandardStr.c_str(); // Assign string to const char*
-// 			responseMessage += "Test Settings standard updated successfully.<br>";
-// 		}
+void TestServer::handleWsIncomingCommands(wsIncomingCommands cmd)
+{
+	if(cmd == wsIncomingCommands::TEST_START)
+	{
+		logger.log(LogLevel::SUCCESS, "handling TEST START EVENT");
+		//_sync.ReportEvent(Event::TEST_START);
+	}
+	else if(cmd == wsIncomingCommands::TEST_STOP)
+	{
+		logger.log(LogLevel::SUCCESS, "handling TEST STOP EVENT");
+		//_sync.ReportEvent(Event::TEST_STOP);
+	}
+	else if(cmd == wsIncomingCommands::TEST_PAUSE)
+	{
+		logger.log(LogLevel::SUCCESS, "handling TEST PAUSE EVENT");
+		//_sync.ReportEvent(Event::TEST_PAUSE);
+	}
+	else
+	{
+		// Handle unknown command or do nothing
+	}
+}
 
-// 		// Update TestMode field (enum TestMode)
-// 		if(request->hasParam("TestMode", true))
-// 		{
-// 			String modeStr = request->getParam("TestMode", true)->value();
-// 			TestMode mode;
+void TestServer::sendwsData(wsOutGoingDataType type, const char* data)
+{
+	// Convert the wsOutGoingDataType to a string identifier to send to the frontend
+	String message;
+	switch(type)
+	{
+		case wsOutGoingDataType::INPUT_POWER:
+			message = String("{\"inputWattage\":\"") + data + "\"}";
+			break;
+		case wsOutGoingDataType::INPUT_VOLT:
+			message = String("{\"inputVoltage\":\"") + data + " V\"}";
+			break;
+		case wsOutGoingDataType::INPUT_CURRENT:
+			message = String("{\"inputCurrent\":\"") + data + " A\"}";
+			break;
+		case wsOutGoingDataType::INPUT_PF:
+			message = String("{\"inputPowerFactor\":\"") + data + "\"}";
+			break;
+		case wsOutGoingDataType::OUTPUT_POWER:
+			message = String("{\"outputWattage\":\"") + data + " W\"}";
+			break;
+		case wsOutGoingDataType::OUTPUT_VOLT:
+			message = String("{\"outputVoltage\":\"") + data + " V\"}";
+			break;
+		case wsOutGoingDataType::OUTPUT_CURRENT:
+			message = String("{\"outputCurrent\":\"") + data + " A\"}";
+			break;
+		case wsOutGoingDataType::OUTPUT_PF:
+			message = String("{\"outputPowerFactor\":\"") + data + "\"}";
+			break;
+		default:
+			message = "{\"error\":\"Invalid data type\"}";
+			break;
+	}
 
-// 			// Assuming your TestMode enum has values like AUTO, MANUAL, etc.
-// 			if(modeStr == "AUTO")
-// 			{
-// 				mode = TestMode::AUTO;
-// 			}
-// 			else if(modeStr == "MANUAL")
-// 			{
-// 				mode = TestMode::MANUAL;
-// 			}
-// 			else
-// 			{
-// 				request->send(400, "text/html", "Invalid Test Mode.");
-// 				return; // Early exit if invalid mode
-// 			}
+	// Send the message to all connected WebSocket clients
+	_ws->textAll(message);
+}
 
-// 			test.mode = mode;
-// 			responseMessage += "Test Settings mode updated successfully.<br>";
-// 		}
-// 	}
+void TestServer::sendRandomTestData()
+{
+	sendwsData(wsOutGoingDataType::INPUT_POWER, String(random(1000, 2000)).c_str());
+	sendwsData(wsOutGoingDataType::INPUT_VOLT, String(random(200, 240)).c_str());
+	sendwsData(wsOutGoingDataType::INPUT_CURRENT, String(random(5, 10)).c_str());
+	sendwsData(wsOutGoingDataType::INPUT_PF, String(random(95, 100) / 100.0, 2).c_str());
+	sendwsData(wsOutGoingDataType::OUTPUT_POWER, String(random(900, 1800)).c_str());
+	sendwsData(wsOutGoingDataType::OUTPUT_VOLT, String(random(210, 230)).c_str());
+	sendwsData(wsOutGoingDataType::OUTPUT_CURRENT, String(random(4, 8)).c_str());
+	sendwsData(wsOutGoingDataType::OUTPUT_PF, String(random(90, 100) / 100.0, 2).c_str());
+}
 
-// 	if(responseMessage.isEmpty())
-// 	{
-// 		request->send(400, "text/html", "No valid settings updated.");
-// 	}
-// 	else
-// 	{
-// 		request->send(200, "text/html", responseMessage);
-// 	}
-// }
+void TestServer::notifyClients()
+{
+	_ws->textAll("Command Executed");
+}

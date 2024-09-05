@@ -71,6 +71,7 @@ EventGroupHandle_t eventGroupBackupTestData = NULL;
 const char* PARAM_MESSAGE = "message";
 SemaphoreHandle_t xSemaphore;
 AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
 
 WiFiManager wm;
 ModbusRTU mb;
@@ -230,10 +231,15 @@ void setup()
 
 	// PageBuilder web(&server);
 	// web.setupPages(SyncTest);
-	TestServer testServer(&server, TesterSetup, SyncTest);
-	// testServer.servePages(TesterSetup, SyncTest);
+	TestServer testServer(&server, &ws, TesterSetup, SyncTest);
+	testServer.servePages(TesterSetup, SyncTest);
 	testServer.begin();
+
 	server.begin();
+	if(ws.enabled())
+	{
+		logger.log(LogLevel::SUCCESS, "Websocket is enabled");
+	}
 }
 void loop()
 {

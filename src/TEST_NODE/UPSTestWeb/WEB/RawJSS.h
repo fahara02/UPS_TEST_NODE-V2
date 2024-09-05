@@ -4,183 +4,281 @@
 #include <pgmspace.h>
 const char MAIN_SCRIPT_JSS[] PROGMEM = R"rawliteral(
     <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        const sidebar = document.getElementById('sidebar');
-        const toggleButton = document.getElementById('toggleSidebar');
+  let websocket;
+const gateway = 'ws://192.168.0.108/ws';
 
-        if (toggleButton && sidebar) {
-          toggleButton.addEventListener('click', () => {
-            sidebar.classList.toggle('hidden');
-          });
-        } else {
-          console.error('Sidebar or Toggle Button not found.');
-        }
+ //const gateway = `ws://${window.location.hostname}/ws`;
+// Initialize variables
+function initAllVariables() {
+  window.tests = [];
+}
 
-        window.tests = []; // Store all added tests
+// Initialize WebSocket connection
+function initWebSocket() {
+  console.log('Trying to open a WebSocket connection...');
+  websocket = new WebSocket(gateway);
+  websocket.onopen = onWebSocketOpen;
+  websocket.onclose = onWebSocketClose;
+  websocket.onmessage = onWebSocketMessage;
+}
 
-        window.addTest = function () {
-          const testSelect = document.getElementById('addTest');
-          const loadLevelSelect = document.getElementById('loadLevel');
-          const selectedTest =
-            testSelect.options[testSelect.selectedIndex].text;
-          const loadLevel = loadLevelSelect.value;
-          const testDetails = {
-            testName: selectedTest,
-            loadLevel: loadLevel + '%',
-          };
-          window.tests.push(testDetails);
-          appendLog(
-            'Added Test: ' +
-              JSON.stringify(testDetails) +
-              ' at ' +
-              new Date().toLocaleString()
-          );
-        };
+// WebSocket open event
+function onWebSocketOpen(event) {
+  console.log('WebSocket connection opened');
+}
 
-        window.deleteTest = function () {
-          if (window.tests.length > 0) {
-            const deletedTest = window.tests.pop();
-            appendLog(
-              'Deleted Test: ' +
-                JSON.stringify(deletedTest) +
-                ' at ' +
-                new Date().toLocaleString()
-            );
-            appendLog('Remaining Tests: ' + JSON.stringify(window.tests));
-          } else {
-            appendLog('No tests to delete.');
-          }
-        };
+// WebSocket close event
+function onWebSocketClose(event) {
+  console.log('WebSocket connection closed');
+  setTimeout(initWebSocket, 2000); // Try to reconnect after 2 seconds
+}
 
-        window.sendTest = function () {
-          var sendTest = window.tests;
-          appendLog(
-            'Sending Test: ' +
-              JSON.stringify(sendTest) +
-              ' at ' +
-              new Date().toLocaleString()
-          );
-          sendTestData(); // Send the test data to the server whenever a test is added
-        };
+// WebSocket message handler
+function onWebSocketMessage(event) {
+  console.log('Message from server:', event.data);
+  appendLog('Message received: ' + event.data);
 
-        window.clearTest = function () {
-          var testCommand = document.getElementById('testCommand');
-          if (testCommand) {
-            testCommand.innerHTML = '';
-          } else {
-            console.error('Element testCommand not found');
-          }
-        };
+  try {
+    const data = JSON.parse(event.data);
 
-        window.appendLog = function (message) {
-          const testCommand = document.getElementById('testCommand');
-          const logs = document.getElementById('logs');
-          if (testCommand && logs) {
-            testCommand.textContent += message + '\n';
-            testCommand.scrollTop = testCommand.scrollHeight;
-          } else {
-            console.error('Log or Test Command element not found.');
-          }
-        };
+    // Handle specific message types
+    switch (data.messageType) {
+      case 'testStarted':
+        appendLog('Server: Test has started');
+        break;
+      case 'testStopped':
+        appendLog('Server: Test has stopped');
+        break;
+      default:
+        appendLog('Server: Unknown message received');
+        break;
+    }
 
-        window.startTest = function () {
-          alert('Test Started');
-          appendLog('Test started at ' + new Date().toLocaleString());
-          sendCommand('start');
-        };
+    // Update DOM elements based on message data
+    updateDOMElements(data);
+  } catch (error) {
+    console.error('Error parsing WebSocket message:', error);
+  }
+}
 
-        window.stopTest = function () {
-          alert('Test Stopped');
-          appendLog('Test stopped at ' + new Date().toLocaleString());
-          sendCommand('stop');
-        };
+// Update DOM elements based on WebSocket message data
+function updateDOMElements(data) {
+  if (data.inputPowerFactor !== undefined) {
+    document.getElementById('inputPowerFactor').innerText = data.inputPowerFactor;
+  }
+  if (data.outputPowerFactor !== undefined) {
+    document.getElementById('outputPowerFactor').innerText = data.outputPowerFactor;
+  }
+  if (data.inputVoltage !== undefined) {
+    document.getElementById('inputVoltage').innerText = data.inputVoltage;
+  }
+  if (data.outputVoltage !== undefined) {
+    document.getElementById('outputVoltage').innerText = data.outputVoltage;
+  }
+  if (data.inputCurrent !== undefined) {
+    document.getElementById('inputCurrent').innerText = data.inputCurrent;
+  }
+  if (data.outputCurrent !== undefined) {
+    document.getElementById('outputCurrent').innerText = data.outputCurrent;
+  }
+  if (data.inputWattage !== undefined) {
+    document.getElementById('inputWattage').innerText = data.inputWattage;
+  }
+  if (data.outputWattage !== undefined) {
+    document.getElementById('outputWattage').innerText = data.outputWattage;
+  }
+}
 
-        window.pauseTest = function () {
-          alert('Test Paused');
-          appendLog('Test paused at ' + new Date().toLocaleString());
-          sendCommand('pause');
-        };
+// Initialize WebSocket and set up event listeners on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+  initAllVariables();
+  initWebSocket(); // Initialize WebSocket here to avoid undefined errors
 
-        window.sendMode = function () {
-          // Get the selected radio button
-          var modeSelect = document.querySelector('input[name="mode"]:checked');
-          var mode = modeSelect ? modeSelect.value : null;
-          appendLog(
-            'Sending Mode: ' +
-              JSON.stringify(mode) +
-              ' at ' +
-              new Date().toLocaleString()
-          );
-          sendModeJson(mode);
-        };
+  // Event delegation for test management
+  document.addEventListener('click', (event) => {
+    const targetId = event.target.id;
+    switch (targetId) {
+      case 'addTestButton':
+        addTest();
+        break;
+      case 'deleteTestButton':
+        deleteTest();
+        break;
+      case 'clearTestButton':
+        clearTest();
+        break;
+      case 'sendTestButton':
+        sendTest();
+        break;
+      case 'startTestButton':
+        startTest();
+        break;
+      case 'stopTestButton':
+        stopTest();
+        break;
+      case 'pauseTestButton':
+        pauseTest();
+        break;
+      case 'sendModeButton':
+        sendMode();
+        break;
+      case 'toggleSidebar':
+        toggleSidebar();
+        break;
+      default:
+        break;
+    }
+  });
 
-        function sendModeJson(mode) {
-          fetch('/updateMode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: mode }), // Send mode as a JSON string
-          })
-            .then((response) => response.text())
-            .then((data) => console.log('Server Response:', data))
-            .catch((error) => console.error('Error:', error));
-        }
+  // Event listeners for switches
+  document.addEventListener('change', (event) => {
+    if (event.target.matches('#toggleLoadSwitch')) {
+      updateLoadSwitchLabel(event.target.checked);
+    } else if (event.target.matches('#togglePowerCutSwitch')) {
+      updatePowerCutSwitchLabel(event.target.checked);
+    }
+  });
+});
 
-        function sendTestData() {
-          fetch('/updateTestData', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(window.tests),
-          })
-            .then((response) => response.text())
-            .then((data) => console.log('Server Response:', data))
-            .catch((error) => console.error('Error:', error));
-        }
+// Toggle sidebar visibility
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) {
+    sidebar.classList.toggle('hidden');
+  } else {
+    console.error('Sidebar element not found.');
+  }
+}
 
-        function sendCommand(command) {
-          fetch('/updateCommand', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command: command }), // Send status as a JSON string
-          })
-            .then((response) => response.text())
-            .then((data) => console.log('Server Response:', data))
-            .catch((error) => console.error('Error:', error));
-        }
-        document
-          .getElementById('toggleLoadSwitch')
-          .addEventListener('change', function () {
-            var switchState = this.checked;
-            document.getElementById('loadStateLabel').innerText = switchState
-              ? 'Load On'
-              : 'Load Off';
-          });
+// Update label for load switch
+function updateLoadSwitchLabel(isChecked) {
+  document.getElementById('loadStateLabel').innerText = isChecked ? 'Load On' : 'Load Off';
+}
 
-        document
-          .getElementById('togglePowerCutSwitch')
-          .addEventListener('change', function () {
-            var switchState = this.checked;
-            document.getElementById('powerCutLabel').innerText = switchState
-              ? 'Mains On'
-              : 'Mains Off';
-          });
+// Update label for power cut switch
+function updatePowerCutSwitchLabel(isChecked) {
+  document.getElementById('powerCutLabel').innerText = isChecked ? 'Mains On' : 'Mains Off';
+}
 
-        // Example functions for toggling switches
-        function toggleLoad() {
-          var switchState = document.getElementById('toggleLoadSwitch').checked;
-          document.getElementById('loadStateLabel').innerText = switchState
-            ? 'Load On'
-            : 'Load Off';
-        }
+// Add test to the list
+function addTest() {
+  if (!window.tests) {
+    console.error('Tests array is not initialized.');
+    window.tests = [];
+  }
 
-        function togglePowerCut() {
-          var switchState = document.getElementById(
-            'togglePowerCutSwitch'
-          ).checked;
-          document.getElementById('powerCutLabel').innerText = switchState
-            ? 'Mains On'
-            : 'Mains Off';
-        }
-      });
+  const testSelect = document.getElementById('addTest');
+  const loadLevelSelect = document.getElementById('loadLevel');
+
+  if (testSelect && loadLevelSelect) {
+    const selectedTest = testSelect.options[testSelect.selectedIndex].text;
+    const loadLevel = loadLevelSelect.value;
+    const testDetails = {
+      testName: selectedTest,
+      loadLevel: loadLevel + '%',
+    };
+    window.tests.push(testDetails);
+    appendLog('Added Test: ' + JSON.stringify(testDetails) + ' at ' + new Date().toLocaleString());
+  } else {
+    console.error('Test select or load level select not found.');
+  }
+}
+
+// Delete last test
+function deleteTest() {
+  if (window.tests && window.tests.length > 0) {
+    const deletedTest = window.tests.pop();
+    appendLog('Deleted Test: ' + JSON.stringify(deletedTest) + ' at ' + new Date().toLocaleString());
+    appendLog('Remaining Tests: ' + JSON.stringify(window.tests));
+  } else {
+    appendLog('No tests to delete.');
+  }
+}
+
+// Clear the test log
+function clearTest() {
+  const testCommand = document.getElementById('testCommand');
+  if (testCommand) {
+    testCommand.innerHTML = '';
+  } else {
+    console.error('Test Command element not found');
+  }
+}
+
+function sendTest() {
+  var sendTest = window.tests;
+  appendLog('Sending Test: ' + JSON.stringify(sendTest) + ' at ' + new Date().toLocaleString());
+  sendTestData(); // Send the test data to the server whenever a test is added
+}
+
+// Append logs to the UI
+function appendLog(message) {
+  const testCommand = document.getElementById('testCommand');
+  if (testCommand) {
+    testCommand.textContent += message + '\n';
+    testCommand.scrollTop = testCommand.scrollHeight;
+  } else {
+    console.error('Log element not found.');
+  }
+}
+
+// Start test via WebSocket
+function startTest() {
+  appendLog('Test started at ' + new Date().toLocaleString());
+  sendWebSocketCommand('start');
+}
+
+// Stop test via WebSocket
+function stopTest() {
+  appendLog('Test stopped at ' + new Date().toLocaleString());
+  sendWebSocketCommand('stop');
+}
+
+// Pause test via WebSocket
+function pauseTest() {
+  appendLog('Test paused at ' + new Date().toLocaleString());
+  sendWebSocketCommand('pause');
+}
+
+// Send mode via WebSocket
+function sendMode() {
+  const modeSelect = document.querySelector('input[name="mode"]:checked');
+  const mode = modeSelect ? modeSelect.value : null;
+  appendLog('Sending Mode: ' + mode + ' at ' + new Date().toLocaleString());
+  sendWebSocketCommand(mode);
+}
+
+// Send command via WebSocket
+function sendWebSocketCommand(command) {
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.send(command); // Send the command as a string
+  } else {
+    console.error('WebSocket connection is not open.');
+  }
+}
+
+function sendTestData() {
+  fetch('/updateTestData', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(window.tests),
+  })
+    .then((response) => response.text())
+    .then((data) => console.log('Server Response:', data))
+    .catch((error) => console.error('Error:', error));
+}
+
+function sendCommand(command) {
+  fetch('/updateCommand', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ command: command }), // Send status as a JSON string
+  })
+    .then((response) => response.text())
+    .then((data) => console.log('Server Response:', data))
+    .catch((error) => console.error('Error:', error));
+}
+
     </script>
 )rawliteral";
 
