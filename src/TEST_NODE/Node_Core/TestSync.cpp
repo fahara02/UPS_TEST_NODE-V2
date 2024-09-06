@@ -299,10 +299,8 @@ void TestSync::handleUserUpdate(UserUpdateEvent update)
 	switch(update)
 	{
 		case UserUpdateEvent::NEW_TEST:
-
 			EventHelper::setBits(UserUpdateEvent::NEW_TEST);
 			EventHelper::clearBits(UserUpdateEvent::DELETE_TEST);
-
 			break;
 		case UserUpdateEvent::DELETE_TEST:
 			EventHelper::setBits(UserUpdateEvent::DELETE_TEST);
@@ -310,11 +308,9 @@ void TestSync::handleUserUpdate(UserUpdateEvent update)
 			break;
 		case UserUpdateEvent::DATA_ENTRY:
 			EventHelper::setBits(UserUpdateEvent::DATA_ENTRY);
-
 			break;
 		case UserUpdateEvent::USER_TUNE:
 			EventHelper::setBits(UserUpdateEvent::USER_TUNE);
-
 			break;
 		default:
 			break;
@@ -327,31 +323,23 @@ void TestSync::handleUserCommand(UserCommandEvent command)
 	{
 		case UserCommandEvent ::PAUSE:
 			EventHelper::clearBits(UserCommandEvent::RESUME);
-
 			break;
 		case UserCommandEvent ::RESUME:
 			EventHelper::clearBits(UserCommandEvent::PAUSE);
-
 			break;
 		case UserCommandEvent ::AUTO:
 			EventHelper::clearBits(UserCommandEvent::MANUAL);
 			StateMachine::getInstance().setMode(TestMode::AUTO);
-
 			break;
 		case UserCommandEvent ::MANUAL:
 			EventHelper::clearBits(UserCommandEvent::AUTO);
 			StateMachine::getInstance().setMode(TestMode::MANUAL);
-
 			break;
 		case UserCommandEvent ::START:
-			logger.log(LogLevel::WARNING, "Trying to clear stop bit (handleUserCommand)");
 			EventHelper::clearBits(UserCommandEvent::STOP);
-
 			break;
 		case UserCommandEvent ::STOP:
 			EventHelper::clearBits(UserCommandEvent::START);
-			reportEvent(Event::STOP);
-
 			break;
 		default:
 			break;
@@ -367,33 +355,25 @@ void TestSync::handleSyncCommand(SyncCommand command)
 	{
 		case SyncCommand::MANAGER_WAIT:
 			EventHelper::clearBits(SyncCommand::MANAGER_ACTIVE);
-
 			break;
 		case SyncCommand::MANAGER_ACTIVE:
 			EventHelper::clearBits(SyncCommand::MANAGER_WAIT);
-
 			break;
 		case SyncCommand::RE_TEST:
 			EventHelper::clearBits(SyncCommand::SKIP_TEST);
-
 			break;
 		case SyncCommand::SKIP_TEST:
-
 			EventHelper::clearBits(SyncCommand::RE_TEST);
 			break;
 		case SyncCommand::START_OBSERVER:
-
 			EventHelper::clearBits(SyncCommand::STOP_OBSERVER);
 			break;
 		case SyncCommand::STOP_OBSERVER:
-
 			EventHelper::clearBits(SyncCommand::START_OBSERVER);
 			break;
 		default:
-
 			break;
 	}
-
 	xEventGroupSetBits(EventHelper::syncControlEvent, commandBits);
 }
 

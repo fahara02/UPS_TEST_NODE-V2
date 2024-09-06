@@ -432,6 +432,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 								  U* dataBuff)
 {
 	TestManager& instance = TestManager::getInstance();
+	TestSync& syncTest = TestSync::getInstance();
 	QueueHandle_t dataQueue = testInstance.getQueue();
 	int i = testIndex;
 	int TestPriority = 1;
@@ -442,6 +443,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 	}
 	else if(managerState == State::READY_TO_PROCEED)
 	{
+		logger.log(LogLevel::INFO, "manager in Ready to Proceed State , loading pending test");
 		instance.logPendingTest(instance._testList[i]);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
@@ -456,7 +458,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		testInstance.setTaskPriority(TestPriority);
 
 		logger.log(LogLevel::INFO, "Starting %s...", testInstance.testTypeName());
-		// SyncTest.startTest(testInstance.getTestType());
+		syncTest.startTest(testInstance.getTestType());
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::TEST_RUNNING)
@@ -490,7 +492,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		if(dataBuff && xQueueReceive(dataQueue, dataBuff, 1000) == pdTRUE)
 		{
 			logger.log(LogLevel::INFO, "Stopping SwitchTest...");
-			// SyncTest.stopTest(testInstance.getTestType());
+			syncTest.stopTest(testInstance.getTestType());
 			instance._testList[i].testStatus.managerStatus = TestManagerStatus::DONE;
 			instance._testList[i].testStatus.operatorStatus = TestOperatorStatus::SUCCESS;
 
@@ -504,7 +506,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		else
 		{
 			logger.log(LogLevel::ERROR, "Receive Test data timeout");
-			//	SyncTest.stopTest(testInstance.getTestType());
+			syncTest.stopTest(testInstance.getTestType());
 		}
 	}
 

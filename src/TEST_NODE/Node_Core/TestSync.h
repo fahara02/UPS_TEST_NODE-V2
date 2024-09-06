@@ -42,8 +42,29 @@ class TestSync
 	bool iscmdAcknowledged();
 	bool isTestEnabled();
 
+	// bool ismanagerReadyToStart()
+	// {
+	// 	return _mamangerReadyToStart;
+	// }
+	// bool ismanagerReadyToStop()
+	// {
+	// 	return _managerReadyToStop;
+	// }
+	// void reportManagerReadyStart()
+	// {
+	// 	_managerReadyToStop = false;
+	// 	_managerReadyToStart = true;
+	// }
+	// void reportManagerReadyStop()
+	// {
+	// 	_managerReadyToStart = false;
+	// 	_managerReadyToStop = true;
+	// }
+
 	State getState();
 	JsonDocument _testDoc;
+	void startTest(TestType test);
+	void stopTest(TestType test);
 
   private:
 	TestSync();
@@ -51,6 +72,8 @@ class TestSync
 	bool _cmdAcknowledged = false;
 	bool _enableCurrentTest = false;
 	bool parsingOngoing = false;
+	// bool _managerReadyToStart = false;
+	// bool _managerReadyToStop = false;
 
 	std::atomic<State> _currentState;
 
@@ -68,8 +91,6 @@ class TestSync
 	static void userUpdateObserverTask(void* pvParameters);
 	static void testSyncObserverTask(void* pvParameters);
 
-	void startTest(TestType test);
-	void stopTest(TestType test);
 	void stopAllTest();
 	void transferTest();
 	void updateMode(TestMode mode);
