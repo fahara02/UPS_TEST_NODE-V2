@@ -55,7 +55,7 @@ void TestManager::init()
 	// createISRTasks();
 	initializeTestInstances();
 	createManagerTasks();
-	// createTestTasks();
+	createTestTasks();
 
 	// pauseAllTest();
 
@@ -162,7 +162,7 @@ void TestManager::configureInterrupts()
 void TestManager::createManagerTasks()
 {
 	logger.log(LogLevel::INFO, "Testmanager creating its own task");
-	xTaskCreatePinnedToCore(TestManagerTask, "MainsTestManager", _cfgTask.mainTest_taskStack, NULL,
+	xTaskCreatePinnedToCore(TestManagerTask, "MainTestManager", _cfgTask.mainTest_taskStack, NULL,
 							2, &TestManagerTaskHandle, _cfgTask.mainTest_taskCore);
 	logger.log(LogLevel::SUCCESS, "Testmanager task created");
 }

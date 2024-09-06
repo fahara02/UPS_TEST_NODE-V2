@@ -5,7 +5,7 @@
 #include <AsyncTCP.h>
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
-
+#include <MycilaTaskMonitor.h>
 #include <Preferences.h>
 
 #include <Wire.h>
@@ -125,7 +125,8 @@ void modbusRTUTask(void* pvParameters)
 {
 	while(true)
 	{
-		logger.log(LogLevel::WARNING, "modbus task...");
+		// logger.log(LogLevel::WARNING, "modbus task...");
+		Mycila::TaskMonitor.log();
 		//  mb.task();
 
 		logger.log(LogLevel::WARNING, "Hihg Water mark ", uxTaskGetStackHighWaterMark(NULL));
@@ -230,6 +231,16 @@ void setup()
 	{
 		logger.log(LogLevel::SUCCESS, "Websocket is enabled");
 	}
+	Mycila::TaskMonitor.begin(9);
+	Mycila::TaskMonitor.addTask("async_tcp");
+	Mycila::TaskMonitor.addTask("WSCleanupTask");
+	Mycila::TaskMonitor.addTask("WSDataUpdate");
+	Mycila::TaskMonitor.addTask("commandObserver");
+	Mycila::TaskMonitor.addTask("updateObserver");
+	Mycila::TaskMonitor.addTask("TimeKeeperTask");
+	Mycila::TaskMonitor.addTask("MainTestManager");
+	Mycila::TaskMonitor.addTask("SwitchTestTask");
+	Mycila::TaskMonitor.addTask("BackUpTestTask");
 }
 void loop()
 {
