@@ -79,6 +79,7 @@ class TestSync
 
 	TaskHandle_t commandObserverTaskHandle = nullptr;
 	TaskHandle_t updateObserverTaskHandle = nullptr;
+	TaskHandle_t testObserverTaskHandle = nullptr;
 
 	TestSync(const TestSync&) = delete;
 	TestSync& operator=(const TestSync&) = delete;

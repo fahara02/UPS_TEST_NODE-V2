@@ -414,7 +414,7 @@ class Logger
 		{
 			case LogLevel::INFO:
 				toggleColor = !toggleColor;
-				return toggleColor ? "\033[34m[INFO] " :
+				return toggleColor ? "\033[37m[INFO] " :
 									 "\033[38;5;94m[INFO] "; // Alternate between Blue
 															 // and Brown text
 			case LogLevel::WARNING:

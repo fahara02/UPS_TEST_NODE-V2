@@ -126,10 +126,10 @@ void modbusRTUTask(void* pvParameters)
 	while(true)
 	{
 		// logger.log(LogLevel::WARNING, "modbus task...");
-		Mycila::TaskMonitor.log();
+		// Mycila::TaskMonitor.log();
 		//  mb.task();
 
-		logger.log(LogLevel::WARNING, "Hihg Water mark ", uxTaskGetStackHighWaterMark(NULL));
+		// logger.log(LogLevel::WARNING, "Hihg Water mark ", uxTaskGetStackHighWaterMark(NULL));
 		vTaskDelay(pdMS_TO_TICKS(500)); // Task delay
 	}
 	vTaskDelete(NULL);
@@ -139,7 +139,7 @@ void setup()
 
 {
 	setupTime();
-	xTaskCreate(TimeKeeperTask, "TimeKeeperTask", 4096, NULL, 1, NULL);
+	// xTaskCreate(TimeKeeperTask, "TimeKeeperTask", 4096, NULL, 1, NULL);
 	Serial.begin(115200);
 	// Initialize NVS
 	esp_err_t err = nvs_flash_init();
@@ -237,10 +237,10 @@ void setup()
 	Mycila::TaskMonitor.addTask("WSDataUpdate");
 	Mycila::TaskMonitor.addTask("commandObserver");
 	Mycila::TaskMonitor.addTask("updateObserver");
-	Mycila::TaskMonitor.addTask("TimeKeeperTask");
 	Mycila::TaskMonitor.addTask("MainTestManager");
 	Mycila::TaskMonitor.addTask("SwitchTestTask");
 	Mycila::TaskMonitor.addTask("BackUpTestTask");
+	Mycila::TaskMonitor.addTask("testObserver");
 }
 void loop()
 {

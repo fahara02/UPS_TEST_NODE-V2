@@ -66,6 +66,8 @@ class StateMachine
 	State getCurrentState() const;
 
 	void registerStateChangeCallback(OnStateChangedCallback callback);
+	bool isAutoMode() const;
+	bool isManualMode() const;
 
   private:
 	StateMachine();
@@ -78,8 +80,6 @@ class StateMachine
 
 	OnStateChangedCallback _stateChangeCallback;
 
-	bool isAutoMode() const;
-	bool isManualMode() const;
 	bool isValidState(uint32_t state);
 
 	void setState(State new_state);

@@ -39,12 +39,15 @@ void TestSync::createSynctask()
 							&commandObserverTaskHandle, 0);
 	xTaskCreatePinnedToCore(userUpdateObserverTask, "updateObserver", 8192, NULL, 1,
 							&updateObserverTaskHandle, 0);
+	xTaskCreatePinnedToCore(testSyncObserverTask, "testObserver", 4096, NULL, 1,
+							&testObserverTaskHandle, 0);
 
 	logger.log(LogLevel::INFO, "testSync task created initialization");
 }
 
 void TestSync::reportEvent(Event event)
 {
+	logger.log(LogLevel::INFO, "REPORTING NEW STATE");
 	stateMachine.handleEvent(event);
 }
 
@@ -300,19 +303,18 @@ void TestSync::handleUserUpdate(UserUpdateEvent update)
 			EventHelper::setBits(UserUpdateEvent::NEW_TEST);
 			EventHelper::clearBits(UserUpdateEvent::DELETE_TEST);
 
-			refreshState();
 			break;
 		case UserUpdateEvent::DELETE_TEST:
-
-			refreshState();
+			EventHelper::setBits(UserUpdateEvent::DELETE_TEST);
+			EventHelper::clearBits(UserUpdateEvent::NEW_TEST);
 			break;
 		case UserUpdateEvent::DATA_ENTRY:
 			EventHelper::setBits(UserUpdateEvent::DATA_ENTRY);
-			refreshState();
+
 			break;
 		case UserUpdateEvent::USER_TUNE:
 			EventHelper::setBits(UserUpdateEvent::USER_TUNE);
-			refreshState();
+
 			break;
 		default:
 			break;
@@ -325,14 +327,11 @@ void TestSync::handleUserCommand(UserCommandEvent command)
 	{
 		case UserCommandEvent ::PAUSE:
 			EventHelper::clearBits(UserCommandEvent::RESUME);
-			reportEvent(Event::PAUSE);
-			refreshState();
 
 			break;
 		case UserCommandEvent ::RESUME:
 			EventHelper::clearBits(UserCommandEvent::PAUSE);
-			reportEvent(Event::RESUME);
-			refreshState();
+
 			break;
 		case UserCommandEvent ::AUTO:
 			EventHelper::clearBits(UserCommandEvent::MANUAL);
@@ -345,14 +344,14 @@ void TestSync::handleUserCommand(UserCommandEvent command)
 
 			break;
 		case UserCommandEvent ::START:
+			logger.log(LogLevel::WARNING, "Trying to clear stop bit (handleUserCommand)");
 			EventHelper::clearBits(UserCommandEvent::STOP);
-			reportEvent(Event::START);
-			refreshState();
+
 			break;
 		case UserCommandEvent ::STOP:
 			EventHelper::clearBits(UserCommandEvent::START);
 			reportEvent(Event::STOP);
-			refreshState();
+
 			break;
 		default:
 			break;
@@ -410,14 +409,14 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 {
 	TestSync& instance = TestSync::getInstance();
 
-	// Create bit masks for the command and update events
 	const EventBits_t CMD_BITS_MASK = static_cast<EventBits_t>(UserCommandEvent::START) |
 									  static_cast<EventBits_t>(UserCommandEvent::STOP) |
 									  static_cast<EventBits_t>(UserCommandEvent::AUTO) |
 									  static_cast<EventBits_t>(UserCommandEvent::MANUAL) |
 									  static_cast<EventBits_t>(UserCommandEvent::PAUSE) |
 									  static_cast<EventBits_t>(UserCommandEvent::RESUME);
-	State syncState = instance.refreshState();
+
+	State syncState = instance.stateMachine.getCurrentState();
 	logger.log(LogLevel::INFO, "Sync Class state is:%s", stateToString(syncState));
 
 	while(xEventGroupWaitBits(EventHelper::userCommandEventGroup, CMD_BITS_MASK, pdFALSE, pdFALSE,
@@ -428,44 +427,59 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 
 		if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::AUTO)) != 0)
 		{
-			instance.refreshState();
 			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
 			instance.acknowledgeCMD();
+			logger.log(LogLevel::WARNING, "clearing AUTO command bits");
+			EventHelper::clearBits(UserCommandEvent::AUTO);
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::MANUAL)) != 0)
 		{
-			instance.refreshState();
-			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
+			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
 			instance.acknowledgeCMD();
+			logger.log(LogLevel::WARNING, "clearing MANUAL command bits");
+			EventHelper::clearBits(UserCommandEvent::MANUAL);
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::START)) != 0)
+
 		{
-			instance.refreshState();
+			logger.log(LogLevel::INFO, "Reporting START Event--->");
+			instance.reportEvent(Event::START);
+			logger.log(LogLevel::INFO, "Activating Manager--->");
 			instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
-			if(cmdResult & static_cast<EventBits_t>(UserCommandEvent::MANUAL))
+			if(instance.stateMachine.isManualMode())
 			{
+				logger.log(LogLevel::INFO, "Starting first manual test--->");
 				instance.startTest(instance._testList[0].testType);
 			}
 			instance.acknowledgeCMD();
+			logger.log(LogLevel::INFO, "Clearing Start bit after acknowledgement--->");
+			EventHelper::clearBits(UserCommandEvent::START);
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::STOP)) != 0)
 		{
-			instance.refreshState();
+			logger.log(LogLevel::INFO, "Reporting STOP Event--->");
+			instance.reportEvent(Event::STOP);
+			logger.log(LogLevel::INFO, "Stopping Observer--->");
 			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
-			if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::MANUAL)) != 0)
+
+			if(instance.stateMachine.isManualMode())
 			{
+				logger.log(LogLevel::INFO, "Stopping First test in manual Mode--->");
 				instance.stopTest(instance._testList[0].testType);
 			}
 			else
 			{
+				logger.log(LogLevel::INFO, "Stopping All test in manual Mode--->");
 				instance.stopAllTest();
+				logger.log(LogLevel::INFO, "Making Manager Wait--->");
 				instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
 			}
 			instance.acknowledgeCMD();
+			logger.log(LogLevel::INFO, "Clearing Stop bit after acknowledgement--->");
+			EventHelper::clearBits(UserCommandEvent::STOP);
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::PAUSE)) != 0)
 		{
-			instance.refreshState();
 			instance.stopAllTest();
 			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
 			instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
@@ -473,7 +487,6 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::RESUME)) != 0)
 		{
-			instance.refreshState();
 			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
 			instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
 			instance.acknowledgeCMD();
@@ -514,8 +527,10 @@ void TestSync::userUpdateObserverTask(void* pvParameters)
 		}
 		else if((updateBits & static_cast<EventBits_t>(UserUpdateEvent::DELETE_TEST)) != 0)
 		{
-			instance.refreshState();
 			instance.disableCurrentTest();
+
+			logger.log(LogLevel::TEST, "Invoking State Change...");
+			instance.reportEvent(Event::DELETE_TEST);
 			instance.acknowledgeCMD();
 			EventHelper::clearBits(UserUpdateEvent::DELETE_TEST);
 		}
@@ -530,17 +545,9 @@ void TestSync::testSyncObserverTask(void* pvParameters)
 	TestSync& instance = TestSync::getInstance();
 	while(xEventGroupWaitBits(EventHelper::syncControlEvent,
 							  static_cast<EventBits_t>(SyncCommand::START_OBSERVER), pdFALSE,
-							  pdTRUE, portMAX_DELAY))
+							  pdFALSE, portMAX_DELAY))
 	{
 		logger.log(LogLevel::INFO, "Observing test.. ");
-
-		EventBits_t RETEST_BIT_MASK = static_cast<EventBits_t>(TestEvent::RETEST);
-
-		while(xEventGroupWaitBits(EventHelper::testEventGroup, RETEST_BIT_MASK, pdFALSE, pdFALSE,
-								  portMAX_DELAY))
-		{
-			EventBits_t testEventBits = xEventGroupGetBits(EventHelper::testEventGroup);
-		}
 
 		vTaskDelay(pdMS_TO_TICKS(200));
 	}
