@@ -108,10 +108,12 @@ void StateMachine::setMode(TestMode new_mode)
 	if(new_mode == TestMode::AUTO)
 	{
 		_deviceMode.store(TestMode::AUTO);
+		logger.log(LogLevel::SUCCESS, "DEVICE MODE SET TO AUTO");
 	}
 	else
 	{
 		_deviceMode.store(TestMode::MANUAL);
+		logger.log(LogLevel::SUCCESS, "DEVICE MODE SET TO MANUAL");
 	}
 }
 

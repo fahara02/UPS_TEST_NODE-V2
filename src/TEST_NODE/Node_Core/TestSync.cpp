@@ -57,6 +57,10 @@ State getState()
 {
 	return stateMachine.getCurrentState();
 }
+void TestSync::updateMode(TestMode mode)
+{
+	stateMachine.setMode(mode);
+}
 
 bool TestSync::iscmdAcknowledged()
 {
@@ -340,12 +344,11 @@ void TestSync::handleUserCommand(UserCommandEvent command)
 		case UserCommandEvent ::AUTO:
 			EventHelper::clearBits(UserCommandEvent::MANUAL);
 			StateMachine::getInstance().setMode(TestMode::AUTO);
-			refreshState();
+
 			break;
 		case UserCommandEvent ::MANUAL:
 			EventHelper::clearBits(UserCommandEvent::AUTO);
 			StateMachine::getInstance().setMode(TestMode::MANUAL);
-			refreshState();
 
 			break;
 		case UserCommandEvent ::START:

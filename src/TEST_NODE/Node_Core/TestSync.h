@@ -71,6 +71,7 @@ class TestSync
 	void stopTest(TestType test);
 	void stopAllTest();
 	void transferTest();
+	void updateMode(TestMode mode);
 	void parseTestJson(JsonObject jsonObj);
 	void processNextJson();
 	void checkForDeletedTests();

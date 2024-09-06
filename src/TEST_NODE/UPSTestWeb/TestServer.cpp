@@ -394,6 +394,7 @@ void TestServer::handleWsIncomingCommands(wsIncomingCommands cmd)
 	if(cmd == wsIncomingCommands::TEST_START)
 	{
 		logger.log(LogLevel::SUCCESS, "handling TEST START EVENT");
+		_sync.handleUserCommand(UserCommandEvent::START);
 	}
 	else if(cmd == wsIncomingCommands::TEST_STOP)
 	{
@@ -405,12 +406,20 @@ void TestServer::handleWsIncomingCommands(wsIncomingCommands cmd)
 		logger.log(LogLevel::SUCCESS, "handling TEST PAUSE EVENT");
 		//_sync.ReportEvent(Event::TEST_PAUSE);
 	}
+	else if(cmd == wsIncomingCommands::AUTO_MODE)
+	{
+		logger.log(LogLevel::SUCCESS, "handling command set to AUTO ");
+		_sync.handleUserCommand(UserCommandEvent::AUTO);
+	}
+	else if(cmd == wsIncomingCommands::MANUAL_MODE)
+	{
+		logger.log(LogLevel::SUCCESS, "handling command set to MANUAL ");
+		_sync.handleUserCommand(UserCommandEvent::MANUAL);
+	}
 	else
 	{
-		// Handle unknown command or do nothing
 	}
 }
-
 // void TestServer::sendwsData(wsOutGoingDataType type, const char* data)
 // {
 // 	// Convert the wsOutGoingDataType to a string identifier to send to the frontend
@@ -544,8 +553,8 @@ void TestServer::sendTestMessage()
 	// }
 
 	// // Serialize the JSON document into the buffer
-	// size_t bytesWritten = serializeJson(doc, buffer->data(), len + 1); // +1 for null terminator
-	// Serial.printf("Serialized JSON length: %d\n", bytesWritten);
+	// size_t bytesWritten = serializeJson(doc, buffer->data(), len + 1); // +1 for null
+	// terminator Serial.printf("Serialized JSON length: %d\n", bytesWritten);
 
 	// if(bytesWritten != len)
 	// {
