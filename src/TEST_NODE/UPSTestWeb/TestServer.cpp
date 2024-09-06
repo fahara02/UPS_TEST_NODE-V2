@@ -314,6 +314,8 @@ void TestServer::wsDataUpdate(void* pvParameters)
 void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
 						   void* arg, uint8_t* data, size_t len)
 {
+	// Initialize clientId directly from the client object
+
 	switch(type)
 	{
 		case WS_EVT_CONNECT:
@@ -392,7 +394,6 @@ void TestServer::handleWsIncomingCommands(wsIncomingCommands cmd)
 	if(cmd == wsIncomingCommands::TEST_START)
 	{
 		logger.log(LogLevel::SUCCESS, "handling TEST START EVENT");
-		//_sync.ReportEvent(Event::TEST_START);
 	}
 	else if(cmd == wsIncomingCommands::TEST_STOP)
 	{
@@ -410,44 +411,44 @@ void TestServer::handleWsIncomingCommands(wsIncomingCommands cmd)
 	}
 }
 
-void TestServer::sendwsData(wsOutGoingDataType type, const char* data)
-{
-	// Convert the wsOutGoingDataType to a string identifier to send to the frontend
-	String message;
-	switch(type)
-	{
-		case wsOutGoingDataType::INPUT_POWER:
-			message = String("{\"inputWattage\":\"") + data + "\"}";
-			break;
-		case wsOutGoingDataType::INPUT_VOLT:
-			message = String("{\"inputVoltage\":\"") + data + " V\"}";
-			break;
-		case wsOutGoingDataType::INPUT_CURRENT:
-			message = String("{\"inputCurrent\":\"") + data + " A\"}";
-			break;
-		case wsOutGoingDataType::INPUT_PF:
-			message = String("{\"inputPowerFactor\":\"") + data + "\"}";
-			break;
-		case wsOutGoingDataType::OUTPUT_POWER:
-			message = String("{\"outputWattage\":\"") + data + " W\"}";
-			break;
-		case wsOutGoingDataType::OUTPUT_VOLT:
-			message = String("{\"outputVoltage\":\"") + data + " V\"}";
-			break;
-		case wsOutGoingDataType::OUTPUT_CURRENT:
-			message = String("{\"outputCurrent\":\"") + data + " A\"}";
-			break;
-		case wsOutGoingDataType::OUTPUT_PF:
-			message = String("{\"outputPowerFactor\":\"") + data + "\"}";
-			break;
-		default:
-			message = "{\"error\":\"Invalid data type\"}";
-			break;
-	}
+// void TestServer::sendwsData(wsOutGoingDataType type, const char* data)
+// {
+// 	// Convert the wsOutGoingDataType to a string identifier to send to the frontend
+// 	String message;
+// 	switch(type)
+// 	{
+// 		case wsOutGoingDataType::INPUT_POWER:
+// 			message = String("{\"inputWattage\":\"") + data + "\"}";
+// 			break;
+// 		case wsOutGoingDataType::INPUT_VOLT:
+// 			message = String("{\"inputVoltage\":\"") + data + " V\"}";
+// 			break;
+// 		case wsOutGoingDataType::INPUT_CURRENT:
+// 			message = String("{\"inputCurrent\":\"") + data + " A\"}";
+// 			break;
+// 		case wsOutGoingDataType::INPUT_PF:
+// 			message = String("{\"inputPowerFactor\":\"") + data + "\"}";
+// 			break;
+// 		case wsOutGoingDataType::OUTPUT_POWER:
+// 			message = String("{\"outputWattage\":\"") + data + " W\"}";
+// 			break;
+// 		case wsOutGoingDataType::OUTPUT_VOLT:
+// 			message = String("{\"outputVoltage\":\"") + data + " V\"}";
+// 			break;
+// 		case wsOutGoingDataType::OUTPUT_CURRENT:
+// 			message = String("{\"outputCurrent\":\"") + data + " A\"}";
+// 			break;
+// 		case wsOutGoingDataType::OUTPUT_PF:
+// 			message = String("{\"outputPowerFactor\":\"") + data + "\"}";
+// 			break;
+// 		default:
+// 			message = "{\"error\":\"Invalid data type\"}";
+// 			break;
+// 	}
 
-	// Send the message to all connected WebSocket clients
-	_ws->textAll(message);
-}
+// 	// Send the message to all connected WebSocket clients
+// 	_ws->textAll(message);
+// }
 
 void TestServer::sendRandomTestData()
 {
@@ -461,7 +462,104 @@ void TestServer::sendRandomTestData()
 	sendwsData(wsOutGoingDataType::OUTPUT_PF, String(random(90, 100) / 100.0, 2).c_str());
 }
 
-void TestServer::notifyClients()
+void TestServer::notifyClients(String data)
 {
-	_ws->textAll("Command Executed");
+	_ws->textAll(data);
+}
+
+void TestServer::sendwsData(wsOutGoingDataType type, const char* data)
+{
+	if(!_ws)
+	{
+		Serial.println("Error: WebSocket instance (_ws) is null.");
+		return;
+	}
+
+	// Create a JSON document
+	StaticJsonDocument<20> doc; // Adjust size as needed
+
+	// Fill the JSON document
+	doc["type"] = wsDataTypeToString(type); // Convert type enum to string if needed
+	doc["message"] = data;
+
+	// Measure the JSON document size
+	const size_t len = measureJson(doc);
+	Serial.printf("Measured JSON length: %d\n", len);
+
+	// Create a buffer to hold the JSON data
+	AsyncWebSocketMessageBuffer* buffer = _ws->makeBuffer(len + 1); // +1 for null terminator
+	if(!buffer)
+	{
+		Serial.println("Error: Failed to create message buffer.");
+		return;
+	}
+	Serial.println("Buffer created");
+
+	// Serialize the JSON document into the buffer
+	size_t bytesWritten = serializeJson(doc, buffer->get(), len + 1); // +1 for null terminator
+	Serial.printf("Serialized JSON length: %d\n", bytesWritten);
+
+	// Ensure the buffer was written correctly
+	if(bytesWritten != len)
+	{
+		Serial.println("Error: Buffer write did not match measured length.");
+		return;
+	}
+
+	// Try sending the buffer to all clients
+	Serial.println("Try sending...");
+	_ws->textAll(buffer);
+
+	Serial.printf("WebSocket message sent: %s\n", data);
+}
+void TestServer::sendTestMessage()
+{
+	// if(!_ws)
+	// {
+	// 	Serial.println("Error: WebSocket instance (_ws) is null.");
+	// 	return;
+	// }
+
+	// if(_ws->count() == 0)
+	// {
+	// 	Serial.println("No WebSocket clients connected.");
+	// 	return;
+	// }
+
+	// Create a small JSON document
+	StaticJsonDocument<64> doc; // Smaller size for testing
+	doc["update"] = String("Test message");
+
+	// // Measure the JSON document size
+	// const size_t len = measureJson(doc);
+	// Serial.printf("Measured JSON length: %d\n", len);
+
+	// // Create a shared pointer to a buffer (vector) to hold the JSON data
+	// auto buffer = std::make_shared<std::vector<uint8_t>>(len + 1); // +1 for null terminator
+
+	// if(!buffer)
+	// {
+	// 	Serial.println("Error: Failed to create message buffer.");
+	// 	return;
+	// }
+
+	// // Serialize the JSON document into the buffer
+	// size_t bytesWritten = serializeJson(doc, buffer->data(), len + 1); // +1 for null terminator
+	// Serial.printf("Serialized JSON length: %d\n", bytesWritten);
+
+	// if(bytesWritten != len)
+	// {
+	// 	Serial.println("Error: Buffer write did not match measured length.");
+	// 	return;
+	// }
+
+	// // Debug: Print the buffer contents
+	// Serial.print("Buffer contents: ");
+	// Serial.println((const char*)buffer->data());
+
+	// // Send the message
+	Serial.println("Sending test message...");
+	// _ws->textAll(std::move(buffer)); // Move the shared pointer to WebSocket
+	//_ws->textAll(jsonString);
+	Serial.println("Message sent.");
 }

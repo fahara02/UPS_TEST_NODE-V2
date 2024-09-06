@@ -27,7 +27,6 @@ using namespace Node_Core;
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
-
 UPSTesterSetup& TesterSetup = UPSTesterSetup::getInstance();
 SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
 BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
@@ -50,9 +49,7 @@ TaskHandle_t efficiencyTestTaskHandle = NULL;
 TaskHandle_t inputvoltageTestTaskHandle = NULL;
 TaskHandle_t waveformTestTaskHandle = NULL;
 TaskHandle_t tunepwmTestTaskHandle = NULL;
-
 TaskHandle_t TestManagerTaskHandle = NULL;
-
 TaskHandle_t ISR_MAINS_POWER_LOSS = NULL;
 TaskHandle_t ISR_UPS_POWER_GAIN = NULL;
 TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
@@ -60,6 +57,7 @@ TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
 QueueHandle_t TestManageQueue = NULL;
 QueueHandle_t SwitchTestDataQueue = NULL;
 QueueHandle_t BackupTestDataQueue = NULL;
+
 static const uint8_t messageQueueLength = 10;
 
 EventGroupHandle_t eventGroupSwitchTestData = NULL;
@@ -140,7 +138,7 @@ void setup()
 
 {
 	setupTime();
-	// xTaskCreate(TimeKeeperTask, "TimeKeeperTask", 4096, NULL, 1, NULL);
+	xTaskCreate(TimeKeeperTask, "TimeKeeperTask", 4096, NULL, 1, NULL);
 	Serial.begin(115200);
 	// Initialize NVS
 	esp_err_t err = nvs_flash_init();
@@ -214,14 +212,6 @@ void setup()
 	TestManager& Manager = TestManager::getInstance();
 	logger.log(LogLevel::INFO, "getting manager init");
 	Manager.init();
-
-	// RequiredTest testlist[] = {
-	// 	{1, TestType::BackupTest, LoadPercentage::LOAD_50P, true},
-	// 	{2, TestType::SwitchTest, LoadPercentage::LOAD_75P, true},
-
-	// };
-	// logger.log(LogLevel::INFO, "adding Tests");
-	// Manager.addTests(testlist, sizeof(testlist) / sizeof(testlist[0]));
 	logger.log(LogLevel::INFO, "changing states");
 
 	Manager.passEvent(Event::SELF_CHECK_OK);

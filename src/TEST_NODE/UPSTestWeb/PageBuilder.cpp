@@ -1,6 +1,4 @@
 #include "PageBuilder.h"
-#include "AsyncJson.h"
-#include "ArduinoJson.h"
 
 const char* PageBuilder::copyFromPROGMEM(const char copyFrom[], char sendTo[])
 {
@@ -15,12 +13,7 @@ void PageBuilder::sendHtmlHead(AsyncResponseStream* response)
 	const char* headerHtml = copyFromPROGMEM(TOP_HTML, buffer);
 	response->print(TOP_HTML);
 }
-// void PageBuilder::sendStyle(AsyncResponseStream* response)
-// {
-// 	char buffer[CSS_LENGTH];
-// 	const char* CSS = copyFromPROGMEM(STYLE_BLOCK_CSS, buffer);
-// 	response->print(CSS);
-// }
+
 void PageBuilder::sendHeadTrailer(AsyncResponseStream* response)
 {
 	char buffer[HEAD_TRAILER_HTML_LENGTH];
@@ -61,13 +54,6 @@ void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
 	const char* pageTrailerHtml = copyFromPROGMEM(LAST_TRAILER_HTML, buffer);
 	response->print(pageTrailerHtml);
 }
-
-// void PageBuilder::sendScript(AsyncResponseStream* response)
-// {
-// 	char buffer[JSS_LENGTH];
-// 	const char* JSS = copyFromPROGMEM(MAIN_SCRIPT_JSS, buffer);
-// 	response->print(JSS);
-// }
 
 void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
 {

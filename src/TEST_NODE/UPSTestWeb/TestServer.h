@@ -5,6 +5,7 @@
 #include "ArduinoJson.h"
 #include <Update.h>
 #include <vector>
+
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
 #include "NodeConstants.h"
@@ -56,6 +57,31 @@ static const char* outgoingCommandTable[] = {
 	"blinkRed" // BLINK_RUNNING
 };
 
+static const char* wsDataTypeToString(wsOutGoingDataType type)
+{
+	switch(type)
+	{
+		case wsOutGoingDataType::INPUT_POWER:
+			return "InputPower";
+		case wsOutGoingDataType::INPUT_VOLT:
+			return "InputVoltage";
+		case wsOutGoingDataType::INPUT_CURRENT:
+			return "InputCurrent";
+		case wsOutGoingDataType::INPUT_PF:
+			return "InputPowerFactor";
+		case wsOutGoingDataType::OUTPUT_POWER:
+			return "OutputPower";
+		case wsOutGoingDataType::OUTPUT_VOLT:
+			return "OutputVoltage";
+		case wsOutGoingDataType::OUTPUT_CURRENT:
+			return "OutputCurrent";
+		case wsOutGoingDataType::OUTPUT_PF:
+			return "OutputPowerFactor";
+		default:
+			return "Invalid Data";
+	}
+}
+
 class TestServer
 {
   public:
@@ -68,7 +94,6 @@ class TestServer
 		initWebSocket();
 		createServerTask();
 	}
-
 	~TestServer()
 	{
 		delete webPage; // Clean up dynamically allocated memory
@@ -142,12 +167,14 @@ class TestServer
 	String sendWebSocketCommand(wsOutgoingCommands cmd);
 	void handleWsIncomingCommands(wsIncomingCommands cmd);
 	void sendwsData(wsOutGoingDataType type, const char* data);
+	// void sendwsData(wsOutGoingDataType type, JsonDocument doc);
 	void createServerTask();
 
 	static void wsClientCleanup(void* pvParameters);
 	static void wsDataUpdate(void* pvParameters);
 	void sendRandomTestData();
-	void notifyClients();
+	void sendTestMessage();
+	void notifyClients(String data);
 };
 
 #endif

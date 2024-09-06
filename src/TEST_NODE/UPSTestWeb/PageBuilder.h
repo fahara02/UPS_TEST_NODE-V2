@@ -4,19 +4,9 @@
 #include <pgmspace.h>
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
-#include "TestSync.h"
-
-#include "NodeConstants.h"
-#include "Settings.h"
-#include "TestData.h"
-#include "UPSdebug.h"
-
-#include "TestManager.h"
 #include "UPSTesterSetup.h"
 #include "Logger.h"
 #include "RawHTML.h"
-#include "RawCSS.h"
-#include "RawJSS.h"
 
 using namespace Node_Core;
 extern Logger& logger;
@@ -27,9 +17,6 @@ constexpr size_t NAVBAR_HTML_LENGTH = sizeof(NAVBAR_HTML) - 1;
 constexpr size_t SIDEBAR_HTML_LENGTH = sizeof(SIDEBAR_HTML) - 1;
 constexpr size_t POWER_MONITOR_HTML_LENGTH = sizeof(POWER_MONITOR_HTML) - 1;
 constexpr size_t LAST_TRAILER_HTML_LENGTH = sizeof(LAST_TRAILER_HTML) - 1;
-
-constexpr size_t CSS_LENGTH = sizeof(STYLE_BLOCK_CSS) - 1;
-constexpr size_t JSS_LENGTH = sizeof(MAIN_SCRIPT_JSS) - 1;
 
 enum class MarginType
 {
@@ -63,7 +50,6 @@ class PageBuilder
 	{
 	}
 
-	void setupPages(TestSync& syncTest);
 	void sendHtmlHead(AsyncResponseStream* response);
 	void sendHeader(AsyncResponseStream* response);
 	void sendHeadTrailer(AsyncResponseStream* response);
@@ -123,5 +109,4 @@ class PageBuilder
 						Args&&... args);
 	void sendTableStyle(AsyncResponseStream* response);
 };
-
 #endif // PAGE_BUILDER_H
