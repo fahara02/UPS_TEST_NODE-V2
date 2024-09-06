@@ -129,6 +129,8 @@ void modbusRTUTask(void* pvParameters)
 	{
 		logger.log(LogLevel::WARNING, "modbus task...");
 		//  mb.task();
+
+		logger.log(LogLevel::WARNING, "Hihg Water mark ", uxTaskGetStackHighWaterMark(NULL));
 		vTaskDelay(pdMS_TO_TICKS(500)); // Task delay
 	}
 	vTaskDelete(NULL);
@@ -138,7 +140,7 @@ void setup()
 
 {
 	setupTime();
-	xTaskCreate(TimeKeeperTask, "TimeKeeperTask", 4096, NULL, 1, NULL);
+	// xTaskCreate(TimeKeeperTask, "TimeKeeperTask", 4096, NULL, 1, NULL);
 	Serial.begin(115200);
 	// Initialize NVS
 	esp_err_t err = nvs_flash_init();
@@ -229,8 +231,6 @@ void setup()
 	Manager.passEvent(Event::LOAD_BANK_CHECKED);
 	vTaskDelay(pdTICKS_TO_MS(100));
 
-	// PageBuilder web(&server);
-	// web.setupPages(SyncTest);
 	TestServer testServer(&server, &ws, TesterSetup, SyncTest);
 	testServer.servePages(TesterSetup, SyncTest);
 	testServer.begin();

@@ -21,12 +21,13 @@
 using namespace Node_Core;
 extern Logger& logger;
 constexpr size_t TOP_HTML_LENGTH = sizeof(TOP_HTML) - 1;
+constexpr size_t HEAD_TRAILER_HTML_LENGTH = sizeof(HEAD_TRAILER_HTML) - 1;
 constexpr size_t HEADER_HTML_LENGTH = sizeof(HEADER_HTML) - 1;
-constexpr size_t SIDEBAR_HTML_LENGTH = sizeof(SIDEBAR_HTML) - 1;
 constexpr size_t NAVBAR_HTML_LENGTH = sizeof(NAVBAR_HTML) - 1;
-constexpr size_t HEADER_TRAILER_HTML_LENGTH = sizeof(HEADER_TRAILER_HTML) - 1;
-constexpr size_t LAST_TRAILER_HTML_LENGTH = sizeof(LAST_TRAILER_HTML) - 1;
+constexpr size_t SIDEBAR_HTML_LENGTH = sizeof(SIDEBAR_HTML) - 1;
 constexpr size_t POWER_MONITOR_HTML_LENGTH = sizeof(POWER_MONITOR_HTML) - 1;
+constexpr size_t LAST_TRAILER_HTML_LENGTH = sizeof(LAST_TRAILER_HTML) - 1;
+
 constexpr size_t CSS_LENGTH = sizeof(STYLE_BLOCK_CSS) - 1;
 constexpr size_t JSS_LENGTH = sizeof(MAIN_SCRIPT_JSS) - 1;
 
@@ -65,7 +66,7 @@ class PageBuilder
 	void setupPages(TestSync& syncTest);
 	void sendHtmlHead(AsyncResponseStream* response);
 	void sendHeader(AsyncResponseStream* response);
-	void sendHeaderTrailer(AsyncResponseStream* response);
+	void sendHeadTrailer(AsyncResponseStream* response);
 	void sendPageTrailer(AsyncResponseStream* response);
 	void sendUserCommand(AsyncResponseStream* response, const char* content = "");
 	void sendStyle(AsyncResponseStream* response);

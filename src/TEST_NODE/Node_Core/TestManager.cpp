@@ -190,12 +190,12 @@ void TestManager::createTestTasks()
 	SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
 	BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 	xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
-	xTaskCreatePinnedToCore(switchTest.SwitchTestTask, "MainsTestManager", 4096, NULL,
+	xTaskCreatePinnedToCore(switchTest.SwitchTestTask, "SwitchTestTask", 4096, NULL,
 							_cfgTask.mainTest_taskIdlePriority, &switchTestTaskHandle, 0);
 	logger.log(LogLevel::SUCCESS, "Switch Test task created");
 	logger.log(LogLevel::INFO, "Creating Backuptest task ");
 	xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
-	xTaskCreatePinnedToCore(backupTest.BackupTestTask, "MainsTestManager", 4096, NULL,
+	xTaskCreatePinnedToCore(backupTest.BackupTestTask, "BackUpTestTask", 4096, NULL,
 							_cfgTask.mainTest_taskIdlePriority, &backupTestTaskHandle, 0);
 	logger.log(LogLevel::SUCCESS, "Switch Test task created");
 }

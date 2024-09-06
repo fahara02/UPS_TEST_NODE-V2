@@ -66,7 +66,7 @@ class TestServer
 		_sync(TestSync::getInstance())
 	{
 		initWebSocket();
-		createWSCleanUpTask();
+		createServerTask();
 	}
 
 	~TestServer()
@@ -81,14 +81,20 @@ class TestServer
 			Serial.println("Failed to initialize the filesystem");
 			return;
 		}
-
-		_fileHandler.serveFile(*_server, "/Logo-Full.svg", "/Logo-Full.svg", "image/svg+xml");
-		_fileHandler.serveFile(*_server, "/favicon.png", "/favicon.png", "image/png");
+		_fileHandler.serveFile(*_server, "/Logo-Full.svg", "/Logo-Full.svg", "image/svg+xml",
+							   "max-age=2592000"); // Cache for 30 days
+		_fileHandler.serveFile(*_server, "/favicon.png", "/favicon.png", "image/png",
+							   "max-age=2592000"); // Cache for 30 days
+		_fileHandler.serveFile(*_server, "/style.css", "/style.css", "text/css",
+							   "max-age=86400"); // Cache for 24 hours
+		_fileHandler.serveFile(*_server, "/script.js", "/script.js", "application/javascript",
+							   "max-age=86400"); // Cache for 24 hours
 
 		servePages(_setup, _sync);
 	}
 
 	void initWebSocket();
+
 	void servePages(UPSTesterSetup& _setup, TestSync& _sync);
 
   private:
@@ -136,8 +142,10 @@ class TestServer
 	String sendWebSocketCommand(wsOutgoingCommands cmd);
 	void handleWsIncomingCommands(wsIncomingCommands cmd);
 	void sendwsData(wsOutGoingDataType type, const char* data);
-	void createWSCleanUpTask();
+	void createServerTask();
+
 	static void wsClientCleanup(void* pvParameters);
+	static void wsDataUpdate(void* pvParameters);
 	void sendRandomTestData();
 	void notifyClients();
 };

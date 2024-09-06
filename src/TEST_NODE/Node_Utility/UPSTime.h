@@ -16,6 +16,7 @@ tm timeinfo;
 time_t now;
 unsigned long lastNTPtime;
 unsigned long lastEntryTime;
+unsigned long show_time_period_ms = 60000;
 
 // Function to configure NTP and time zone
 void setupTime()
@@ -61,6 +62,7 @@ void TimeKeeperTask(void* pvParameters)
 {
 	while(true)
 	{
+		unsigned long start_show_time = millis();
 		// Only sync NTP every hour to avoid unnecessary network load
 		if(millis() - lastNTPtime > 3600000UL || lastNTPtime == 0) // 1 hour
 		{
@@ -69,11 +71,6 @@ void TimeKeeperTask(void* pvParameters)
 				showTime(timeinfo); // Show the time after successful sync
 			}
 		}
-
-		// Show the current time from the system clock
-		time(&now);
-		localtime_r(&now, &timeinfo);
-		showTime(timeinfo);
 
 		vTaskDelay(1000 / portTICK_PERIOD_MS); // 1 second delay
 	}

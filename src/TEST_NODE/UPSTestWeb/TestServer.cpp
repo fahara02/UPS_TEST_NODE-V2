@@ -68,16 +68,15 @@ void TestServer::handleRootRequest(AsyncWebServerRequest* request)
 {
 	auto* response = request->beginResponseStream("text/html");
 	this->webPage->sendHtmlHead(response);
-	this->webPage->sendStyle(response);
-	this->webPage->sendHeaderTrailer(response);
+	this->webPage->sendHeadTrailer(response);
 	this->webPage->sendHeader(response);
 	this->webPage->sendNavbar(response);
 	this->webPage->sendSidebar(response);
 	this->webPage->sendUserCommand(response);
 	this->webPage->sendPowerMonitor(response);
 
-	this->webPage->sendScript(response);
 	this->webPage->sendPageTrailer(response);
+
 	request->send(response);
 }
 
@@ -96,15 +95,10 @@ void TestServer::handleSettingRequest(AsyncWebServerRequest* request, UPSTesterS
 {
 	auto* response = request->beginResponseStream("text/html");
 	this->webPage->sendHtmlHead(response);
-	this->webPage->sendStyle(response);
-	// this->webPage->sendTableStyle(response);
-	this->webPage->sendHeaderTrailer(response);
+	this->webPage->sendHeadTrailer(response);
 	this->webPage->sendHeader(response);
 	this->webPage->sendNavbar(response);
-
 	this->webPage->sendSettingTable(response, _setup, caption, type, redirect_uri);
-
-	this->webPage->sendScript(response);
 	this->webPage->sendPageTrailer(response);
 	request->send(response);
 }
@@ -289,9 +283,10 @@ void TestServer::initWebSocket()
 	_server->addHandler(_ws);
 }
 
-void TestServer::createWSCleanUpTask()
+void TestServer::createServerTask()
 {
-	xTaskCreate(wsClientCleanup, "WSCleanupTask", 1024, _ws, 1, NULL);
+	xTaskCreate(wsClientCleanup, "WSCleanupTask", 4096, _ws, 5, NULL);
+	xTaskCreate(wsDataUpdate, "WSDataUpdate", 4096, this, 5, NULL);
 }
 void TestServer::wsClientCleanup(void* pvParameters)
 {
@@ -299,8 +294,21 @@ void TestServer::wsClientCleanup(void* pvParameters)
 	while(true)
 	{
 		ws->cleanupClients();
+		vTaskDelay(200 / portTICK_PERIOD_MS);
+	}
+	vTaskDelete(NULL);
+}
+void TestServer::wsDataUpdate(void* pvParameters)
+{
+	// Cast the void pointer back to a TestServer pointer
+	TestServer* server = static_cast<TestServer*>(pvParameters);
+
+	while(true)
+	{
+		// server->sendRandomTestData(); // Use the class instance to call the method
 		vTaskDelay(2000 / portTICK_PERIOD_MS);
 	}
+
 	vTaskDelete(NULL);
 }
 void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
@@ -334,7 +342,8 @@ void TestServer::handleWebSocketMessage(void* arg, uint8_t* data, size_t len)
 		if(cmd != wsIncomingCommands::INVALID_COMMAND)
 		{
 			handleWsIncomingCommands(cmd);
-			notifyClients();
+			// notifyClients();
+			logger.log(LogLevel::SUCCESS, "RECIEVED WEBSOCKET DATA!!!!!!!");
 		}
 	}
 }

@@ -1,3 +1,4 @@
+// FileHandler.h
 #ifndef FILE_HANDLER_H
 #define FILE_HANDLER_H
 
@@ -42,13 +43,17 @@ class FileHandler
 		}
 	}
 
-	// Serve a specific file via the web server
+	// Serve a specific file via the web server with cache control
 	void serveFile(AsyncWebServer& server, const char* urlPath, const char* filePath,
-				   const char* mimeType = "text/plain")
+				   const char* mimeType = "text/plain", const char* cacheControl = "max-age=86400")
 	{
-		server.on(urlPath, HTTP_GET, [filePath, mimeType](AsyncWebServerRequest* request) {
-			request->send(SPIFFS, filePath, mimeType);
-		});
+		server.on(
+			urlPath, HTTP_GET, [filePath, mimeType, cacheControl](AsyncWebServerRequest* request) {
+				AsyncWebServerResponse* response =
+					request->beginResponse(SPIFFS, filePath, mimeType);
+				response->addHeader("Cache-Control", cacheControl); // Add Cache-Control header
+				request->send(response);
+			});
 	}
 };
 
