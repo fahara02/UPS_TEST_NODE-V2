@@ -116,9 +116,6 @@ void TestSync::parseIncomingJson(JsonVariant json)
 {
 	if(json.is<JsonObject>())
 	{
-		logger.log(LogLevel::TEST, "TEST SYNC FUNCTION RECEIVING THIS");
-		serializeJsonPretty(json, Serial);
-
 		JsonObject jsonObj = json.as<JsonObject>();
 
 		if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
@@ -178,9 +175,6 @@ void TestSync::parseTestJson(JsonObject jsonObj)
 	TestType testType = getTestTypeFromString(testName);
 	LoadPercentage loadPercentage = getLoadLevelFromString(loadLevel);
 
-	logger.log(LogLevel::TEST, "Parsed Test Name: %s", testTypeToString(testType));
-	logger.log(LogLevel::TEST, "Parsed Load Level: %s", loadPercentageToString(loadPercentage));
-
 	if(testType == static_cast<TestType>(0))
 	{
 		logger.log(LogLevel::ERROR, "Unknown testName: %s", testName.c_str());
@@ -218,8 +212,9 @@ void TestSync::parseTestJson(JsonObject jsonObj)
 			_testList[i].testType = testType;
 			_testList[i].loadLevel = loadPercentage;
 			_testList[i].isActive = true;
+			_testCount = _testCount + 1;
 
-			logger.log(LogLevel::SUCCESS, "Received new test requirement");
+			logger.log(LogLevel::SUCCESS, "Received new test requirement in Test Sync");
 			logger.log(LogLevel::INFO, "TestName: %s", testTypeToString(_testList[i].testType));
 			logger.log(LogLevel::INFO, "LoadLevel percent: %s",
 					   loadPercentageToString(_testList[i].loadLevel));
@@ -304,8 +299,6 @@ void TestSync::handleUserUpdate(UserUpdateEvent update)
 
 			EventHelper::setBits(UserUpdateEvent::NEW_TEST);
 			EventHelper::clearBits(UserUpdateEvent::DELETE_TEST);
-
-			logger.log(LogLevel::SUCCESS, "Handled New Test Event in handleUserUpdat() ");
 
 			refreshState();
 			break;
@@ -503,18 +496,18 @@ void TestSync::userUpdateObserverTask(void* pvParameters)
 	{
 		int updateBits = xEventGroupGetBits(EventHelper::userUpdateEventGroup);
 
-		logger.log(LogLevel::SUCCESS, "Implementing updates from Test Sync");
-		State syncState = instance.refreshState();
-		logger.log(LogLevel::INFO, "Sync Class state is:%s", stateToString(syncState));
-
 		if((updateBits & static_cast<EventBits_t>(UserUpdateEvent::NEW_TEST)) != 0)
 		{
-			logger.log(LogLevel::SUCCESS, "handling for bit set NEW TEST");
 			instance.refreshState();
 			instance.enableCurrentTest();
+
+			TestManager& manager = TestManager::getInstance();
+			logger.log(LogLevel::WARNING, "Adding Test to manager");
+			instance.transferTest();
 			logger.log(LogLevel::TEST, "Invoking State Change...");
 			instance.reportEvent(Event::NEW_TEST);
 			vTaskDelay(pdMS_TO_TICKS(200));
+
 			logger.log(LogLevel::TEST, "Is state changed?");
 			instance.acknowledgeCMD();
 			EventHelper::clearBits(UserUpdateEvent::NEW_TEST);

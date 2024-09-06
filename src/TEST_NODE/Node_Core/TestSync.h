@@ -55,6 +55,7 @@ class TestSync
 	std::atomic<State> _currentState;
 
 	RequiredTest _testList[MAX_TEST];
+	int _testCount = 0;
 	int _testID[MAX_TEST];
 	std::queue<JsonObject> jsonQueue;
 
