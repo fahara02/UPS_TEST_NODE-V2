@@ -212,15 +212,11 @@ void TestManager::TestManagerTask(void* pvParameters)
 	{
 		TestManager& instance = TestManager::getInstance();
 		State managerState = instance.refreshState();
-		// xEventGroupWaitBits(EventHelper::syncControlEvent,
-		// 					static_cast<EventBits_t>(SyncCommand::MANAGER_ACTIVE), pdFALSE, pdFALSE,
-		// 					portMAX_DELAY);
 
 		if(managerState == State::DEVICE_READY)
 		{
 			managerState = instance.refreshState();
 			logger.log(LogLevel::INFO, "Manager state is:%s", stateToString(managerState));
-			// Serial.print(stateToString(managerState));
 			vTaskDelay(pdMS_TO_TICKS(100));
 		}
 
@@ -458,7 +454,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		testInstance.setTaskPriority(TestPriority);
 
 		logger.log(LogLevel::INFO, "Starting %s...", testInstance.testTypeName());
-		syncTest.startTest(testInstance.getTestType());
+		syncTest.RequestStartTest(testInstance.getTestType(), testIndex);
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	else if(managerState == State::TEST_RUNNING)
@@ -492,7 +488,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		if(dataBuff && xQueueReceive(dataQueue, dataBuff, 1000) == pdTRUE)
 		{
 			logger.log(LogLevel::INFO, "Stopping SwitchTest...");
-			syncTest.stopTest(testInstance.getTestType());
+			syncTest.RequestStopTest(testInstance.getTestType(), testIndex);
 			instance._testList[i].testStatus.managerStatus = TestManagerStatus::DONE;
 			instance._testList[i].testStatus.operatorStatus = TestOperatorStatus::SUCCESS;
 
@@ -506,7 +502,7 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 		else
 		{
 			logger.log(LogLevel::ERROR, "Receive Test data timeout");
-			syncTest.stopTest(testInstance.getTestType());
+			syncTest.RequestStartTest(testInstance.getTestType(), testIndex);
 		}
 	}
 

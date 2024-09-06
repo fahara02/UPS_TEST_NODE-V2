@@ -42,29 +42,40 @@ class TestSync
 	bool iscmdAcknowledged();
 	bool isTestEnabled();
 
-	// bool ismanagerReadyToStart()
-	// {
-	// 	return _mamangerReadyToStart;
-	// }
-	// bool ismanagerReadyToStop()
-	// {
-	// 	return _managerReadyToStop;
-	// }
-	// void reportManagerReadyStart()
-	// {
-	// 	_managerReadyToStop = false;
-	// 	_managerReadyToStart = true;
-	// }
-	// void reportManagerReadyStop()
-	// {
-	// 	_managerReadyToStart = false;
-	// 	_managerReadyToStop = true;
-	// }
+	void RequestStartTest(TestType testType, int testIndex)
+	{
+		if(testIndex >= 0 && testIndex < MAX_TEST)
+			if(_testList[testIndex].testType == testType)
+			{
+				_currentTestIndex = testIndex;
+				startTest(testType);
+			}
+		logger.log(LogLevel::ERROR, "the test dont exists");
+	}
+
+	void RequestStopTest(TestType testType, int testIndex)
+	{
+		if(testIndex >= 0 && testIndex < MAX_TEST)
+			if(_testList[testIndex].testType == testType)
+			{
+				stopTest(testType);
+			}
+		logger.log(LogLevel::ERROR, "the test dont exists");
+	}
+	void UserStopTest()
+	{
+		TestType testType;
+		if(_currentTestIndex >= 0 && _currentTestIndex < MAX_TEST)
+		{
+			testType = _testList[_currentTestIndex].testType;
+			stopTest(testType);
+			logger.log(LogLevel::SUCCESS, "USER STOP EXECUTED");
+		}
+		logger.log(LogLevel::ERROR, "USER STOP FAILED");
+	}
 
 	State getState();
 	JsonDocument _testDoc;
-	void startTest(TestType test);
-	void stopTest(TestType test);
 
   private:
 	TestSync();
@@ -72,14 +83,14 @@ class TestSync
 	bool _cmdAcknowledged = false;
 	bool _enableCurrentTest = false;
 	bool parsingOngoing = false;
-	// bool _managerReadyToStart = false;
-	// bool _managerReadyToStop = false;
 
 	std::atomic<State> _currentState;
 
 	RequiredTest _testList[MAX_TEST];
 	int _testCount = 0;
 	int _testID[MAX_TEST];
+	int _currentTestIndex = 0;
+
 	std::queue<JsonObject> jsonQueue;
 
 	StateMachine& stateMachine = StateMachine::getInstance();
@@ -91,6 +102,8 @@ class TestSync
 	static void userUpdateObserverTask(void* pvParameters);
 	static void testSyncObserverTask(void* pvParameters);
 
+	void startTest(TestType test);
+	void stopTest(TestType test);
 	void stopAllTest();
 	void transferTest();
 	void updateMode(TestMode mode);

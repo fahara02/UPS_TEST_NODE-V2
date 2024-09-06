@@ -34,10 +34,9 @@ void TestSync::init()
 
 void TestSync::createSynctask()
 {
-	TestSync& SyncTest = TestSync::getInstance();
-	xTaskCreatePinnedToCore(userCommandObserverTask, "commandObserver", 8192, NULL, 1,
+	xTaskCreatePinnedToCore(userCommandObserverTask, "commandObserver", 8192, NULL, 4,
 							&commandObserverTaskHandle, 0);
-	xTaskCreatePinnedToCore(userUpdateObserverTask, "updateObserver", 8192, NULL, 1,
+	xTaskCreatePinnedToCore(userUpdateObserverTask, "updateObserver", 8192, NULL, 4,
 							&updateObserverTaskHandle, 0);
 	xTaskCreatePinnedToCore(testSyncObserverTask, "testObserver", 4096, NULL, 1,
 							&testObserverTaskHandle, 0);
@@ -329,11 +328,11 @@ void TestSync::handleUserCommand(UserCommandEvent command)
 			break;
 		case UserCommandEvent ::AUTO:
 			EventHelper::clearBits(UserCommandEvent::MANUAL);
-			StateMachine::getInstance().setMode(TestMode::AUTO);
+
 			break;
 		case UserCommandEvent ::MANUAL:
 			EventHelper::clearBits(UserCommandEvent::AUTO);
-			StateMachine::getInstance().setMode(TestMode::MANUAL);
+
 			break;
 		case UserCommandEvent ::START:
 			EventHelper::clearBits(UserCommandEvent::STOP);
@@ -407,6 +406,7 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 
 		if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::AUTO)) != 0)
 		{
+			StateMachine::getInstance().setMode(TestMode::AUTO);
 			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
 			instance.acknowledgeCMD();
 			logger.log(LogLevel::WARNING, "clearing AUTO command bits");
@@ -414,6 +414,7 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::MANUAL)) != 0)
 		{
+			StateMachine::getInstance().setMode(TestMode::MANUAL);
 			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
 			instance.acknowledgeCMD();
 			logger.log(LogLevel::WARNING, "clearing MANUAL command bits");
@@ -437,10 +438,12 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::STOP)) != 0)
 		{
-			logger.log(LogLevel::INFO, "Reporting STOP Event--->");
-			instance.reportEvent(Event::STOP);
+			logger.log(LogLevel::INFO, "Stopping current test in AUTO Mode--->");
+			instance.UserStopTest();
 			logger.log(LogLevel::INFO, "Stopping Observer--->");
 			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
+			logger.log(LogLevel::INFO, "Reporting STOP Event--->");
+			instance.reportEvent(Event::STOP);
 
 			if(instance.stateMachine.isManualMode())
 			{
@@ -449,8 +452,6 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			}
 			else
 			{
-				logger.log(LogLevel::INFO, "Stopping All test in manual Mode--->");
-				instance.stopAllTest();
 				logger.log(LogLevel::INFO, "Making Manager Wait--->");
 				instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
 			}
@@ -460,7 +461,7 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::PAUSE)) != 0)
 		{
-			instance.stopAllTest();
+			instance.UserStopTest();
 			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
 			instance.handleSyncCommand(SyncCommand::MANAGER_WAIT);
 			instance.acknowledgeCMD();

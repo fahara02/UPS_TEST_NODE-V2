@@ -215,49 +215,54 @@ static void notifyStateReverese()
 static void notifyUser(Event e)
 {
 }
-const std::array<StateMachine::Transition, 21> StateMachine::regular_transitions = {
-	{Row<State::DEVICE_ON, Event::SELF_CHECK_OK, State::DEVICE_OK, Event::NONE>::get_transition(
-		 DefaultAction),
-	 Row<State::DEVICE_OK, Event::SETTING_LOADED, State::DEVICE_SETUP,
-		 Event::NONE>::get_transition(),
-	 Row<State::DEVICE_SETUP, Event::LOAD_BANK_CHECKED, State::DEVICE_READY,
-		 Event::NONE>::get_transition(),
-	 Row<State::DEVICE_READY, Event::NEW_TEST, State::READY_TO_PROCEED,
-		 Event::NONE>::get_transition(),
-	 Row<State::READY_TO_PROCEED, Event::NEW_TEST, State::READY_TO_PROCEED,
-		 Event::NONE>::get_transition(),
-	 Row<State::DEVICE_READY, Event::REJECT_CURRENT_TEST, State::DEVICE_READY,
-		 Event::NONE>::get_transition(),
-	 Row<State::READY_TO_PROCEED, Event::REJECT_CURRENT_TEST, State::DEVICE_READY,
-		 Event::NONE>::get_transition(notifyStateReverese),
-	 Row<State::READY_TO_PROCEED, Event::START, State::TEST_START, Event::NONE>::get_transition(),
-	 Row<State::TEST_START, Event::TEST_RUN_OK, State::TEST_RUNNING, Event::NONE>::get_transition(),
-	 Row<State::TEST_START, Event::TEST_FAILED, State::USER_CHECK_REQUIRED,
-		 Event::NONE>::get_transition(),
-	 Row<State::TEST_RUNNING, Event::TEST_FAILED, State::RETEST, Event::NONE>::get_transition(),
-	 Row<State::USER_CHECK_REQUIRED, Event::START, State::TEST_START,
-		 Event::NONE>::get_transition(),
-	 Row<State::CURRENT_TEST_CHECK, Event::VALID_DATA, State::CURRENT_TEST_OK,
-		 Event::NONE>::get_transition(),
-	 Row<State::CURRENT_TEST_CHECK, Event::TEST_FAILED, State::RETEST,
-		 Event::NONE>::get_transition(),
-	 Row<State::CURRENT_TEST_OK, Event::SAVE, State::READY_NEXT_TEST,
-		 Event::NONE>::get_transition(),
-	 Row<State::READY_NEXT_TEST, Event::PENDING_TEST_FOUND, State::TEST_START,
-		 Event::NONE>::get_transition([]() {
-		 return StateMachine::getInstance().isAutoMode();
-	 }),
-	 Row<State::READY_NEXT_TEST, Event::PENDING_TEST_FOUND, State::WAITING_FOR_USER,
-		 Event::NONE>::get_transition([]() {
-		 return StateMachine::getInstance().isManualMode();
-	 }),
-	 Row<State::READY_NEXT_TEST, Event::TEST_LIST_EMPTY, State::ALL_TEST_DONE,
-		 Event::NONE>::get_transition(),
-	 Row<State::CURRENT_TEST_OK, Event::TEST_FAILED, State::RECOVER_DATA,
-		 Event::NONE>::get_transition(),
-	 Row<State::RECOVER_DATA, Event::SAVE, State::START_FROM_SAVE, Event::NONE>::get_transition(),
-	 Row<State::ALL_TEST_DONE, Event::JSON_READY, State::TRANSPORT_DATA,
-		 Event::NONE>::get_transition()}};
+const std::array<StateMachine::Transition, 23> StateMachine::regular_transitions = {{
+
+	// Startup
+	Row<State::DEVICE_ON, Event::SELF_CHECK_OK, State::DEVICE_OK, Event::NONE>::get_transition(
+		DefaultAction),
+	Row<State::DEVICE_OK, Event::SETTING_LOADED, State::DEVICE_SETUP,
+		Event::NONE>::get_transition(),
+	Row<State::DEVICE_SETUP, Event::LOAD_BANK_CHECKED, State::DEVICE_READY,
+		Event::NONE>::get_transition(),
+	Row<State::DEVICE_READY, Event::NEW_TEST, State::READY_TO_PROCEED,
+		Event::NONE>::get_transition(),
+	Row<State::READY_TO_PROCEED, Event::NEW_TEST, State::READY_TO_PROCEED,
+		Event::NONE>::get_transition(),
+	Row<State::DEVICE_READY, Event::REJECT_CURRENT_TEST, State::DEVICE_READY,
+		Event::NONE>::get_transition(),
+	Row<State::READY_TO_PROCEED, Event::REJECT_CURRENT_TEST, State::DEVICE_READY,
+		Event::NONE>::get_transition(notifyStateReverese),
+	// TEST
+	Row<State::READY_TO_PROCEED, Event::START, State::TEST_START, Event::NONE>::get_transition(),
+	Row<State::TEST_START, Event::STOP, State::READY_TO_PROCEED, Event::NONE>::get_transition(),
+	Row<State::TEST_START, Event::TEST_RUN_OK, State::TEST_RUNNING, Event::NONE>::get_transition(),
+	Row<State::TEST_RUNNING, Event::STOP, State::READY_TO_PROCEED, Event::NONE>::get_transition(),
+	Row<State::TEST_START, Event::TEST_FAILED, State::USER_CHECK_REQUIRED,
+		Event::NONE>::get_transition(),
+	Row<State::TEST_RUNNING, Event::TEST_FAILED, State::RETEST, Event::NONE>::get_transition(),
+	Row<State::USER_CHECK_REQUIRED, Event::START, State::TEST_START, Event::NONE>::get_transition(),
+	Row<State::CURRENT_TEST_CHECK, Event::VALID_DATA, State::CURRENT_TEST_OK,
+		Event::NONE>::get_transition(),
+	Row<State::CURRENT_TEST_CHECK, Event::TEST_FAILED, State::RETEST,
+		Event::NONE>::get_transition(),
+	Row<State::CURRENT_TEST_OK, Event::SAVE, State::READY_NEXT_TEST, Event::NONE>::get_transition(),
+	Row<State::READY_NEXT_TEST, Event::PENDING_TEST_FOUND, State::TEST_START,
+		Event::NONE>::get_transition([]() {
+		return StateMachine::getInstance().isAutoMode();
+	}),
+	Row<State::READY_NEXT_TEST, Event::PENDING_TEST_FOUND, State::WAITING_FOR_USER,
+		Event::NONE>::get_transition([]() {
+		return StateMachine::getInstance().isManualMode();
+	}),
+	Row<State::READY_NEXT_TEST, Event::TEST_LIST_EMPTY, State::ALL_TEST_DONE,
+		Event::NONE>::get_transition(),
+	Row<State::CURRENT_TEST_OK, Event::TEST_FAILED, State::RECOVER_DATA,
+		Event::NONE>::get_transition(),
+	Row<State::RECOVER_DATA, Event::SAVE, State::START_FROM_SAVE, Event::NONE>::get_transition(),
+	Row<State::ALL_TEST_DONE, Event::JSON_READY, State::TRANSPORT_DATA,
+		Event::NONE>::get_transition()
+
+}};
 
 // Define the special case transitions
 const std::array<StateMachine::Transition, 12> StateMachine::special_case_transitions = {
@@ -301,8 +306,8 @@ const std::array<StateMachine::Transition, 12> StateMachine::special_case_transi
 	 })}};
 
 // Define the combined transition table
-const std::array<StateMachine::Transition, 33> StateMachine::transition_table = [] {
-	std::array<Transition, 33> result = {};
+const std::array<StateMachine::Transition, 35> StateMachine::transition_table = [] {
+	std::array<Transition, 35> result = {};
 
 	// Copy the regular transitions
 	std::copy(StateMachine::regular_transitions.begin(), StateMachine::regular_transitions.end(),

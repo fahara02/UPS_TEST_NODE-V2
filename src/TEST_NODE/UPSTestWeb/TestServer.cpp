@@ -399,12 +399,12 @@ void TestServer::handleWsIncomingCommands(wsIncomingCommands cmd)
 	else if(cmd == wsIncomingCommands::TEST_STOP)
 	{
 		logger.log(LogLevel::SUCCESS, "handling TEST STOP EVENT");
-		//_sync.ReportEvent(Event::TEST_STOP);
+		_sync.handleUserCommand(UserCommandEvent::STOP);
 	}
 	else if(cmd == wsIncomingCommands::TEST_PAUSE)
 	{
 		logger.log(LogLevel::SUCCESS, "handling TEST PAUSE EVENT");
-		//_sync.ReportEvent(Event::TEST_PAUSE);
+		_sync.handleUserCommand(UserCommandEvent::PAUSE);
 	}
 	else if(cmd == wsIncomingCommands::AUTO_MODE)
 	{
