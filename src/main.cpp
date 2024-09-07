@@ -130,11 +130,11 @@ void modbusRTUTask(void* pvParameters)
 
 		// Monitor and log the available free heap memory
 		size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_8BIT); // For standard heap (DRAM)
-		Serial.printf("modbusRTUTask - Free heap memory: %d bytes\n", freeHeap);
+		logger.log(LogLevel::INFO, "ESP32- Free heap memory: %d bytes", freeHeap);
 
 		// mb.task();  // Uncomment when Modbus task needs to run
 
-		vTaskDelay(pdMS_TO_TICKS(500)); // Task delay
+		vTaskDelay(pdMS_TO_TICKS(2000)); // Task delay
 	}
 
 	vTaskDelete(NULL);
@@ -236,10 +236,10 @@ void setup()
 	{
 		logger.log(LogLevel::SUCCESS, "Websocket is enabled");
 	}
-	Mycila::TaskMonitor.begin(9);
+	Mycila::TaskMonitor.begin(8);
 	Mycila::TaskMonitor.addTask("async_tcp");
 	Mycila::TaskMonitor.addTask("WSCleanupTask");
-	Mycila::TaskMonitor.addTask("WSDataUpdate");
+	// Mycila::TaskMonitor.addTask("WSDataUpdate");
 	Mycila::TaskMonitor.addTask("commandObserver");
 	Mycila::TaskMonitor.addTask("updateObserver");
 	Mycila::TaskMonitor.addTask("MainTestManager");

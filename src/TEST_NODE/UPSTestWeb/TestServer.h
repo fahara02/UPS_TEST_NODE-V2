@@ -115,7 +115,7 @@ class TestServer
 		_fileHandler.serveFile(*_server, "/style.css", "/style.css", "text/css",
 							   "max-age=86400"); // Cache for 24 hours
 		_fileHandler.serveFile(*_server, "/script.js", "/script.js", "application/javascript",
-							   "max-age=1"); // Cache for 24 hours
+							   "max-age=86400"); // Cache for 24 hours
 
 		servePages(_setup, _sync);
 	}
@@ -133,8 +133,9 @@ class TestServer
 	UPSTesterSetup& _setup;
 	TestSync& _sync;
 	bool isClientConnected = false;
-	std::deque<AsyncWebSocketMessageBuffer*> sensorDataQueue;
-	;
+	int _lastClientId = 0;
+	// std::deque<AsyncWebSocketMessageBuffer*> sensorDataQueue;
+	bool _sendData = false;
 
 	// GUI buttons/LED state
 	bool _startBTN = false;

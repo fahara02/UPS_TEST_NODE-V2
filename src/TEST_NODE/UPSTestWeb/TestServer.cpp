@@ -286,7 +286,7 @@ void TestServer::initWebSocket()
 void TestServer::createServerTask()
 {
 	xTaskCreatePinnedToCore(wsClientCleanup, "WSCleanupTask", 4096, _ws, 5, NULL, 0);
-	xTaskCreatePinnedToCore(wsDataUpdate, "WSDataUpdate", 16000, this, 1, NULL, 0);
+	// xTaskCreatePinnedToCore(wsDataUpdate, "WSDataUpdate", 16000, this, 1, NULL, 0);
 }
 void TestServer::wsClientCleanup(void* pvParameters)
 {
@@ -304,13 +304,6 @@ void TestServer::wsDataUpdate(void* pvParameters)
 
 	while(true)
 	{
-		if(server->_ws == nullptr)
-		{
-			Serial.println("Error: WebSocket instance (_ws) is null.");
-			vTaskDelay(2000 / portTICK_PERIOD_MS); // Delay before retrying
-			continue; // Skip this iteration
-		}
-
 		// server->prepWebSocketData(wsOutGoingDataType::INPUT_CURRENT, String(random(5,
 		// 10)).c_str());
 		//  server->prepWebSocketData(wsOutGoingDataType::INPUT_VOLT, String(random(200,
@@ -318,8 +311,40 @@ void TestServer::wsDataUpdate(void* pvParameters)
 		//  						  String(random(1000, 2000)).c_str());
 		//  server->prepWebSocketData(wsOutGoingDataType::INPUT_PF,
 		//  						  String(random(95, 100) / 100.0, 2).c_str());
+		if(server->_sendData)
+		{
+			if(server->isClientConnected)
+			{
+				server->_sendData = false;
+				logger.log(LogLevel::WARNING, "Attempting sending data");
+				const char* current = "43";
+				StaticJsonDocument<200> doc;
 
-		vTaskDelay(5000 / portTICK_PERIOD_MS);
+				// Prepare JSON response
+				doc["InputCurrent"] = current; // Add key-value pair
+				String jsonData;
+				serializeJson(doc, jsonData); // Serialize JSON document
+
+				// For debugging purposes (Serial output)
+				serializeJsonPretty(doc, Serial);
+
+				logger.log(LogLevel::WARNING, "Alert: Checking if client still connected...");
+				if(server->isClientConnected)
+				{
+					if(server->_lastClientId >= 0)
+					{
+						logger.log(LogLevel::WARNING, "Alert: Sending data for client %d",
+								   server->_lastClientId);
+						// server->_ws->text(server->_lastClientId, jsonData);
+					}
+				}
+				else
+				{
+					logger.log(LogLevel::ERROR, "client not ready");
+				}
+			}
+		}
+		vTaskDelay(100 / portTICK_PERIOD_MS);
 	}
 
 	vTaskDelete(NULL); // Clean up task when done
@@ -351,38 +376,45 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 void TestServer::handleWebSocketMessage(void* arg, uint8_t* data, size_t len)
 {
 	AwsFrameInfo* info = (AwsFrameInfo*)arg;
+
+	// Check if this is the final frame, first fragment, and if the size matches
 	if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
 	{
-		data[len] = 0; // Null-terminate the string
-		wsIncomingCommands cmd = getWebSocketCommand((char*)data);
+		// Safely handle message null-termination
+		char* message = new char[len + 1];
+		memcpy(message, data, len);
+		message[len] = '\0'; // Null-terminate
+
+		// Process incoming WebSocket command
+		wsIncomingCommands cmd = getWebSocketCommand(message);
+		delete[] message; // Free the buffer after use
+
 		if(cmd != wsIncomingCommands::INVALID_COMMAND && cmd != wsIncomingCommands::GET_READINGS)
 		{
 			handleWsIncomingCommands(cmd);
-			logger.log(LogLevel::SUCCESS, "RECIEVED WEBSOCKET DATA!!!!!!!");
+			logger.log(LogLevel::SUCCESS, "RECEIVED WEBSOCKET DATA!");
 		}
-		else if(cmd == wsIncomingCommands::GET_READINGS)
-		{
-			if(!sensorDataQueue.empty())
-			{
-				AsyncWebSocketMessageBuffer* sensorReadings = sensorDataQueue.front();
-				sensorDataQueue.pop_front();
-				if(isClientConnected && _ws->availableForWriteAll())
-				{
-					//_ws->textAll(sensorReadings);
-					logger.log(LogLevel::ERROR, "Not sending data to avoid crash !!!!!!!!!");
-				}
-				else
-				{
-					logger.log(LogLevel::ERROR, "Client either not connected or not ready");
-				}
-			}
-			else
-			{
-				Serial.println("No sensor data available.");
-			}
-		}
+		// else if(cmd == wsIncomingCommands::GET_READINGS)
+		// {
+		// 	if(isClientConnected)
+		// 	{
+		// 		if(_ws->availableForWriteAll())
+		// 		{
+		// 			_sendData = true;
+		// 		}
+		// 		else
+		// 		{
+		// 			logger.log(LogLevel::ERROR, "WebSocket not ready for writing");
+		// 		}
+		// 	}
+		// 	else
+		// 	{
+		// 		logger.log(LogLevel::ERROR, "Client is not connected");
+		// 	}
+		// }
 	}
 }
+
 wsIncomingCommands TestServer::getWebSocketCommand(const char* incomingCommand)
 {
 	if(strcmp(incomingCommand, "start") == 0)
@@ -487,7 +519,7 @@ void TestServer::prepWebSocketData(wsOutGoingDataType type, const char* data)
 	}
 
 	// Push the buffer to the deque
-	sensorDataQueue.push_back(buffer);
+	// sensorDataQueue.push_back(buffer);
 }
 
 void TestServer::sendRandomTestData()
