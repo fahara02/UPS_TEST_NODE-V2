@@ -78,15 +78,16 @@ static const char* wsDataTypeToString(wsOutGoingDataType type)
 
 namespace Node_Core
 {
-
 static constexpr size_t WS_BUFFER_SIZE = 256;
 struct WebSocketMessage
 {
-	uint8_t* data; // Pointer to raw data
-	size_t len; // Length of data
-	AwsFrameInfo info; // Frame info (could copy from arg)
-	WebSocketMessage() : data(nullptr), len(0), info()
+	uint8_t data[WS_BUFFER_SIZE];
+	size_t len;
+	AwsFrameInfo info;
+
+	WebSocketMessage() : len(0), info()
 	{
+		memset(data, 0, sizeof(data));
 	}
 };
 
@@ -105,19 +106,20 @@ class DataHandler
 	static DataHandler& getInstance();
 	void init();
 	QueueHandle_t WebsocketDataQueue = NULL;
-	std::deque<std::array<char, 256>> wsDeque;
+	SemaphoreHandle_t dequeMutex = NULL;
+	std::deque<std::array<char, WS_BUFFER_SIZE>> wsDeque;
+	bool _isReadingsRequested;
 
   private:
 	DataHandler();
-	bool _isDataProcessing;
-	bool _isProcessingDone;
+
 	ProcessingResult _result;
 
 	// Fixed-size array in deque
 	StaticJsonDocument<WS_BUFFER_SIZE> _blankDoc; // JSON document to store data
 
 	static void wsDataProcessor(void* pVparamter);
-	TaskHandle_t dataTaskHandler = nullptr;
+	TaskHandle_t dataTaskHandler = NULL;
 
 	// data handling functions
 

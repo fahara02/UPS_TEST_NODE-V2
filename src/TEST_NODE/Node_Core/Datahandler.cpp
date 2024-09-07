@@ -10,17 +10,16 @@ DataHandler& DataHandler::getInstance()
 	return instance;
 }
 
-DataHandler::DataHandler() :
-	_isDataProcessing(false), _isProcessingDone(false), _result(ProcessingResult::PENDING)
+DataHandler::DataHandler() : _isReadingsRequested(false), _result(ProcessingResult::PENDING)
 {
 	WebsocketDataQueue = xQueueCreate(10, sizeof(WebSocketMessage));
+	dequeMutex = xSemaphoreCreateMutex();
 }
 
 void DataHandler::init()
 {
-	const char* current = "43";
-	_blankDoc["InputCurrent"] = current;
-	xTaskCreatePinnedToCore(wsDataProcessor, "ProcessWsData", 16000, this, 1, &dataTaskHandler, 0);
+	fillDequeWithData();
+	xTaskCreatePinnedToCore(wsDataProcessor, "ProcessWsData", 8192, this, 4, &dataTaskHandler, 0);
 }
 
 void DataHandler::wsDataProcessor(void* pVparamter)
@@ -30,17 +29,27 @@ void DataHandler::wsDataProcessor(void* pVparamter)
 
 	while(true)
 	{
-		// instance->fillDequeWithData();
-
-		if(xQueueReceive(instance->WebsocketDataQueue, &wsMsg, 100 / portTICK_PERIOD_MS))
+		int result = xEventGroupWaitBits(EventHelper::wsClientEventGroup,
+										 static_cast<EventBits_t>(wsClientStatus::DATA), pdFALSE,
+										 pdFALSE, portMAX_DELAY);
+		if((result & static_cast<EventBits_t>(wsClientStatus::DATA)) != 0)
 		{
-			logger.log(LogLevel::INFO, "Processing WebSocket data in DataHandler task");
+			if(instance->_isReadingsRequested)
+			{
+				instance->fillDequeWithData();
+				instance->_isReadingsRequested = false;
+			}
 
-			instance->processWsMessage(wsMsg);
+			if(xQueueReceive(instance->WebsocketDataQueue, &wsMsg, 100 / portTICK_PERIOD_MS))
+			{
+				logger.log(LogLevel::INFO, "Processing WebSocket data in DataHandler task");
+				instance->processWsMessage(wsMsg);
+			}
+
+			EventHelper::clearBits(wsClientStatus::DATA);
 		}
 
-		// Add a delay to allow other tasks to run
-		vTaskDelay(200 / portTICK_PERIOD_MS);
+		vTaskDelay(200 / portTICK_PERIOD_MS); // Add a delay to allow other tasks to run
 	}
 
 	vTaskDelete(NULL);
@@ -48,21 +57,27 @@ void DataHandler::wsDataProcessor(void* pVparamter)
 
 void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 {
-	char* message = new char[wsMsg.len + 1];
+	char message[WS_BUFFER_SIZE];
+
+	if(wsMsg.len >= sizeof(message))
+	{
+		Serial.println("Received data exceeds MAX BUFFER SIZE");
+		return;
+	}
+
 	memcpy(message, wsMsg.data, wsMsg.len);
 	message[wsMsg.len] = '\0';
 
 	wsIncomingCommands cmd = getWebSocketCommand(message);
+
 	if(cmd != wsIncomingCommands::INVALID_COMMAND && cmd != wsIncomingCommands::GET_READINGS)
 	{
-		handleWsIncomingCommands(cmd); // Process known commands
+		handleWsIncomingCommands(cmd);
 	}
 	else if(cmd == wsIncomingCommands::GET_READINGS)
 	{
-		fillDequeWithData(); // Default handler
+		_isReadingsRequested = true;
 	}
-
-	delete[] message; // Clean up
 }
 
 void DataHandler::fillDequeWithData()
@@ -72,21 +87,25 @@ void DataHandler::fillDequeWithData()
 	snprintf(currentBuffer, sizeof(currentBuffer), "%d", randomCurrent);
 
 	_blankDoc["InputCurrent"] = currentBuffer;
-
-	if(wsDeque.size() < 10)
+	if(xSemaphoreTake(dequeMutex, portMAX_DELAY))
 	{
-		std::array<char, WS_BUFFER_SIZE> jsonBuffer;
-		size_t len = serializeJson(_blankDoc, jsonBuffer.data(), jsonBuffer.size());
-
-		if(len > 0 && len < jsonBuffer.size())
+		if(wsDeque.size() < 10)
 		{
-			// Add serialized data to the deque
-			wsDeque.push_back(jsonBuffer);
+			std::array<char, WS_BUFFER_SIZE> jsonBuffer;
+			size_t len = serializeJson(_blankDoc, jsonBuffer.data(), jsonBuffer.size());
 
-			logger.log(LogLevel::INFO, "Added random current data to wsDeque: ");
-			logger.log(LogLevel::INFO, currentBuffer);
+			if(len > 0 && len < jsonBuffer.size())
+			{
+				wsDeque.push_back(jsonBuffer);
+
+				logger.log(LogLevel::INFO, "Added random current data to wsDeque: ");
+				logger.log(LogLevel::INFO, currentBuffer);
+			}
 		}
+		xSemaphoreGive(dequeMutex);
 	}
+
+	_blankDoc.clear();
 }
 
 void DataHandler::handleWsIncomingCommands(wsIncomingCommands cmd)

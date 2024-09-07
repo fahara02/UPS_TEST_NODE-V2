@@ -293,6 +293,83 @@ void TestServer::wsClientCleanup(void* pvParameters)
 	vTaskDelete(NULL);
 }
 
+// void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType
+// type, 						   void* arg, uint8_t* data, size_t len)
+// {
+// 	switch(type)
+// 	{
+// 		case WS_EVT_CONNECT:
+// 			Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
+// 						  client->remoteIP().toString().c_str());
+// 			isClientConnected = true; // Set flag to true when client connects
+// 			break;
+
+// 		case WS_EVT_DISCONNECT:
+// 			Serial.printf("WebSocket client #%u disconnected\n", client->id());
+// 			isClientConnected = false; // Set flag to false when client disconnects
+// 			break;
+
+// 		case WS_EVT_DATA:
+// 		{
+// 			AwsFrameInfo* info = (AwsFrameInfo*)arg;
+
+// 			if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
+// 			{
+// 				// Check if the data length fits within the buffer
+// 				if(len >= WS_BUFFER_SIZE)
+// 				{
+// 					Serial.println("Received data exceeds buffer size; discarding message.");
+// 					client->text("Error: Message too large.");
+// 					return;
+// 				}
+
+// 				WebSocketMessage wsMsg;
+// 				memcpy(wsMsg.data, data, len); // Copy data to the fixed-size buffer
+// 				wsMsg.len = len; // Set the message length
+// 				wsMsg.info = *info; // Copy the frame info
+
+// 				// Process the message as needed
+// 				if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
+// 				{
+// 					if(!DataHandler::getInstance().wsDeque.empty())
+// 					{
+// 						const std::array<char, WS_BUFFER_SIZE>& jsonData =
+// 							DataHandler::getInstance().wsDeque.front();
+// 						DataHandler::getInstance().wsDeque.pop_front();
+
+// 						client->text(jsonData.data(), strlen(jsonData.data()));
+// 					}
+// 					else
+// 					{
+// 						client->text("Data not available yet");
+// 					}
+// 				}
+// 				else
+// 				{
+// 					// Enqueue message for processing
+// 					if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
+// 								  portMAX_DELAY) != pdPASS)
+// 					{
+// 						Serial.println("Failed to enqueue WebSocket message.");
+// 					}
+// 				}
+// 			}
+// 			else
+// 			{
+// 				Serial.println("Incomplete or invalid WebSocket frame.");
+// 			}
+// 			break;
+// 		}
+
+// 		case WS_EVT_PONG:
+// 			Serial.println("PONG received");
+// 			break;
+
+// 		case WS_EVT_ERROR:
+// 			Serial.println("WebSocket error occurred");
+// 			break;
+// 	}
+// }
 void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
 						   void* arg, uint8_t* data, size_t len)
 {
@@ -301,56 +378,79 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 		case WS_EVT_CONNECT:
 			Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
 						  client->remoteIP().toString().c_str());
-			isClientConnected = true; // Set flag to true when client connects
+			EventHelper::clearBits(wsClientStatus::DISCONNECTED);
+			EventHelper::setBits(wsClientStatus::CONNECTED);
+
 			break;
 
 		case WS_EVT_DISCONNECT:
 			Serial.printf("WebSocket client #%u disconnected\n", client->id());
-			isClientConnected = false; // Set flag to false when client disconnects
+			EventHelper::clearBits(wsClientStatus::CONNECTED);
+			EventHelper::setBits(wsClientStatus::DISCONNECTED);
 			break;
 
 		case WS_EVT_DATA:
 		{
 			AwsFrameInfo* info = (AwsFrameInfo*)arg;
 
-			// Check if the WebSocket frame is final and properly formatted
 			if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
 			{
-				char msgBuffer[256];
-				size_t msgLen = (len < sizeof(msgBuffer) - 1) ? len : sizeof(msgBuffer) - 1;
-				memcpy(msgBuffer, data, msgLen);
-				msgBuffer[msgLen] = '\0'; // Null-terminate the string
-
-				Serial.printf("Message from client: %s\n", msgBuffer);
-
-				if(strcmp(msgBuffer, "getReadings") == 0)
+				if(len >= WS_BUFFER_SIZE)
 				{
-					if(!DataHandler::getInstance().wsDeque.empty())
-					{
-						const std::array<char, 256>& jsonData =
-							DataHandler::getInstance().wsDeque.front();
-						DataHandler::getInstance().wsDeque.pop_front();
+					Serial.println("Received data exceeds buffer size; discarding message.");
+					client->text("Error: Message too large.");
+					return;
+				}
+				EventHelper::setBits(wsClientStatus::DATA);
 
-						client->text(jsonData.data(), strlen(jsonData.data()));
+				WebSocketMessage wsMsg;
+				memcpy(wsMsg.data, data, len);
+				wsMsg.len = len;
+				wsMsg.info = *info;
+
+				if(xEventGroupWaitBits(EventHelper::wsClientEventGroup,
+									   static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE,
+									   pdFALSE, portMAX_DELAY))
+				{
+					if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
+					{
+						DataHandler::getInstance()._isReadingsRequested = true;
+						Serial.printf("Message from client: %s\n", wsMsg.data);
+						// if(xSemaphoreTake(DataHandler::getInstance().dequeMutex, portMAX_DELAY))
+						// { // Take the mutex
+						Serial.println("checking if deque is empty");
+
+						if(!DataHandler::getInstance().wsDeque.empty())
+						{
+							Serial.println("sending data...");
+							const std::array<char, WS_BUFFER_SIZE>& jsonData =
+								DataHandler::getInstance().wsDeque.front();
+							DataHandler::getInstance().wsDeque.pop_front();
+							//	xSemaphoreGive(DataHandler::getInstance().dequeMutex); // Release
+							// the
+							// mutex
+							client->text(jsonData.data(), strlen(jsonData.data()));
+						}
+						else
+						{
+							// xSemaphoreGive(DataHandler::getInstance().dequeMutex); // Release the
+							// mutex
+							client->text("Data not available yet");
+						}
+						//	}
 					}
 					else
 					{
-						client->text("Data not available yet");
+						// Enqueue message for processing
+						if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
+									  pdMS_TO_TICKS(100)) != pdPASS)
+						{
+							Serial.println("Failed to enqueue WebSocket message within timeout.");
+						}
 					}
 				}
-				else
-				{
-					WebSocketMessage wsMsg;
-					wsMsg.data = reinterpret_cast<uint8_t*>(msgBuffer);
-					wsMsg.len = msgLen;
-					wsMsg.info = *info; // Copy the frame info
 
-					if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
-								  portMAX_DELAY) != pdPASS)
-					{
-						Serial.println("Failed to enqueue WebSocket message.");
-					}
-				}
+				// Process the message as needed
 			}
 			else
 			{

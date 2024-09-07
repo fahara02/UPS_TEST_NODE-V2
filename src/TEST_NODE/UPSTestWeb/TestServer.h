@@ -9,6 +9,7 @@
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
 #include "NodeConstants.h"
+#include "EventHelper.h"
 #include "Settings.h"
 #include "TestData.h"
 #include "UPSdebug.h"
