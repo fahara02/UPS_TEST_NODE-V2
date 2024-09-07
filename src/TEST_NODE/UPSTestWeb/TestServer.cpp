@@ -268,11 +268,6 @@ void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPST
 	}
 }
 
-// void TestServer::initWebSocket()
-// {
-// 	_ws.onEvent(onWsEvent);
-// 	_server.addHandler(&ws);
-// }
 void TestServer::initWebSocket()
 {
 	_ws->onEvent([this](AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
@@ -286,7 +281,6 @@ void TestServer::initWebSocket()
 void TestServer::createServerTask()
 {
 	xTaskCreatePinnedToCore(wsClientCleanup, "WSCleanupTask", 4096, _ws, 5, NULL, 0);
-	// xTaskCreatePinnedToCore(wsDataUpdate, "WSDataUpdate", 16000, this, 1, NULL, 0);
 }
 void TestServer::wsClientCleanup(void* pvParameters)
 {
@@ -297,57 +291,6 @@ void TestServer::wsClientCleanup(void* pvParameters)
 		vTaskDelay(200 / portTICK_PERIOD_MS);
 	}
 	vTaskDelete(NULL);
-}
-void TestServer::wsDataUpdate(void* pvParameters)
-{
-	TestServer* server = static_cast<TestServer*>(pvParameters);
-
-	while(true)
-	{
-		// server->prepWebSocketData(wsOutGoingDataType::INPUT_CURRENT, String(random(5,
-		// 10)).c_str());
-		//  server->prepWebSocketData(wsOutGoingDataType::INPUT_VOLT, String(random(200,
-		//  240)).c_str()); server->prepWebSocketData(wsOutGoingDataType::INPUT_POWER,
-		//  						  String(random(1000, 2000)).c_str());
-		//  server->prepWebSocketData(wsOutGoingDataType::INPUT_PF,
-		//  						  String(random(95, 100) / 100.0, 2).c_str());
-		if(server->_sendData)
-		{
-			if(server->isClientConnected)
-			{
-				server->_sendData = false;
-				logger.log(LogLevel::WARNING, "Attempting sending data");
-				const char* current = "43";
-				StaticJsonDocument<200> doc;
-
-				// Prepare JSON response
-				doc["InputCurrent"] = current; // Add key-value pair
-				String jsonData;
-				serializeJson(doc, jsonData); // Serialize JSON document
-
-				// For debugging purposes (Serial output)
-				serializeJsonPretty(doc, Serial);
-
-				logger.log(LogLevel::WARNING, "Alert: Checking if client still connected...");
-				if(server->isClientConnected)
-				{
-					if(server->_lastClientId >= 0)
-					{
-						logger.log(LogLevel::WARNING, "Alert: Sending data for client %d",
-								   server->_lastClientId);
-						// server->_ws->text(server->_lastClientId, jsonData);
-					}
-				}
-				else
-				{
-					logger.log(LogLevel::ERROR, "client not ready");
-				}
-			}
-		}
-		vTaskDelay(100 / portTICK_PERIOD_MS);
-	}
-
-	vTaskDelete(NULL); // Clean up task when done
 }
 
 void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
@@ -368,14 +311,51 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 
 		case WS_EVT_DATA:
 		{
-			String msg = String((char*)data).substring(0, len);
-			Serial.printf("Message from client: %s\n", msg.c_str());
+			AwsFrameInfo* info = (AwsFrameInfo*)arg;
 
-			// Respond back to the client
-			client->text("Received: " + msg);
+			// Check if the WebSocket frame is final and properly formatted
+			if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
+			{
+				char msgBuffer[256];
+				size_t msgLen = (len < sizeof(msgBuffer) - 1) ? len : sizeof(msgBuffer) - 1;
+				memcpy(msgBuffer, data, msgLen);
+				msgBuffer[msgLen] = '\0'; // Null-terminate the string
 
-			// Optionally handle the WebSocket message
-			// handleWebSocketMessage(arg, data, len);
+				Serial.printf("Message from client: %s\n", msgBuffer);
+
+				if(strcmp(msgBuffer, "getReadings") == 0)
+				{
+					if(!DataHandler::getInstance().wsDeque.empty())
+					{
+						const std::array<char, 256>& jsonData =
+							DataHandler::getInstance().wsDeque.front();
+						DataHandler::getInstance().wsDeque.pop_front();
+
+						client->text(jsonData.data(), strlen(jsonData.data()));
+					}
+					else
+					{
+						client->text("Data not available yet");
+					}
+				}
+				else
+				{
+					WebSocketMessage wsMsg;
+					wsMsg.data = reinterpret_cast<uint8_t*>(msgBuffer);
+					wsMsg.len = msgLen;
+					wsMsg.info = *info; // Copy the frame info
+
+					if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
+								  portMAX_DELAY) != pdPASS)
+					{
+						Serial.println("Failed to enqueue WebSocket message.");
+					}
+				}
+			}
+			else
+			{
+				Serial.println("Incomplete or invalid WebSocket frame.");
+			}
 			break;
 		}
 
@@ -387,170 +367,4 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 			Serial.println("WebSocket error occurred");
 			break;
 	}
-}
-
-void TestServer::handleWebSocketMessage(void* arg, uint8_t* data, size_t len)
-{
-	AwsFrameInfo* info = (AwsFrameInfo*)arg;
-
-	// Check if this is the final frame, first fragment, and if the size matches
-	if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
-	{
-		// Safely handle message null-termination
-		char* message = new char[len + 1];
-		memcpy(message, data, len);
-		message[len] = '\0'; // Null-terminate
-
-		// Process incoming WebSocket command
-		wsIncomingCommands cmd = getWebSocketCommand(message);
-		delete[] message; // Free the buffer after use
-
-		if(cmd != wsIncomingCommands::INVALID_COMMAND && cmd != wsIncomingCommands::GET_READINGS)
-		{
-			handleWsIncomingCommands(cmd);
-			logger.log(LogLevel::SUCCESS, "RECEIVED WEBSOCKET DATA!");
-		}
-		// else if(cmd == wsIncomingCommands::GET_READINGS)
-		// {
-		// 	if(isClientConnected)
-		// 	{
-		// 		if(_ws->availableForWriteAll())
-		// 		{
-		// 			_sendData = true;
-		// 		}
-		// 		else
-		// 		{
-		// 			logger.log(LogLevel::ERROR, "WebSocket not ready for writing");
-		// 		}
-		// 	}
-		// 	else
-		// 	{
-		// 		logger.log(LogLevel::ERROR, "Client is not connected");
-		// 	}
-		// }
-	}
-}
-
-wsIncomingCommands TestServer::getWebSocketCommand(const char* incomingCommand)
-{
-	if(strcmp(incomingCommand, "start") == 0)
-
-		return wsIncomingCommands::TEST_START;
-	if(strcmp(incomingCommand, "stop") == 0)
-		return wsIncomingCommands::TEST_STOP;
-	if(strcmp(incomingCommand, "pause") == 0)
-		return wsIncomingCommands::TEST_PAUSE;
-	if(strcmp(incomingCommand, "AUTO") == 0)
-		return wsIncomingCommands::AUTO_MODE;
-	if(strcmp(incomingCommand, "MANUAL") == 0)
-		return wsIncomingCommands::MANUAL_MODE;
-	if(strcmp(incomingCommand, "Load On") == 0)
-		return wsIncomingCommands::LOAD_ON;
-	if(strcmp(incomingCommand, "Load Off") == 0)
-		return wsIncomingCommands::LOAD_OFF;
-	if(strcmp(incomingCommand, "Mains On") == 0)
-		return wsIncomingCommands::MAINS_ON;
-	if(strcmp(incomingCommand, "Mains Off") == 0)
-		return wsIncomingCommands::MAINS_OFF;
-	if(strcmp(incomingCommand, "getReadings") == 0)
-		return wsIncomingCommands::GET_READINGS;
-	return wsIncomingCommands::INVALID_COMMAND;
-}
-
-String sendWebsocketCommands(wsOutgoingCommands cmd)
-{
-	int index = static_cast<int>(cmd);
-	size_t size = sizeof(outgoingCommandTable) / sizeof(outgoingCommandTable[0]);
-
-	// Check if the index is within valid range
-	if(index >= 0 && index < size)
-	{
-		return String(outgoingCommandTable[index]);
-	}
-	else
-	{
-		return String("INVALID_COMMAND");
-	}
-}
-
-void TestServer::handleWsIncomingCommands(wsIncomingCommands cmd)
-{
-	if(cmd == wsIncomingCommands::TEST_START)
-	{
-		logger.log(LogLevel::SUCCESS, "handling TEST START EVENT");
-		_sync.handleUserCommand(UserCommandEvent::START);
-	}
-	else if(cmd == wsIncomingCommands::TEST_STOP)
-	{
-		logger.log(LogLevel::SUCCESS, "handling TEST STOP EVENT");
-		_sync.handleUserCommand(UserCommandEvent::STOP);
-	}
-	else if(cmd == wsIncomingCommands::TEST_PAUSE)
-	{
-		logger.log(LogLevel::SUCCESS, "handling TEST PAUSE EVENT");
-		_sync.handleUserCommand(UserCommandEvent::PAUSE);
-	}
-	else if(cmd == wsIncomingCommands::AUTO_MODE)
-	{
-		logger.log(LogLevel::SUCCESS, "handling command set to AUTO ");
-		_sync.handleUserCommand(UserCommandEvent::AUTO);
-	}
-	else if(cmd == wsIncomingCommands::MANUAL_MODE)
-	{
-		logger.log(LogLevel::SUCCESS, "handling command set to MANUAL ");
-		_sync.handleUserCommand(UserCommandEvent::MANUAL);
-	}
-	else
-	{
-		logger.log(LogLevel::ERROR, "invalid command ");
-	}
-}
-
-void TestServer::prepWebSocketData(wsOutGoingDataType type, const char* data)
-{
-	// Use the provided size for StaticJsonDocument
-	StaticJsonDocument<64> doc; // Use a size that fits comfortably within the expected data size
-
-	// Fill the JSON document
-	doc["type"] = wsDataTypeToString(type);
-	doc["message"] = data;
-
-	// Measure the JSON document size
-	size_t len = measureJson(doc);
-
-	// Create a buffer to hold the JSON data
-	AsyncWebSocketMessageBuffer* buffer = _ws->makeBuffer(len + 1); // +1 for null terminator
-	if(!buffer)
-	{
-		Serial.println("Error: Failed to create message buffer.");
-		return;
-	}
-
-	// Serialize the JSON document into the buffer
-	size_t bytesWritten = serializeJson(doc, buffer->get(), len + 1); // +1 for null terminator
-	if(bytesWritten != len)
-	{
-		Serial.println("Error: Buffer write did not match measured length.");
-		return;
-	}
-
-	// Push the buffer to the deque
-	// sensorDataQueue.push_back(buffer);
-}
-
-void TestServer::sendRandomTestData()
-{
-	prepWebSocketData(wsOutGoingDataType::INPUT_POWER, String(random(1000, 2000)).c_str());
-	prepWebSocketData(wsOutGoingDataType::INPUT_VOLT, String(random(200, 240)).c_str());
-	prepWebSocketData(wsOutGoingDataType::INPUT_CURRENT, String(random(5, 10)).c_str());
-	prepWebSocketData(wsOutGoingDataType::INPUT_PF, String(random(95, 100) / 100.0, 2).c_str());
-	prepWebSocketData(wsOutGoingDataType::OUTPUT_POWER, String(random(900, 1800)).c_str());
-	prepWebSocketData(wsOutGoingDataType::OUTPUT_VOLT, String(random(210, 230)).c_str());
-	prepWebSocketData(wsOutGoingDataType::OUTPUT_CURRENT, String(random(4, 8)).c_str());
-	prepWebSocketData(wsOutGoingDataType::OUTPUT_PF, String(random(90, 100) / 100.0, 2).c_str());
-}
-
-void TestServer::notifyClients(String data)
-{
-	_ws->textAll(data);
 }

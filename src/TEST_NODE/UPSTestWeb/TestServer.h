@@ -16,73 +16,7 @@
 #include "UPSTesterSetup.h"
 #include "Filehandler.h"
 #include <deque>
-
-enum class wsIncomingCommands
-{
-	TEST_START,
-	TEST_STOP,
-	TEST_PAUSE,
-	AUTO_MODE,
-	MANUAL_MODE,
-	LOAD_ON,
-	LOAD_OFF,
-	MAINS_ON,
-	MAINS_OFF,
-	GET_READINGS,
-
-	INVALID_COMMAND // Handle invalid cases
-};
-
-enum class wsOutgoingCommands
-{
-	BLINK_SETUP,
-	BLINK_READY,
-	BLINK_RUNNING,
-	INVALID_COMMAND // Handle invalid cases
-};
-enum class wsOutGoingDataType
-{
-	INPUT_POWER,
-	INPUT_VOLT,
-	INPUT_CURRENT,
-	INPUT_PF,
-	OUTPUT_POWER,
-	OUTPUT_VOLT,
-	OUTPUT_CURRENT,
-	OUTPUT_PF,
-	INVALID_DATA
-};
-
-static const char* outgoingCommandTable[] = {
-	"blinkBlue", // BLINK_SETUP
-	"blinkGreen", // BLINK_READY
-	"blinkRed" // BLINK_RUNNING
-};
-
-static const char* wsDataTypeToString(wsOutGoingDataType type)
-{
-	switch(type)
-	{
-		case wsOutGoingDataType::INPUT_POWER:
-			return "InputPower";
-		case wsOutGoingDataType::INPUT_VOLT:
-			return "InputVoltage";
-		case wsOutGoingDataType::INPUT_CURRENT:
-			return "InputCurrent";
-		case wsOutGoingDataType::INPUT_PF:
-			return "InputPowerFactor";
-		case wsOutGoingDataType::OUTPUT_POWER:
-			return "OutputPower";
-		case wsOutGoingDataType::OUTPUT_VOLT:
-			return "OutputVoltage";
-		case wsOutGoingDataType::OUTPUT_CURRENT:
-			return "OutputCurrent";
-		case wsOutGoingDataType::OUTPUT_PF:
-			return "OutputPowerFactor";
-		default:
-			return "Invalid Data";
-	}
-}
+#include "DataHandler.h"
 
 class TestServer
 {
@@ -168,19 +102,9 @@ class TestServer
 	// WebSocket-related functions
 	void onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
 				   void* arg, uint8_t* data, size_t len);
-	void handleWebSocketMessage(void* arg, uint8_t* data, size_t len);
-	wsIncomingCommands getWebSocketCommand(const char* incomingCommand);
-	String sendWebSocketCommand(wsOutgoingCommands cmd);
-	void handleWsIncomingCommands(wsIncomingCommands cmd);
-	void prepWebSocketData(wsOutGoingDataType type, const char* data);
-	// void sendwsData(wsOutGoingDataType type, JsonDocument doc);
-	void createServerTask();
 
+	void createServerTask();
 	static void wsClientCleanup(void* pvParameters);
-	static void wsDataUpdate(void* pvParameters);
-	void sendRandomTestData();
-	void sendTestMessage();
-	void notifyClients(String data);
 };
 
 #endif

@@ -20,7 +20,7 @@
 #include "TestSync.h"
 #include "TestServer.h"
 #include "UPSTime.h"
-#include "SetupBUS.h"
+#include "DataHandler.h"
 
 using namespace Node_Core;
 
@@ -28,6 +28,8 @@ using namespace Node_Core;
 Logger& logger = Logger::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
 UPSTesterSetup& TesterSetup = UPSTesterSetup::getInstance();
+DataHandler& wsDataHandler = DataHandler::getInstance();
+
 SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
 BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 
@@ -199,6 +201,7 @@ void setup()
 	upsGain = xSemaphoreCreateBinary();
 	upsLoss = xSemaphoreCreateBinary();
 	logger.log(LogLevel::INFO, "creating queue");
+
 	TestManageQueue = xQueueCreate(messageQueueLength, sizeof(SetupTaskParams));
 	SwitchTestDataQueue = xQueueCreate(messageQueueLength, sizeof(SwitchTestData));
 	BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
@@ -218,8 +221,11 @@ void setup()
 	TestManager& Manager = TestManager::getInstance();
 	logger.log(LogLevel::INFO, "getting manager init");
 	Manager.init();
-	logger.log(LogLevel::INFO, "changing states");
 
+	logger.log(LogLevel::INFO, "getting datahandler init");
+	wsDataHandler.init();
+
+	logger.log(LogLevel::INFO, "changing states");
 	Manager.passEvent(Event::SELF_CHECK_OK);
 	vTaskDelay(pdTICKS_TO_MS(100));
 	Manager.passEvent(Event::SETTING_LOADED);
@@ -236,10 +242,10 @@ void setup()
 	{
 		logger.log(LogLevel::SUCCESS, "Websocket is enabled");
 	}
-	Mycila::TaskMonitor.begin(8);
+	Mycila::TaskMonitor.begin(9);
 	Mycila::TaskMonitor.addTask("async_tcp");
 	Mycila::TaskMonitor.addTask("WSCleanupTask");
-	// Mycila::TaskMonitor.addTask("WSDataUpdate");
+	Mycila::TaskMonitor.addTask("ProcessWsData");
 	Mycila::TaskMonitor.addTask("commandObserver");
 	Mycila::TaskMonitor.addTask("updateObserver");
 	Mycila::TaskMonitor.addTask("MainTestManager");
