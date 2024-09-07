@@ -360,15 +360,31 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 						  client->remoteIP().toString().c_str());
 			isClientConnected = true; // Set flag to true when client connects
 			break;
+
 		case WS_EVT_DISCONNECT:
 			Serial.printf("WebSocket client #%u disconnected\n", client->id());
 			isClientConnected = false; // Set flag to false when client disconnects
 			break;
+
 		case WS_EVT_DATA:
-			handleWebSocketMessage(arg, data, len);
+		{
+			String msg = String((char*)data).substring(0, len);
+			Serial.printf("Message from client: %s\n", msg.c_str());
+
+			// Respond back to the client
+			client->text("Received: " + msg);
+
+			// Optionally handle the WebSocket message
+			// handleWebSocketMessage(arg, data, len);
 			break;
+		}
+
 		case WS_EVT_PONG:
+			Serial.println("PONG received");
+			break;
+
 		case WS_EVT_ERROR:
+			Serial.println("WebSocket error occurred");
 			break;
 	}
 }
