@@ -285,8 +285,8 @@ void TestServer::initWebSocket()
 
 void TestServer::createServerTask()
 {
-	xTaskCreate(wsClientCleanup, "WSCleanupTask", 4096, _ws, 5, NULL);
-	xTaskCreate(wsDataUpdate, "WSDataUpdate", 4096, this, 5, NULL);
+	xTaskCreatePinnedToCore(wsClientCleanup, "WSCleanupTask", 4096, _ws, 5, NULL, 0);
+	xTaskCreatePinnedToCore(wsDataUpdate, "WSDataUpdate", 16000, this, 1, NULL, 0);
 }
 void TestServer::wsClientCleanup(void* pvParameters)
 {
@@ -300,30 +300,44 @@ void TestServer::wsClientCleanup(void* pvParameters)
 }
 void TestServer::wsDataUpdate(void* pvParameters)
 {
-	// Cast the void pointer back to a TestServer pointer
 	TestServer* server = static_cast<TestServer*>(pvParameters);
 
 	while(true)
 	{
-		// server->sendRandomTestData(); // Use the class instance to call the method
-		vTaskDelay(2000 / portTICK_PERIOD_MS);
+		if(server->_ws == nullptr)
+		{
+			Serial.println("Error: WebSocket instance (_ws) is null.");
+			vTaskDelay(2000 / portTICK_PERIOD_MS); // Delay before retrying
+			continue; // Skip this iteration
+		}
+
+		// server->prepWebSocketData(wsOutGoingDataType::INPUT_CURRENT, String(random(5,
+		// 10)).c_str());
+		//  server->prepWebSocketData(wsOutGoingDataType::INPUT_VOLT, String(random(200,
+		//  240)).c_str()); server->prepWebSocketData(wsOutGoingDataType::INPUT_POWER,
+		//  						  String(random(1000, 2000)).c_str());
+		//  server->prepWebSocketData(wsOutGoingDataType::INPUT_PF,
+		//  						  String(random(95, 100) / 100.0, 2).c_str());
+
+		vTaskDelay(5000 / portTICK_PERIOD_MS);
 	}
 
-	vTaskDelete(NULL);
+	vTaskDelete(NULL); // Clean up task when done
 }
+
 void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
 						   void* arg, uint8_t* data, size_t len)
 {
-	// Initialize clientId directly from the client object
-
 	switch(type)
 	{
 		case WS_EVT_CONNECT:
 			Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
 						  client->remoteIP().toString().c_str());
+			isClientConnected = true; // Set flag to true when client connects
 			break;
 		case WS_EVT_DISCONNECT:
 			Serial.printf("WebSocket client #%u disconnected\n", client->id());
+			isClientConnected = false; // Set flag to false when client disconnects
 			break;
 		case WS_EVT_DATA:
 			handleWebSocketMessage(arg, data, len);
@@ -341,11 +355,31 @@ void TestServer::handleWebSocketMessage(void* arg, uint8_t* data, size_t len)
 	{
 		data[len] = 0; // Null-terminate the string
 		wsIncomingCommands cmd = getWebSocketCommand((char*)data);
-		if(cmd != wsIncomingCommands::INVALID_COMMAND)
+		if(cmd != wsIncomingCommands::INVALID_COMMAND && cmd != wsIncomingCommands::GET_READINGS)
 		{
 			handleWsIncomingCommands(cmd);
-			// notifyClients();
 			logger.log(LogLevel::SUCCESS, "RECIEVED WEBSOCKET DATA!!!!!!!");
+		}
+		else if(cmd == wsIncomingCommands::GET_READINGS)
+		{
+			if(!sensorDataQueue.empty())
+			{
+				AsyncWebSocketMessageBuffer* sensorReadings = sensorDataQueue.front();
+				sensorDataQueue.pop_front();
+				if(isClientConnected && _ws->availableForWriteAll())
+				{
+					//_ws->textAll(sensorReadings);
+					logger.log(LogLevel::ERROR, "Not sending data to avoid crash !!!!!!!!!");
+				}
+				else
+				{
+					logger.log(LogLevel::ERROR, "Client either not connected or not ready");
+				}
+			}
+			else
+			{
+				Serial.println("No sensor data available.");
+			}
 		}
 	}
 }
@@ -370,6 +404,8 @@ wsIncomingCommands TestServer::getWebSocketCommand(const char* incomingCommand)
 		return wsIncomingCommands::MAINS_ON;
 	if(strcmp(incomingCommand, "Mains Off") == 0)
 		return wsIncomingCommands::MAINS_OFF;
+	if(strcmp(incomingCommand, "getReadings") == 0)
+		return wsIncomingCommands::GET_READINGS;
 	return wsIncomingCommands::INVALID_COMMAND;
 }
 
@@ -418,82 +454,21 @@ void TestServer::handleWsIncomingCommands(wsIncomingCommands cmd)
 	}
 	else
 	{
+		logger.log(LogLevel::ERROR, "invalid command ");
 	}
 }
-// void TestServer::sendwsData(wsOutGoingDataType type, const char* data)
-// {
-// 	// Convert the wsOutGoingDataType to a string identifier to send to the frontend
-// 	String message;
-// 	switch(type)
-// 	{
-// 		case wsOutGoingDataType::INPUT_POWER:
-// 			message = String("{\"inputWattage\":\"") + data + "\"}";
-// 			break;
-// 		case wsOutGoingDataType::INPUT_VOLT:
-// 			message = String("{\"inputVoltage\":\"") + data + " V\"}";
-// 			break;
-// 		case wsOutGoingDataType::INPUT_CURRENT:
-// 			message = String("{\"inputCurrent\":\"") + data + " A\"}";
-// 			break;
-// 		case wsOutGoingDataType::INPUT_PF:
-// 			message = String("{\"inputPowerFactor\":\"") + data + "\"}";
-// 			break;
-// 		case wsOutGoingDataType::OUTPUT_POWER:
-// 			message = String("{\"outputWattage\":\"") + data + " W\"}";
-// 			break;
-// 		case wsOutGoingDataType::OUTPUT_VOLT:
-// 			message = String("{\"outputVoltage\":\"") + data + " V\"}";
-// 			break;
-// 		case wsOutGoingDataType::OUTPUT_CURRENT:
-// 			message = String("{\"outputCurrent\":\"") + data + " A\"}";
-// 			break;
-// 		case wsOutGoingDataType::OUTPUT_PF:
-// 			message = String("{\"outputPowerFactor\":\"") + data + "\"}";
-// 			break;
-// 		default:
-// 			message = "{\"error\":\"Invalid data type\"}";
-// 			break;
-// 	}
 
-// 	// Send the message to all connected WebSocket clients
-// 	_ws->textAll(message);
-// }
-
-void TestServer::sendRandomTestData()
+void TestServer::prepWebSocketData(wsOutGoingDataType type, const char* data)
 {
-	sendwsData(wsOutGoingDataType::INPUT_POWER, String(random(1000, 2000)).c_str());
-	sendwsData(wsOutGoingDataType::INPUT_VOLT, String(random(200, 240)).c_str());
-	sendwsData(wsOutGoingDataType::INPUT_CURRENT, String(random(5, 10)).c_str());
-	sendwsData(wsOutGoingDataType::INPUT_PF, String(random(95, 100) / 100.0, 2).c_str());
-	sendwsData(wsOutGoingDataType::OUTPUT_POWER, String(random(900, 1800)).c_str());
-	sendwsData(wsOutGoingDataType::OUTPUT_VOLT, String(random(210, 230)).c_str());
-	sendwsData(wsOutGoingDataType::OUTPUT_CURRENT, String(random(4, 8)).c_str());
-	sendwsData(wsOutGoingDataType::OUTPUT_PF, String(random(90, 100) / 100.0, 2).c_str());
-}
-
-void TestServer::notifyClients(String data)
-{
-	_ws->textAll(data);
-}
-
-void TestServer::sendwsData(wsOutGoingDataType type, const char* data)
-{
-	if(!_ws)
-	{
-		Serial.println("Error: WebSocket instance (_ws) is null.");
-		return;
-	}
-
-	// Create a JSON document
-	StaticJsonDocument<20> doc; // Adjust size as needed
+	// Use the provided size for StaticJsonDocument
+	StaticJsonDocument<64> doc; // Use a size that fits comfortably within the expected data size
 
 	// Fill the JSON document
-	doc["type"] = wsDataTypeToString(type); // Convert type enum to string if needed
+	doc["type"] = wsDataTypeToString(type);
 	doc["message"] = data;
 
 	// Measure the JSON document size
-	const size_t len = measureJson(doc);
-	Serial.printf("Measured JSON length: %d\n", len);
+	size_t len = measureJson(doc);
 
 	// Create a buffer to hold the JSON data
 	AsyncWebSocketMessageBuffer* buffer = _ws->makeBuffer(len + 1); // +1 for null terminator
@@ -502,73 +477,32 @@ void TestServer::sendwsData(wsOutGoingDataType type, const char* data)
 		Serial.println("Error: Failed to create message buffer.");
 		return;
 	}
-	Serial.println("Buffer created");
 
 	// Serialize the JSON document into the buffer
 	size_t bytesWritten = serializeJson(doc, buffer->get(), len + 1); // +1 for null terminator
-	Serial.printf("Serialized JSON length: %d\n", bytesWritten);
-
-	// Ensure the buffer was written correctly
 	if(bytesWritten != len)
 	{
 		Serial.println("Error: Buffer write did not match measured length.");
 		return;
 	}
 
-	// Try sending the buffer to all clients
-	Serial.println("Try sending...");
-	_ws->textAll(buffer);
-
-	Serial.printf("WebSocket message sent: %s\n", data);
+	// Push the buffer to the deque
+	sensorDataQueue.push_back(buffer);
 }
-void TestServer::sendTestMessage()
+
+void TestServer::sendRandomTestData()
 {
-	// if(!_ws)
-	// {
-	// 	Serial.println("Error: WebSocket instance (_ws) is null.");
-	// 	return;
-	// }
+	prepWebSocketData(wsOutGoingDataType::INPUT_POWER, String(random(1000, 2000)).c_str());
+	prepWebSocketData(wsOutGoingDataType::INPUT_VOLT, String(random(200, 240)).c_str());
+	prepWebSocketData(wsOutGoingDataType::INPUT_CURRENT, String(random(5, 10)).c_str());
+	prepWebSocketData(wsOutGoingDataType::INPUT_PF, String(random(95, 100) / 100.0, 2).c_str());
+	prepWebSocketData(wsOutGoingDataType::OUTPUT_POWER, String(random(900, 1800)).c_str());
+	prepWebSocketData(wsOutGoingDataType::OUTPUT_VOLT, String(random(210, 230)).c_str());
+	prepWebSocketData(wsOutGoingDataType::OUTPUT_CURRENT, String(random(4, 8)).c_str());
+	prepWebSocketData(wsOutGoingDataType::OUTPUT_PF, String(random(90, 100) / 100.0, 2).c_str());
+}
 
-	// if(_ws->count() == 0)
-	// {
-	// 	Serial.println("No WebSocket clients connected.");
-	// 	return;
-	// }
-
-	// Create a small JSON document
-	StaticJsonDocument<64> doc; // Smaller size for testing
-	doc["update"] = String("Test message");
-
-	// // Measure the JSON document size
-	// const size_t len = measureJson(doc);
-	// Serial.printf("Measured JSON length: %d\n", len);
-
-	// // Create a shared pointer to a buffer (vector) to hold the JSON data
-	// auto buffer = std::make_shared<std::vector<uint8_t>>(len + 1); // +1 for null terminator
-
-	// if(!buffer)
-	// {
-	// 	Serial.println("Error: Failed to create message buffer.");
-	// 	return;
-	// }
-
-	// // Serialize the JSON document into the buffer
-	// size_t bytesWritten = serializeJson(doc, buffer->data(), len + 1); // +1 for null
-	// terminator Serial.printf("Serialized JSON length: %d\n", bytesWritten);
-
-	// if(bytesWritten != len)
-	// {
-	// 	Serial.println("Error: Buffer write did not match measured length.");
-	// 	return;
-	// }
-
-	// // Debug: Print the buffer contents
-	// Serial.print("Buffer contents: ");
-	// Serial.println((const char*)buffer->data());
-
-	// // Send the message
-	Serial.println("Sending test message...");
-	// _ws->textAll(std::move(buffer)); // Move the shared pointer to WebSocket
-	//_ws->textAll(jsonString);
-	Serial.println("Message sent.");
+void TestServer::notifyClients(String data)
+{
+	_ws->textAll(data);
 }

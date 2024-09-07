@@ -19,6 +19,21 @@ function initWebSocket() {
 // WebSocket open event
 function onWebSocketOpen(event) {
   console.log('WebSocket connection opened');
+  getReadings();
+}
+function getReadings(){
+  websocket.send("getReadings");
+}
+
+function onMessage(event) {
+  console.log(event.data);
+  var myObj = JSON.parse(event.data);
+  var keys = Object.keys(myObj);
+
+  for (var i = 0; i < keys.length; i++){
+    var key = keys[i];
+    document.getElementById(key).innerHTML = myObj[key];
+  }
 }
 
 // WebSocket close event

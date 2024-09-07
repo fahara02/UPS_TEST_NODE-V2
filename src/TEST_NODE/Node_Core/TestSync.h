@@ -75,7 +75,6 @@ class TestSync
 	}
 
 	State getState();
-	JsonDocument _testDoc;
 
   private:
 	TestSync();

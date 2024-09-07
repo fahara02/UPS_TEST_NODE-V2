@@ -15,6 +15,7 @@
 #include "TestManager.h"
 #include "UPSTesterSetup.h"
 #include "Filehandler.h"
+#include <deque>
 
 enum class wsIncomingCommands
 {
@@ -27,6 +28,7 @@ enum class wsIncomingCommands
 	LOAD_OFF,
 	MAINS_ON,
 	MAINS_OFF,
+	GET_READINGS,
 
 	INVALID_COMMAND // Handle invalid cases
 };
@@ -113,7 +115,7 @@ class TestServer
 		_fileHandler.serveFile(*_server, "/style.css", "/style.css", "text/css",
 							   "max-age=86400"); // Cache for 24 hours
 		_fileHandler.serveFile(*_server, "/script.js", "/script.js", "application/javascript",
-							   "max-age=86400"); // Cache for 24 hours
+							   "max-age=1"); // Cache for 24 hours
 
 		servePages(_setup, _sync);
 	}
@@ -130,6 +132,9 @@ class TestServer
 	Node_Utility::FileHandler _fileHandler;
 	UPSTesterSetup& _setup;
 	TestSync& _sync;
+	bool isClientConnected = false;
+	std::deque<AsyncWebSocketMessageBuffer*> sensorDataQueue;
+	;
 
 	// GUI buttons/LED state
 	bool _startBTN = false;
@@ -166,7 +171,7 @@ class TestServer
 	wsIncomingCommands getWebSocketCommand(const char* incomingCommand);
 	String sendWebSocketCommand(wsOutgoingCommands cmd);
 	void handleWsIncomingCommands(wsIncomingCommands cmd);
-	void sendwsData(wsOutGoingDataType type, const char* data);
+	void prepWebSocketData(wsOutGoingDataType type, const char* data);
 	// void sendwsData(wsOutGoingDataType type, JsonDocument doc);
 	void createServerTask();
 

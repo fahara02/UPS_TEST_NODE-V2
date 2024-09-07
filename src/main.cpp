@@ -7,7 +7,7 @@
 #include <ESPAsyncWebServer.h>
 #include <MycilaTaskMonitor.h>
 #include <Preferences.h>
-
+#include "esp_heap_caps.h"
 #include <Wire.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -125,13 +125,18 @@ void modbusRTUTask(void* pvParameters)
 {
 	while(true)
 	{
-		// logger.log(LogLevel::WARNING, "modbus task...");
-		// Mycila::TaskMonitor.log();
-		//  mb.task();
+		// Log modbus task activities
+		Mycila::TaskMonitor.log();
 
-		// logger.log(LogLevel::WARNING, "Hihg Water mark ", uxTaskGetStackHighWaterMark(NULL));
+		// Monitor and log the available free heap memory
+		size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_8BIT); // For standard heap (DRAM)
+		Serial.printf("modbusRTUTask - Free heap memory: %d bytes\n", freeHeap);
+
+		// mb.task();  // Uncomment when Modbus task needs to run
+
 		vTaskDelay(pdMS_TO_TICKS(500)); // Task delay
 	}
+
 	vTaskDelete(NULL);
 }
 
