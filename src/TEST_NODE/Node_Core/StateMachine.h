@@ -63,6 +63,7 @@ class StateMachine
 	void notifyRejectTest();
 	void handleEvent(Event event);
 	void setMode(TestMode new_mode);
+
 	State getCurrentState() const;
 
 	void registerStateChangeCallback(OnStateChangedCallback callback);

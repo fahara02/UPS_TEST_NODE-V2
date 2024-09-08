@@ -128,6 +128,10 @@ class DataHandler
 	QueueHandle_t WebsocketDataQueue = NULL;
 
 	static void periodicDataSender(void* pvParameter);
+	void updateState(State state)
+	{
+		_currentState.store(state);
+	}
 
   private:
 	DataHandler();
@@ -139,6 +143,7 @@ class DataHandler
 
 	ProcessingResult _result;
 	StaticJsonDocument<WS_BUFFER_SIZE> _blankDoc;
+	std::atomic<State> _currentState;
 
 	static void wsDataProcessor(void* pVparamter);
 	TaskHandle_t dataTaskHandler = NULL;

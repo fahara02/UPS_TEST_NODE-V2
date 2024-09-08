@@ -5,6 +5,7 @@
 #include <cstring>
 #include <iostream>
 #include "pgmspace.h"
+#include "DataHandler.h"
 
 using namespace Node_Core;
 extern Logger& logger;
@@ -100,6 +101,7 @@ bool StateMachine::isManualMode() const
 
 void StateMachine::NotifyStateChanged(State state)
 {
+	DataHandler::getInstance().updateState(state);
 	logger.log(LogLevel::INFO, "Notifying others for new %s state", stateToString(state));
 }
 

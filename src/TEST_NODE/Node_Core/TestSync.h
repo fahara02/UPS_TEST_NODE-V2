@@ -75,6 +75,10 @@ class TestSync
 	}
 
 	State getState();
+	TestMode getMode()
+	{
+		return stateMachine.isAutoMode() ? TestMode::AUTO : TestMode::MANUAL;
+	}
 
   private:
 	TestSync();

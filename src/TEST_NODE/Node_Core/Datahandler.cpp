@@ -12,7 +12,7 @@ DataHandler& DataHandler::getInstance()
 
 DataHandler::DataHandler() :
 	_updateLedStatus(false), _periodicSendRequest(false), _blinkBlue(false), _blinkGreen(false),
-	_blinkRed(false), _result(ProcessingResult::PENDING)
+	_blinkRed(false), _result(ProcessingResult::PENDING), _currentState(State::DEVICE_ON)
 {
 	WebsocketDataQueue = xQueueCreate(10, sizeof(WebSocketMessage));
 }
@@ -138,10 +138,9 @@ void DataHandler::periodicDataSender(void* pvParameter)
 void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDataType type)
 {
 	EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
+	TestMode mode = TestSync::getInstance().getMode();
 	// EventBits_t cmdBits = xEventGroupGetBits(EventHelper::userCommandEventGroup);
 	// EventBits_t systemInitEventbits = xEventGroupGetBits(EventHelper::systemInitEventGroup);
-	TestSync& SyncTest = TestSync::getInstance();
-	State state = SyncTest.refreshState();
 
 	StaticJsonDocument<WS_BUFFER_SIZE> doc;
 
@@ -151,26 +150,34 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 	}
 	else if(type == wsOutGoingDataType::LED_STATUS)
 	{ // start with all blink false
-		state = SyncTest.refreshState();
-		logger.log(LogLevel::INTR, "FOR LED STATUS STATE:%s ", stateToString(state));
 
-		if(state == State::TEST_START)
+		logger.log(LogLevel::INTR, "FOR LED STATUS STATE:%s ", stateToString(_currentState));
+
+		if(_currentState == State::TEST_START)
 		{
+			logger.log(LogLevel::SUCCESS, "BLINKING RED LED");
 			_blinkRed = true;
 		}
-		else if(state != State::TEST_START)
+		else if(_currentState != State::TEST_START)
 		{
 			_blinkRed = false;
 		}
-		else if(state == State::SYSTEM_PAUSED)
+		else if(_currentState == State::SYSTEM_PAUSED)
 		{
 			_blinkRed = false;
 		}
-		else if(state == State::DEVICE_SETUP)
+		else if(_currentState == State::DEVICE_SETUP)
 		{
 			_blinkGreen = true;
 		}
-		_blinkBlue = true;
+		else if(mode == TestMode::AUTO)
+		{
+			_blinkBlue = true;
+		}
+		else if(mode == TestMode::MANUAL)
+		{
+			_blinkBlue = false;
+		}
 
 		doc["type"] = "LED_STATUS";
 		doc["blinkBlue"] = _blinkBlue;
@@ -219,6 +226,8 @@ void DataHandler::handleWsIncomingCommands(wsIncomingCommands cmd)
 {
 	TestSync& SyncTest = TestSync::getInstance();
 	DataHandler& instance = DataHandler::getInstance();
+	_updateLedStatus = true;
+
 	if(cmd == wsIncomingCommands::TEST_START)
 	{
 		logger.log(LogLevel::SUCCESS, "handling TEST START EVENT");
