@@ -147,7 +147,8 @@ class DataHandler
 	TaskHandle_t dataTaskHandler = NULL;
 
 	// data handling functions
-	void sendData(AsyncWebSocket* websocket, int clientId);
+	void sendData(AsyncWebSocket* websocket, int clientId,
+				  wsOutGoingDataType type = wsOutGoingDataType::POWER_READINGS);
 	void processWsMessage(WebSocketMessage& wsMsg);
 	void handleWsIncomingCommands(wsIncomingCommands cmd);
 

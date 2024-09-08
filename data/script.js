@@ -1,10 +1,12 @@
 let websocket;
+
 //const gateway = 'ws://192.168.0.108:80/ws';
 
  const gateway = `ws://${window.location.hostname}/ws`;
 // Initialize variables
 function initAllVariables() {
   window.tests = [];
+
 }
 
 // Initialize WebSocket connection
@@ -59,22 +61,25 @@ function onWebSocketClose(event) {
 
 // WebSocket message handler
 function onWebSocketMessage(event) {
-  console.log('Message from server:', event.data);
+
+  console.log('Message from server:', event.data);  
   appendLog('Message received: ' + event.data);
+
+
 
   try {
     const data = JSON.parse(event.data);
 
-    // Handle specific message types
+   
     if (data.error) {
-      // Handle error messages
+    
       appendLog('Error received: ' + data.error);
-      // Optionally, update the DOM or display an error message to the user
+      
       //showError(data.error, data.details);
     } else if (data.warning) {
       // Handle warning messages
       appendLog('Warning received: ' + data.warning);
-      // Optionally, update the DOM or display a warning message to the user
+    
      // showWarning(data.warning);
     } else {
       // Handle other specific message types
@@ -85,6 +90,12 @@ function onWebSocketMessage(event) {
         case 'testStopped':
           appendLog('Server: Test has stopped');
           break;
+        case  'testPaused': 
+        appendLog('Server: Test has paused');
+        case  'settingUpdated': 
+        appendLog('Server: Setting is updated');
+        case  'deviceReady': 
+        appendLog('Server: Device is ready');
         default:
           appendLog('Server: Unknown message received');
           break;
@@ -232,15 +243,6 @@ function deleteTest() {
   }
 }
 
-// Clear the test log
-function clearTest() {
-  const testCommand = document.getElementById('testCommand');
-  if (testCommand) {
-    testCommand.innerHTML = '';
-  } else {
-    console.error('Test Command element not found');
-  }
-}
 
 function sendTest() {
   var sendTest = window.tests;
@@ -248,16 +250,6 @@ function sendTest() {
   sendTestData(); // Send the test data to the server whenever a test is added
 }
 
-// Append logs to the UI
-function appendLog(message) {
-  const testCommand = document.getElementById('testCommand');
-  if (testCommand) {
-    testCommand.textContent += message + '\n';
-    testCommand.scrollTop = testCommand.scrollHeight;
-  } else {
-    console.error('Log element not found.');
-  }
-}
 
 // Start test via WebSocket
 function startTest() {
@@ -314,4 +306,30 @@ function sendCommand(command) {
     .then((response) => response.text())
     .then((data) => console.log('Server Response:', data))
     .catch((error) => console.error('Error:', error));
+}
+
+
+function appendLog(message) {
+  const testCommand = document.getElementById('testCommand');
+  if (testCommand) {
+    testCommand.textContent += message + '\n'; // Add new message
+    testCommand.scrollTop = testCommand.scrollHeight; // Scroll to bottom
+
+    
+
+  
+  } else {
+    console.error('Log element not found.');
+  }
+}
+
+function clearTest() {
+  const testCommand = document.getElementById('testCommand');
+  if (testCommand) {
+    testCommand.textContent = ''; 
+    
+    console.log('Log cleared.');
+  } else {
+    console.error('Test Command element not found.');
+  }
 }

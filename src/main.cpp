@@ -132,7 +132,7 @@ void modbusRTUTask(void* pvParameters)
 
 		// Monitor and log the available free heap memory
 		size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_8BIT); // For standard heap (DRAM)
-		logger.log(LogLevel::INFO, "ESP32- Free heap memory: %d bytes", freeHeap);
+		logger.log(LogLevel::INFO, "Free heap byets: ", freeHeap);
 
 		// mb.task();  // Uncomment when Modbus task needs to run
 

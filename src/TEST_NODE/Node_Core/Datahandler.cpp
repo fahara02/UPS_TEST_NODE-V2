@@ -169,35 +169,6 @@ StaticJsonDocument<WS_BUFFER_SIZE> DataHandler::prepData(wsOutGoingDataType type
 	return doc;
 }
 
-// void DataHandler::fillPeriodicDeque()
-// {
-// 	StaticJsonDocument<WS_BUFFER_SIZE> wsData = prepData(wsOutGoingDataType::POWER_READINGS);
-// 	if(xSemaphoreTake(periodicMutex, portMAX_DELAY))
-// 	{
-// 		logger.log(LogLevel::INFO, "MUTEX taken to fill...");
-// 		if(wsDequePeriodic.size() < 10)
-// 		{
-// 			std::array<char, WS_BUFFER_SIZE> jsonBuffer;
-// 			size_t len = serializeJson(wsData, jsonBuffer.data(), jsonBuffer.size());
-
-// 			if(len > 0 && len < jsonBuffer.size())
-// 			{
-// 				wsDequePeriodic.push_back(jsonBuffer);
-// 				logger.log(LogLevel::INFO, "Added random data to wsDequePeriodic: ");
-// 				logger.log(LogLevel ::INFO, "MUTEX releasing from fill...");
-// 				xSemaphoreGive(periodicMutex);
-// 			}
-// 		}
-
-// 		else
-// 		{
-// 			xSemaphoreGive(periodicMutex);
-// 			logger.log(LogLevel::ERROR, "releasing mutex without fill ");
-// 		}
-// 	}
-// 	wsData.clear();
-// }
-
 void DataHandler::fillPeriodicDeque()
 {
 	StaticJsonDocument<WS_BUFFER_SIZE> wsData = prepData(wsOutGoingDataType::POWER_READINGS);
@@ -266,10 +237,10 @@ void DataHandler::periodicDataSender(void* pvParameter)
 	while(true)
 	{
 		// Wait for connection status
-		xEventGroupWaitBits(EventHelper::wsClientEventGroup,
-							static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE, pdFALSE,
-							portMAX_DELAY);
-		logger.log(LogLevel::INFO, "websocket client connected..");
+		// xEventGroupWaitBits(EventHelper::wsClientEventGroup,
+		// 					static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE, pdFALSE,
+		// 					portMAX_DELAY);
+		// logger.log(LogLevel::INFO, "websocket client connected..");
 		if(instance._periodicFillRequest)
 		{
 			logger.log(LogLevel::INFO, "delegating to fill  deque...");
@@ -277,9 +248,9 @@ void DataHandler::periodicDataSender(void* pvParameter)
 			instance.fillPeriodicDeque();
 		}
 
-		// xEventGroupWaitBits(EventHelper::wsClientEventGroup,
-		// 					static_cast<EventBits_t>(wsClientUpdate::GET_READING), pdFALSE, pdFALSE,
-		// 					portMAX_DELAY);
+		xEventGroupWaitBits(EventHelper::wsClientEventGroup,
+							static_cast<EventBits_t>(wsClientUpdate::GET_READING), pdFALSE, pdFALSE,
+							portMAX_DELAY);
 
 		for(auto& client: websocket->getClients())
 		{
@@ -290,39 +261,9 @@ void DataHandler::periodicDataSender(void* pvParameter)
 			}
 		}
 
-		vTaskDelay(2000 / portTICK_PERIOD_MS); // Send data every 3 seconds
+		vTaskDelay(1000 / portTICK_PERIOD_MS); // Send data every 3 seconds
 	}
 }
-
-// void DataHandler::sendData(AsyncWebSocket* websocket, int clientId)
-// {
-// 	if(xSemaphoreTake(periodicMutex, PERIODIC_MUTEX_TIMEOUT_MS))
-// 	{
-// 		// logger.log(LogLevel::INFO, "MUTEX taken to send...");
-// 		if(!wsDequePeriodic.empty())
-// 		{
-// 			const std::array<char, WS_BUFFER_SIZE>& jsonData = wsDequePeriodic.front();
-// 			wsDequePeriodic.pop_front();
-// 			websocket->text(clientId, jsonData.data());
-// 			// logger.log(LogLevel ::SUCCESS, "a new data send...");
-// 			_periodicFillRequest = true;
-// 			xSemaphoreGive(periodicMutex);
-// 			// logger.log(LogLevel::INFO, "MUTEX released after send...");
-// 		}
-
-// 		else
-// 		{
-// 			logger.log(LogLevel::ERROR, "releasing mutex without send...,deque is empty ");
-// 			xSemaphoreGive(periodicMutex);
-// 			_periodicFillRequest = true;
-// 		}
-// 	}
-// 	else
-// 	{
-// 		logger.log(LogLevel::WARNING, "Timeout to acquire  mutex; cannot send data.");
-// 		_periodicFillRequest = true;
-// 	}
-// }
 
 bool DataHandler::isValidUTF8(const char* data, size_t len)
 {
@@ -343,75 +284,19 @@ bool DataHandler::isValidUTF8(const char* data, size_t len)
 	return true;
 }
 
-// void DataHandler::sendData(AsyncWebSocket* websocket, int clientId)
-// {
-// 	StaticJsonDocument<WS_BUFFER_SIZE> doc;
-// 	// Prepare the JSON document
-// 	// StaticJsonDocument<WS_BUFFER_SIZE> doc = prepData(wsOutGoingDataType::POWER_READINGS);
-// 	int randomCurrentInput = random(20, 100);
-// 	int randomCurrentOutput = random(20, 100);
-// 	int randomVoltageInput = random(200, 240);
-// 	int randomVoltageOutput = random(200, 240);
-// 	float randomPowerFactorInput = random(80, 100) / 100.0;
-// 	float randomPowerFactorOutput = random(80, 100) / 100.0;
-// 	int randomWattageInput = random(1000, 5000);
-// 	int randomWattageOutput = random(1000, 5000);
-
-// 	// Populate the JSON document with these random values
-// 	doc["inputCurrent"] = randomCurrentInput;
-// 	doc["outputCurrent"] = randomCurrentOutput;
-// 	doc["inputVoltage"] = randomVoltageInput;
-// 	doc["outputVoltage"] = randomVoltageOutput;
-// 	doc["inputPowerFactor"] = randomPowerFactorInput;
-// 	doc["outputPowerFactor"] = randomPowerFactorOutput;
-// 	doc["inputWattage"] = randomWattageInput;
-// 	doc["outputWattage"] = randomWattageOutput;
-
-// 	const size_t len = measureJson(doc);
-
-// 	AsyncWebSocketMessageBuffer* buffer = websocket->makeBuffer(len);
-// 	if(!buffer)
-// 	{
-// 		logger.log(LogLevel::ERROR, "Failed to create WebSocket buffer");
-// 		return;
-// 	}
-// 	if(buffer)
-// 	{
-// 		serializeJson(doc, buffer->get(), len);
-// 		websocket->text(clientId, buffer);
-// 		logger.log(LogLevel::SUCCESS, "finally send data through websocket buffer...");
-// 	}
-// 	// Serialize the JSON document into the buffer
-
-// 	// Queue the message for sending
-// 	// websocket->client(clientId)->_queueMessage(buffer, WS_TEXT, false);
-
-// 	// Clean up
-// 	delete buffer;
-// }
-
-void DataHandler::sendData(AsyncWebSocket* websocket, int clientId)
+void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDataType type)
 {
 	StaticJsonDocument<WS_BUFFER_SIZE> doc;
 
-	int randomCurrentInput = random(20, 100);
-	int randomCurrentOutput = random(20, 100);
-	int randomVoltageInput = random(200, 240);
-	int randomVoltageOutput = random(200, 240);
-	float randomPowerFactorInput = random(80, 100) / 100.0;
-	float randomPowerFactorOutput = random(80, 100) / 100.0;
-	int randomWattageInput = random(1000, 5000);
-	int randomWattageOutput = random(1000, 5000);
-
-	// Populate the JSON document with these random values
-	doc["inputCurrent"] = randomCurrentInput;
-	doc["outputCurrent"] = randomCurrentOutput;
-	doc["inputVoltage"] = randomVoltageInput;
-	doc["outputVoltage"] = randomVoltageOutput;
-	doc["inputPowerFactor"] = randomPowerFactorInput;
-	doc["outputPowerFactor"] = randomPowerFactorOutput;
-	doc["inputWattage"] = randomWattageInput;
-	doc["outputWattage"] = randomWattageOutput;
+	if(type == wsOutGoingDataType::POWER_READINGS)
+	{
+		doc = prepData(wsOutGoingDataType::POWER_READINGS);
+	}
+	else
+	{
+		logger.log(LogLevel::ERROR, "not implemented yet");
+		return;
+	}
 
 	std::array<char, WS_BUFFER_SIZE> jsonBuffer;
 	size_t len = serializeJson(doc, jsonBuffer.data(), jsonBuffer.size());
@@ -426,22 +311,20 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId)
 	}
 	else
 	{
-		// Log the serialized JSON data for debugging
-		logger.log(LogLevel::INFO, "Serialized JSON:%s ", jsonBuffer.data());
+		// logger.log(LogLevel::INFO, "Serialized JSON:%s ", jsonBuffer.data());
+		logger.log(LogLevel::INFO, "Sending data--> ");
 
-		// Check if the serialized data is valid UTF-8
 		if(isValidUTF8(jsonBuffer.data(), len))
 		{
 			websocket->text(clientId, jsonBuffer.data());
 			logger.log(LogLevel ::SUCCESS, "a new data send...");
+			serializeJsonPretty(doc, Serial);
 		}
 		else
 		{
 			logger.log(LogLevel::ERROR, "Invalid UTF-8 data detected.");
 		}
 	}
-
-	doc.clear();
 }
 
 } // namespace Node_Core

@@ -55,6 +55,52 @@ void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
 	response->print(pageTrailerHtml);
 }
 
+// void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
+// {
+// 	// Left side: User commands
+// 	response->print("<div class=\"container\">"); // it will be closed by power monitor group
+// 	response->print("<div class=\"user-command\">");
+// 	response->print("<h2>User Commands</h2>");
+// 	response->print("<div class=\"command-content\">");
+// 	response->print("<pre id=\"testCommand\"></pre>");
+
+// 	response->print("</div>");
+// 	response->print("</div>");
+
+// 	// Right side: Log output
+// 	String logs = logger.getBufferedLogs();
+// 	response->print("<div class=\"log-output\">");
+// 	response->print("<h2>Log Output</h2>");
+// 	response->print("<div class=\"log-content\">");
+// 	if(logs.length() > 0)
+// 	{
+// 		response->print("<pre style=\"color:green;\" id=\"logs\">");
+// 		response->printf("%s", logs.c_str());
+// 		response->print("</pre>");
+// 	}
+// 	else
+// 	{
+// 		response->print("<p id=\"logs\">No logs available.</p>");
+// 	}
+// 	response->print("</div>"); // Closing log-content div
+// 	response->print("</div>"); // Closing log-output div
+
+// 	// JavaScript for auto-refresh
+// 	response->print(R"(<script>
+//         function refreshLogs() {
+//             var xhr = new XMLHttpRequest();
+//             xhr.open('GET', '/log', true);
+//             xhr.onload = function() {
+//                 if (xhr.status === 200) {
+//                     document.getElementById('logs').innerHTML = xhr.responseText;
+//                 }
+//             };
+//             xhr.send();
+//         }
+//         setInterval(refreshLogs, 2000);
+//     </script>)");
+// }
+
 void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
 {
 	// Left side: User commands
@@ -63,7 +109,6 @@ void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* con
 	response->print("<h2>User Commands</h2>");
 	response->print("<div class=\"command-content\">");
 	response->print("<pre id=\"testCommand\"></pre>");
-
 	response->print("</div>");
 	response->print("</div>");
 
@@ -85,19 +130,55 @@ void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* con
 	response->print("</div>"); // Closing log-content div
 	response->print("</div>"); // Closing log-output div
 
-	// JavaScript for auto-refresh
+	// JavaScript for managing logs
 	response->print(R"(<script>
+        const MAX_MESSAGE_COUNT = 20; // Define the maximum number of messages
+
+        // Function to get the current line count of the testCommand
+        function getLineCount() {
+            const testCommand = document.getElementById('testCommand');
+            if (testCommand) {
+                return testCommand.textContent.split('\n').length;
+            }
+            return 0;
+        }
+
+        // Function to clear the testCommand content
+        function clearTestCommand() {
+            const testCommand = document.getElementById('testCommand');
+            if (testCommand) {
+                testCommand.textContent = ''; // Clear the log content
+                console.log('testCommand cleared.');
+            }
+        }
+
+        // Function to refresh logs
         function refreshLogs() {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', '/log', true);
             xhr.onload = function() {
                 if (xhr.status === 200) {
                     document.getElementById('logs').innerHTML = xhr.responseText;
+                } else {
+                    console.error('Failed to fetch logs:', xhr.statusText);
                 }
             };
             xhr.send();
         }
+
+        // Set interval to refresh logs every 2 seconds
         setInterval(refreshLogs, 2000);
+
+        // Check the testCommand content and clear if needed
+        function checkAndClearTestCommand() {
+            const messageCount = getLineCount();
+            if (messageCount >= MAX_MESSAGE_COUNT) {
+                clearTestCommand(); // Clear logs when limit is reached
+            }
+        }
+
+        // Example of how to periodically check and clear testCommand
+        setInterval(checkAndClearTestCommand, 1000); // Check every second
     </script>)");
 }
 
