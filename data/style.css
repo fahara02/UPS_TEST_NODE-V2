@@ -259,13 +259,13 @@
   }
 
   .user-command {
-    flex: 0.3; /* Reduced width */
-    margin-right: 20px;
+    flex: 0.4; /* Reduced width */
+    margin-right: 10px;
   }
 
   /* Log Output Styles */
   .log-output {
-    flex: 0.3; /* Adjust width if needed */
+    flex: 0.4; /* Adjust width if needed */
     background-color: #212529; /* Dark background for logs */
     color: #e9ecef; /* Light text for contrast */
     font-family: 'Courier New', Courier, monospace;
@@ -281,8 +281,8 @@
   }
 
   .power-monitor {
-    flex: 1.4; /* Increased width */
-    margin-left: 20px;
+    flex: 1.3; /* Increased width */
+    margin-left: 10px;
   }
 
   .user-command h2,

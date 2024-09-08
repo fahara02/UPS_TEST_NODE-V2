@@ -82,11 +82,26 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 
 void DataHandler::fillDequeWithData()
 {
-	int randomCurrent = random(20, 100);
-	char currentBuffer[4];
-	snprintf(currentBuffer, sizeof(currentBuffer), "%d", randomCurrent);
+	// Generate random values for different metrics
+	int randomCurrentInput = random(20, 100);
+	int randomCurrentOutput = random(20, 100);
+	int randomVoltageInput = random(200, 240);
+	int randomVoltageOutput = random(200, 240);
+	float randomPowerFactorInput = random(80, 100) / 100.0;
+	float randomPowerFactorOutput = random(80, 100) / 100.0;
+	int randomWattageInput = random(1000, 5000);
+	int randomWattageOutput = random(1000, 5000);
 
-	_blankDoc["InputCurrent"] = currentBuffer;
+	// Populate the JSON document with these random values
+	_blankDoc["inputCurrent"] = randomCurrentInput;
+	_blankDoc["outputCurrent"] = randomCurrentOutput;
+	_blankDoc["inputVoltage"] = randomVoltageInput;
+	_blankDoc["outputVoltage"] = randomVoltageOutput;
+	_blankDoc["inputPowerFactor"] = randomPowerFactorInput;
+	_blankDoc["outputPowerFactor"] = randomPowerFactorOutput;
+	_blankDoc["inputWattage"] = randomWattageInput;
+	_blankDoc["outputWattage"] = randomWattageOutput;
+
 	if(xSemaphoreTake(dequeMutex, portMAX_DELAY))
 	{
 		if(wsDeque.size() < 10)
@@ -98,8 +113,7 @@ void DataHandler::fillDequeWithData()
 			{
 				wsDeque.push_back(jsonBuffer);
 
-				logger.log(LogLevel::INFO, "Added random current data to wsDeque: ");
-				logger.log(LogLevel::INFO, currentBuffer);
+				logger.log(LogLevel::INFO, "Added random data to wsDeque: ");
 			}
 		}
 		xSemaphoreGive(dequeMutex);

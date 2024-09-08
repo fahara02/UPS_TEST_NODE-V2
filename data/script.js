@@ -1,7 +1,7 @@
 let websocket;
-const gateway = 'ws://192.168.0.108:80/ws';
+//const gateway = 'ws://192.168.0.108:80/ws';
 
- //const gateway = `ws://${window.location.hostname}/ws`;
+ const gateway = `ws://${window.location.hostname}/ws`;
 // Initialize variables
 function initAllVariables() {
   window.tests = [];
@@ -14,16 +14,31 @@ function initWebSocket() {
   websocket.onopen = onWebSocketOpen;
   websocket.onclose = onWebSocketClose;
   websocket.onmessage = onWebSocketMessage;
+  websocket.onerror = onWebSocketError;  
 }
 
+window.addEventListener('beforeunload', () => {
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.close();
+  }
+ });
+function onWebSocketError(event) {
+  console.error('WebSocket error: ', event);
+}
 // WebSocket open event
 function onWebSocketOpen(event) {
   console.log('WebSocket connection opened');
   getReadings();
 }
-function getReadings(){
-  websocket.send("getReadings");
+function getReadings() {
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.send("getReadings");
+  } else {
+    console.error('WebSocket is not open, cannot send getReadings');
+  }
 }
+
+setInterval(getReadings, 5000);
 
 function onMessage(event) {
   console.log(event.data);
@@ -73,28 +88,28 @@ function onWebSocketMessage(event) {
 // Update DOM elements based on WebSocket message data
 function updateDOMElements(data) {
   if (data.inputPowerFactor !== undefined) {
-    document.getElementById('inputPowerFactor').innerText = data.inputPowerFactor;
+    document.getElementById('inputPowerFactor').innerText = data.inputPowerFactor.toFixed(2);
   }
   if (data.outputPowerFactor !== undefined) {
-    document.getElementById('outputPowerFactor').innerText = data.outputPowerFactor;
+    document.getElementById('outputPowerFactor').innerText = data.outputPowerFactor.toFixed(2);
   }
   if (data.inputVoltage !== undefined) {
-    document.getElementById('inputVoltage').innerText = data.inputVoltage;
+    document.getElementById('inputVoltage').innerText = data.inputVoltage + " V";
   }
   if (data.outputVoltage !== undefined) {
-    document.getElementById('outputVoltage').innerText = data.outputVoltage;
+    document.getElementById('outputVoltage').innerText = data.outputVoltage + " V";
   }
   if (data.inputCurrent !== undefined) {
-    document.getElementById('inputCurrent').innerText = data.inputCurrent;
+    document.getElementById('inputCurrent').innerText = data.inputCurrent + " A";
   }
   if (data.outputCurrent !== undefined) {
-    document.getElementById('outputCurrent').innerText = data.outputCurrent;
+    document.getElementById('outputCurrent').innerText = data.outputCurrent + " A";
   }
   if (data.inputWattage !== undefined) {
-    document.getElementById('inputWattage').innerText = data.inputWattage;
+    document.getElementById('inputWattage').innerText = data.inputWattage + " W";
   }
   if (data.outputWattage !== undefined) {
-    document.getElementById('outputWattage').innerText = data.outputWattage;
+    document.getElementById('outputWattage').innerText = data.outputWattage + " W";
   }
 }
 

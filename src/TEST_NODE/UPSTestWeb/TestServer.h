@@ -101,6 +101,7 @@ class TestServer
 
 	void handleTestDataRequest(AsyncWebServerRequest* request, JsonVariant& json, TestSync& _sync);
 	// WebSocket-related functions
+
 	void onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
 				   void* arg, uint8_t* data, size_t len);
 	static void sendPing(AsyncWebSocketClient* client);
