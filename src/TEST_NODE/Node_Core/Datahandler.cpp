@@ -73,11 +73,29 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 	if(cmd != wsIncomingCommands::INVALID_COMMAND && cmd != wsIncomingCommands::GET_READINGS)
 	{
 		handleWsIncomingCommands(cmd);
-		_updateLedStatus = true;
+
+		AsyncWebSocketClient* client = wsMsg.client;
+		int clientId = wsMsg.client_id;
+		StaticJsonDocument<256> doc;
+
+		doc["type"] = "LED_STATUS";
+		doc["blinkBlue"] = false;
+		doc["blinkGreen"] = false;
+		doc["blinkRed"] = true;
+
+		std::array<char, WS_BUFFER_SIZE> jsonBuffer;
+		size_t len = serializeJson(doc, jsonBuffer.data(), jsonBuffer.size());
+		EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
+
+		if(wsBits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
+		{
+			client->text(jsonBuffer.data(), len);
+			logger.log(LogLevel ::INTR, "SEND TO BLINK RED LED ");
+			serializeJsonPretty(doc, Serial);
+		}
 	}
 	else if(cmd == wsIncomingCommands::GET_READINGS)
 	{
-		_updateLedStatus = true;
 		_periodicSendRequest = true;
 		logger.log(LogLevel::INTR, "GET_READINGS command received, enabling periodic sending.");
 	}
@@ -226,7 +244,6 @@ void DataHandler::handleWsIncomingCommands(wsIncomingCommands cmd)
 {
 	TestSync& SyncTest = TestSync::getInstance();
 	DataHandler& instance = DataHandler::getInstance();
-	_updateLedStatus = true;
 
 	if(cmd == wsIncomingCommands::TEST_START)
 	{

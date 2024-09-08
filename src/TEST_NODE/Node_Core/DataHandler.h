@@ -104,8 +104,9 @@ struct WebSocketMessage
 	size_t len;
 	AwsFrameInfo info;
 	int client_id;
+	AsyncWebSocketClient* client;
 
-	WebSocketMessage() : len(0), info(), client_id(0)
+	WebSocketMessage() : len(0), info(), client_id(0), client(nullptr)
 	{
 		memset(data, 0, sizeof(data));
 	}

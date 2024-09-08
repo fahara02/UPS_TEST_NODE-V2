@@ -51,7 +51,7 @@ function onWebSocketMessage(event) {
   appendLog('Message received: ' + event.data);
 
   try {
-    const data = JSON.parse(event.data);
+    const data = JSON.parse(event.data); // Parse the incoming message from the server
 
     if (data.error) {
       appendLog('Error received: ' + data.error);
@@ -62,7 +62,7 @@ function onWebSocketMessage(event) {
       //showWarning(data.warning);
     } else {
       // Handle other specific message types
-      switch (data.messageType) {
+      switch (data.type) {  // Corrected to use data.type
         case 'testStarted':
           appendLog('Server: Test has started');
           break;
@@ -80,7 +80,7 @@ function onWebSocketMessage(event) {
           break;
         case 'LED_STATUS':
           appendLog('Server: LED status update');
-          updateLedStatus(data.ledStatus);
+          updateLedStatus(data);  // Pass the entire data object to updateLedStatus
           break;
         default:
           appendLog('Server: Unknown message received');
@@ -95,9 +95,11 @@ function onWebSocketMessage(event) {
   }
 }
 
+
+
 // Function to update LED status and control blinking behavior
-function updateLedStatus(ledStatus) {
-  console.log("Updating LED status:", ledStatus);  // Add this line
+function updateLedStatus(data) {
+  console.log("Updating LED status:", data);
 
   const blueLed = document.getElementById("ledLoadOn");
   const greenLed = document.getElementById("ledReady");
@@ -108,20 +110,21 @@ function updateLedStatus(ledStatus) {
   greenLed.classList.remove("blink");
   redLed.classList.remove("blink");
 
-  // Apply blink class based on the received status
-  if (ledStatus.blinkBlue) {
-    console.log("Blink Blue");  // Add this line
+  // Check if data has properties before accessing them
+  if (data.blinkBlue !== undefined && data.blinkBlue) {
+    console.log("Blink Blue");
     blueLed.classList.add("blink");
   }
-  if (ledStatus.blinkGreen) {
-    console.log("Blink Green");  // Add this line
+  if (data.blinkGreen !== undefined && data.blinkGreen) {
+    console.log("Blink Green");
     greenLed.classList.add("blink");
   }
-  if (ledStatus.blinkRed) {
-    console.log("Blink Red");  // Add this line
+  if (data.blinkRed !== undefined && data.blinkRed) {
+    console.log("Blink Red");
     redLed.classList.add("blink");
   }
 }
+
 
 
 // Update DOM elements based on WebSocket message data

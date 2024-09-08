@@ -17,7 +17,7 @@ const char TOP_HTML[] PROGMEM = R"rawliteral(
 const char HEAD_TRAILER_HTML[] PROGMEM = R"rawliteral(
  </head>
   <body>
-  <script src="/script.js?v=2.0.1"></script>
+  <script src="/script.js?v=2.0.3"></script>
 )rawliteral";
 const char HEADER_HTML[] PROGMEM = R"rawliteral(
  <header>

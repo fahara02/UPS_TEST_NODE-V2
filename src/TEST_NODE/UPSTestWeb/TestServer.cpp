@@ -385,7 +385,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 									   pdFALSE, CLIENT_CONNECT_TIMEOUT_MS))
 				{
 					wsMsg.client_id = client->id();
-
+					wsMsg.client = client;
 					if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
 					{
 						EventHelper::setBits(wsClientUpdate::GET_READING);
