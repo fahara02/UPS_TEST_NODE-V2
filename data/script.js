@@ -2,7 +2,7 @@ let websocket;
 
 //const gateway = 'ws://192.168.0.108:80/ws';
 
- const gateway = `ws://${window.location.hostname}/ws`;
+const gateway = `ws://${window.location.hostname}/ws`;
 // Initialize variables
 function initAllVariables() {
   window.tests = [];
@@ -16,23 +16,29 @@ function initWebSocket() {
   websocket.onopen = onWebSocketOpen;
   websocket.onclose = onWebSocketClose;
   websocket.onmessage = onWebSocketMessage;
-  websocket.onerror = onWebSocketError;  
-}
-function onWebSocketError(event) {
-  console.error('WebSocket error: ', event);
+  websocket.onerror = onWebSocketError;
 }
 
 window.addEventListener('beforeunload', () => {
   if (websocket && websocket.readyState === WebSocket.OPEN) {
     websocket.close();
   }
- });
+});
 
 // WebSocket open event
 function onWebSocketOpen(event) {
   console.log('WebSocket connection opened');
   getReadings();
 }
+function onWebSocketClose(event) {
+  console.log('WebSocket connection closed');
+  setTimeout(initWebSocket, 2000); // Try to reconnect after 2 seconds
+}
+
+function onWebSocketError(event) {
+  console.error('WebSocket error: ', event);
+}
+
 function getReadings() {
   if (websocket && websocket.readyState === WebSocket.OPEN) {
     websocket.send("getReadings");
@@ -40,48 +46,20 @@ function getReadings() {
     console.error('WebSocket is not open, cannot send getReadings');
   }
 }
-
-
-
-function onMessage(event) {
-  console.log(event.data);
-  var myObj = JSON.parse(event.data);
-  var keys = Object.keys(myObj);
-
-  for (var i = 0; i < keys.length; i++){
-    var key = keys[i];
-    document.getElementById(key).innerHTML = myObj[key];
-  }
-}
-
-// WebSocket close event
-function onWebSocketClose(event) {
-  console.log('WebSocket connection closed');
-  setTimeout(initWebSocket, 2000); // Try to reconnect after 2 seconds
-}
-
-// WebSocket message handler
 function onWebSocketMessage(event) {
-
-  console.log('Message from server:', event.data);  
+  console.log('Message from server:', event.data);
   appendLog('Message received: ' + event.data);
-
-
 
   try {
     const data = JSON.parse(event.data);
 
-   
     if (data.error) {
-    
       appendLog('Error received: ' + data.error);
-      
       //showError(data.error, data.details);
     } else if (data.warning) {
       // Handle warning messages
       appendLog('Warning received: ' + data.warning);
-    
-     // showWarning(data.warning);
+      //showWarning(data.warning);
     } else {
       // Handle other specific message types
       switch (data.messageType) {
@@ -91,12 +69,19 @@ function onWebSocketMessage(event) {
         case 'testStopped':
           appendLog('Server: Test has stopped');
           break;
-        case  'testPaused': 
-        appendLog('Server: Test has paused');
-        case  'settingUpdated': 
-        appendLog('Server: Setting is updated');
-        case  'deviceReady': 
-        appendLog('Server: Device is ready');
+        case 'testPaused':
+          appendLog('Server: Test has paused');
+          break;
+        case 'settingUpdated':
+          appendLog('Server: Setting is updated');
+          break;
+        case 'deviceReady':
+          appendLog('Server: Device is ready');
+          break;
+        case 'LED_STATUS':
+          appendLog('Server: LED status update');
+          updateLedStatus(data.ledStatus);
+          break;
         default:
           appendLog('Server: Unknown message received');
           break;
@@ -109,6 +94,35 @@ function onWebSocketMessage(event) {
     console.error('Error parsing WebSocket message:', error);
   }
 }
+
+// Function to update LED status and control blinking behavior
+function updateLedStatus(ledStatus) {
+  console.log("Updating LED status:", ledStatus);  // Add this line
+
+  const blueLed = document.getElementById("ledLoadOn");
+  const greenLed = document.getElementById("ledReady");
+  const redLed = document.getElementById("ledTestRunning");
+
+  // Remove any blinking classes from all LEDs first
+  blueLed.classList.remove("blink");
+  greenLed.classList.remove("blink");
+  redLed.classList.remove("blink");
+
+  // Apply blink class based on the received status
+  if (ledStatus.blinkBlue) {
+    console.log("Blink Blue");  // Add this line
+    blueLed.classList.add("blink");
+  }
+  if (ledStatus.blinkGreen) {
+    console.log("Blink Green");  // Add this line
+    greenLed.classList.add("blink");
+  }
+  if (ledStatus.blinkRed) {
+    console.log("Blink Red");  // Add this line
+    redLed.classList.add("blink");
+  }
+}
+
 
 // Update DOM elements based on WebSocket message data
 function updateDOMElements(data) {
@@ -137,6 +151,7 @@ function updateDOMElements(data) {
     document.getElementById('outputWattage').innerText = data.outputWattage + " W";
   }
 }
+
 
 // Initialize WebSocket and set up event listeners on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
@@ -316,9 +331,9 @@ function appendLog(message) {
     testCommand.textContent += message + '\n'; // Add new message
     testCommand.scrollTop = testCommand.scrollHeight; // Scroll to bottom
 
-    
 
-  
+
+
   } else {
     console.error('Log element not found.');
   }
@@ -327,8 +342,8 @@ function appendLog(message) {
 function clearTest() {
   const testCommand = document.getElementById('testCommand');
   if (testCommand) {
-    testCommand.textContent = ''; 
-    
+    testCommand.textContent = '';
+
     console.log('Log cleared.');
   } else {
     console.error('Test Command element not found.');

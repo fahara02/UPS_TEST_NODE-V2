@@ -10,7 +10,9 @@ DataHandler& DataHandler::getInstance()
 	return instance;
 }
 
-DataHandler::DataHandler() : _periodicSendRequest(false), _result(ProcessingResult::PENDING)
+DataHandler::DataHandler() :
+	_updateLedStatus(false), _periodicSendRequest(false), _blinkBlue(false), _blinkGreen(false),
+	_blinkRed(false), _result(ProcessingResult::PENDING)
 {
 	WebsocketDataQueue = xQueueCreate(10, sizeof(WebSocketMessage));
 }
@@ -38,6 +40,7 @@ void DataHandler::wsDataProcessor(void* pVparamter)
 			{
 				logger.log(LogLevel::INFO, "Processing WebSocket data in DataHandler task");
 				instance->processWsMessage(wsMsg);
+
 				EventHelper::clearBits(wsClientStatus::DATA);
 			}
 			else
@@ -70,9 +73,11 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 	if(cmd != wsIncomingCommands::INVALID_COMMAND && cmd != wsIncomingCommands::GET_READINGS)
 	{
 		handleWsIncomingCommands(cmd);
+		_updateLedStatus = true;
 	}
 	else if(cmd == wsIncomingCommands::GET_READINGS)
 	{
+		_updateLedStatus = true;
 		_periodicSendRequest = true;
 		logger.log(LogLevel::INTR, "GET_READINGS command received, enabling periodic sending.");
 	}
@@ -86,12 +91,28 @@ void DataHandler::periodicDataSender(void* pvParameter)
 
 	while(true)
 	{
+		if(instance._updateLedStatus)
+		{
+			EventBits_t eventBits =
+				xEventGroupWaitBits(EventHelper::wsClientEventGroup,
+									static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE,
+									pdFALSE, portMAX_DELAY);
+			for(auto& client: websocket->getClients())
+			{
+				if(client.status() == WS_CONNECTED)
+				{
+					logger.log(LogLevel::INTR, "updating LED Status!!");
+					instance.sendData(websocket, client.id(), wsOutGoingDataType::LED_STATUS);
+					instance._updateLedStatus = false;
+				}
+			}
+		}
+
 		// Wait for the GET_READING bit, but don't clear it after sending
 		EventBits_t eventBits = xEventGroupWaitBits(
 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
 			pdFALSE, pdFALSE, portMAX_DELAY);
 
-		// Only proceed if periodic sending is enabled (checked via the internal flag)
 		if(instance._periodicSendRequest)
 		{
 			for(auto& client: websocket->getClients())
@@ -116,12 +137,45 @@ void DataHandler::periodicDataSender(void* pvParameter)
 }
 void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDataType type)
 {
-	EventBits_t bits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
+	EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
+	// EventBits_t cmdBits = xEventGroupGetBits(EventHelper::userCommandEventGroup);
+	// EventBits_t systemInitEventbits = xEventGroupGetBits(EventHelper::systemInitEventGroup);
+	TestSync& SyncTest = TestSync::getInstance();
+	State state = SyncTest.refreshState();
+
 	StaticJsonDocument<WS_BUFFER_SIZE> doc;
 
 	if(type == wsOutGoingDataType::POWER_READINGS)
 	{
 		doc = prepData(wsOutGoingDataType::POWER_READINGS);
+	}
+	else if(type == wsOutGoingDataType::LED_STATUS)
+	{ // start with all blink false
+		state = SyncTest.refreshState();
+		logger.log(LogLevel::INTR, "FOR LED STATUS STATE:%s ", stateToString(state));
+
+		if(state == State::TEST_START)
+		{
+			_blinkRed = true;
+		}
+		else if(state != State::TEST_START)
+		{
+			_blinkRed = false;
+		}
+		else if(state == State::SYSTEM_PAUSED)
+		{
+			_blinkRed = false;
+		}
+		else if(state == State::DEVICE_SETUP)
+		{
+			_blinkGreen = true;
+		}
+		_blinkBlue = true;
+
+		doc["type"] = "LED_STATUS";
+		doc["blinkBlue"] = _blinkBlue;
+		doc["blinkGreen"] = _blinkGreen;
+		doc["blinkRed"] = _blinkRed;
 	}
 	else
 	{
@@ -147,7 +201,7 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 
 		if(isValidUTF8(jsonBuffer.data(), len))
 		{
-			if(bits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
+			if(wsBits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
 			{
 				websocket->text(clientId, jsonBuffer.data());
 				logger.log(LogLevel ::SUCCESS, "a new data send...");
@@ -164,6 +218,7 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 void DataHandler::handleWsIncomingCommands(wsIncomingCommands cmd)
 {
 	TestSync& SyncTest = TestSync::getInstance();
+	DataHandler& instance = DataHandler::getInstance();
 	if(cmd == wsIncomingCommands::TEST_START)
 	{
 		logger.log(LogLevel::SUCCESS, "handling TEST START EVENT");

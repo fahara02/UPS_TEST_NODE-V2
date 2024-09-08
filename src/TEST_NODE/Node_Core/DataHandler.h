@@ -127,12 +127,15 @@ class DataHandler
 	void init();
 	QueueHandle_t WebsocketDataQueue = NULL;
 
-	bool _periodicSendRequest;
-
 	static void periodicDataSender(void* pvParameter);
 
   private:
 	DataHandler();
+	bool _updateLedStatus;
+	bool _periodicSendRequest;
+	bool _blinkBlue;
+	bool _blinkGreen;
+	bool _blinkRed;
 
 	ProcessingResult _result;
 	StaticJsonDocument<WS_BUFFER_SIZE> _blankDoc;

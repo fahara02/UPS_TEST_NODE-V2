@@ -10,14 +10,14 @@ const char TOP_HTML[] PROGMEM = R"rawliteral(
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>UPS Automatic Testing Interface</title>
     <link rel="icon" href="/favicon.png" type="image/png" />
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/style.css?v=2.0.1">
 )rawliteral";
 
 // CSS PART WILL GO HERE
 const char HEAD_TRAILER_HTML[] PROGMEM = R"rawliteral(
  </head>
   <body>
-  <script src="/script.js"></script>
+  <script src="/script.js?v=2.0.1"></script>
 )rawliteral";
 const char HEADER_HTML[] PROGMEM = R"rawliteral(
  <header>

@@ -307,84 +307,6 @@ void TestServer::wsClientCleanup(void* pvParameters)
 	vTaskDelete(NULL);
 }
 
-// void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType
-// type, 						   void* arg, uint8_t* data, size_t len)
-// {
-// 	switch(type)
-// 	{
-// 		case WS_EVT_CONNECT:
-// 			Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
-// 						  client->remoteIP().toString().c_str());
-// 			isClientConnected = true; // Set flag to true when client connects
-// 			break;
-
-// 		case WS_EVT_DISCONNECT:
-// 			Serial.printf("WebSocket client #%u disconnected\n", client->id());
-// 			isClientConnected = false; // Set flag to false when client disconnects
-// 			break;
-
-// 		case WS_EVT_DATA:
-// 		{
-// 			AwsFrameInfo* info = (AwsFrameInfo*)arg;
-
-// 			if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
-// 			{
-// 				// Check if the data length fits within the buffer
-// 				if(len >= WS_BUFFER_SIZE)
-// 				{
-// 					Serial.println("Received data exceeds buffer size; discarding message.");
-// 					client->text("Error: Message too large.");
-// 					return;
-// 				}
-
-// 				WebSocketMessage wsMsg;
-// 				memcpy(wsMsg.data, data, len); // Copy data to the fixed-size buffer
-// 				wsMsg.len = len; // Set the message length
-// 				wsMsg.info = *info; // Copy the frame info
-
-// 				// Process the message as needed
-// 				if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
-// 				{
-// 					if(!DataHandler::getInstance().wsDeque.empty())
-// 					{
-// 						const std::array<char, WS_BUFFER_SIZE>& jsonData =
-// 							DataHandler::getInstance().wsDeque.front();
-// 						DataHandler::getInstance().wsDeque.pop_front();
-
-// 						client->text(jsonData.data(), strlen(jsonData.data()));
-// 					}
-// 					else
-// 					{
-// 						client->text("Data not available yet");
-// 					}
-// 				}
-// 				else
-// 				{
-// 					// Enqueue message for processing
-// 					if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
-// 								  portMAX_DELAY) != pdPASS)
-// 					{
-// 						Serial.println("Failed to enqueue WebSocket message.");
-// 					}
-// 				}
-// 			}
-// 			else
-// 			{
-// 				Serial.println("Incomplete or invalid WebSocket frame.");
-// 			}
-// 			break;
-// 		}
-
-// 		case WS_EVT_PONG:
-// 			Serial.println("PONG received");
-// 			break;
-
-// 		case WS_EVT_ERROR:
-// 			Serial.println("WebSocket error occurred");
-// 			break;
-// 	}
-// }
-
 void TestServer::sendPing(AsyncWebSocketClient* client)
 {
 	// Ensure the client is still connected by checking the event group or valid flag
@@ -440,6 +362,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 			if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
 			{
 				EventHelper::setBits(wsClientStatus::DATA);
+
 				if(len >= WS_BUFFER_SIZE)
 				{
 					Serial.println("Received data exceeds buffer size; discarding message.");
