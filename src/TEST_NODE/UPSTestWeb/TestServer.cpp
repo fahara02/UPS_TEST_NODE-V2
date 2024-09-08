@@ -1,6 +1,8 @@
 #include "TestServer.h"
 #include "AsyncJson.h"
 #include <map>
+#include <Ticker.h>
+Ticker pingTimer;
 
 // Other includes as necessary
 
@@ -370,6 +372,26 @@ void TestServer::wsClientCleanup(void* pvParameters)
 // 			break;
 // 	}
 // }
+
+void TestServer::sendPing(AsyncWebSocketClient* client)
+{
+	// Ensure the client is still connected by checking the event group or valid flag
+	EventBits_t bits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
+
+	if(bits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
+	{
+		if(client->status() == WS_CONNECTED)
+		{
+			client->ping(); // Send ping to the client
+			Serial.printf("Ping sent to WebSocket client #%u\n", client->id());
+		}
+	}
+	else
+	{
+		Serial.println("Ping skipped: Client not connected");
+	}
+}
+
 void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
 						   void* arg, uint8_t* data, size_t len)
 {
@@ -380,13 +402,14 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 						  client->remoteIP().toString().c_str());
 			EventHelper::clearBits(wsClientStatus::DISCONNECTED);
 			EventHelper::setBits(wsClientStatus::CONNECTED);
-
+			pingTimer.attach(30, sendPing, client);
 			break;
 
 		case WS_EVT_DISCONNECT:
 			Serial.printf("WebSocket client #%u disconnected\n", client->id());
 			EventHelper::clearBits(wsClientStatus::CONNECTED);
 			EventHelper::setBits(wsClientStatus::DISCONNECTED);
+			pingTimer.detach();
 			break;
 
 		case WS_EVT_DATA:

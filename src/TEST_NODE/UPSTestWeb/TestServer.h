@@ -103,7 +103,7 @@ class TestServer
 	// WebSocket-related functions
 	void onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
 				   void* arg, uint8_t* data, size_t len);
-
+	static void sendPing(AsyncWebSocketClient* client);
 	void createServerTask();
 	static void wsClientCleanup(void* pvParameters);
 };
