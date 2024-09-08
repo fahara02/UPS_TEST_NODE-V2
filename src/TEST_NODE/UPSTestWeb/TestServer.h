@@ -30,6 +30,7 @@ class TestServer
 	{
 		initWebSocket();
 		createServerTask();
+		createPeriodicTask();
 	}
 	~TestServer()
 	{
@@ -58,6 +59,7 @@ class TestServer
 	void initWebSocket();
 
 	void servePages(UPSTesterSetup& _setup, TestSync& _sync);
+	void createPeriodicTask();
 
   private:
 	AsyncWebServer* _server;
@@ -67,21 +69,7 @@ class TestServer
 	Node_Utility::FileHandler _fileHandler;
 	UPSTesterSetup& _setup;
 	TestSync& _sync;
-	bool isClientConnected = false;
-	int _lastClientId = 0;
-	// std::deque<AsyncWebSocketMessageBuffer*> sensorDataQueue;
-	bool _sendData = false;
-
-	// GUI buttons/LED state
-	bool _startBTN = false;
-	bool _stopBTN = false;
-	bool _pauseBTN = false;
-	bool _modeBTN = false;
-	bool _loadBTN = false;
-	bool _mainBTN = false;
-	bool _blinkSetupLED = false;
-	bool _blinkReadyLED = false;
-	bool _blinkTestLED = false;
+	PeriodicTaskParams periodicTaskParams;
 
 	// HTTP_GET
 	void handleRootRequest(AsyncWebServerRequest* request);

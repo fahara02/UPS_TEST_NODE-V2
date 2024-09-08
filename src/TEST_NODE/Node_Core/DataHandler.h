@@ -32,7 +32,7 @@ enum class wsOutgoingCommands
 	BLINK_RUNNING,
 	INVALID_COMMAND // Handle invalid cases
 };
-enum class wsOutGoingDataType
+enum class wsPowerDataType
 {
 	INPUT_POWER,
 	INPUT_VOLT,
@@ -45,31 +45,44 @@ enum class wsOutGoingDataType
 	INVALID_DATA
 };
 
-static const char* outgoingCommandTable[] = {
+enum class wsOutGoingDataType
+{
+	POWER_READINGS,
+	LED_STATUS,
+	BUTTONS_STATUS,
+	INVALID_DATA
+};
+
+static const char* outgoingLedTable[] = {
 	"blinkBlue", // BLINK_SETUP
 	"blinkGreen", // BLINK_READY
 	"blinkRed" // BLINK_RUNNING
 };
 
-static const char* wsDataTypeToString(wsOutGoingDataType type)
+struct PeriodicTaskParams
+{
+	AsyncWebSocket* ws;
+};
+
+static const char* wsPowerDataTypeToString(wsPowerDataType type)
 {
 	switch(type)
 	{
-		case wsOutGoingDataType::INPUT_POWER:
+		case wsPowerDataType::INPUT_POWER:
 			return "InputPower";
-		case wsOutGoingDataType::INPUT_VOLT:
+		case wsPowerDataType::INPUT_VOLT:
 			return "InputVoltage";
-		case wsOutGoingDataType::INPUT_CURRENT:
+		case wsPowerDataType::INPUT_CURRENT:
 			return "InputCurrent";
-		case wsOutGoingDataType::INPUT_PF:
+		case wsPowerDataType::INPUT_PF:
 			return "InputPowerFactor";
-		case wsOutGoingDataType::OUTPUT_POWER:
+		case wsPowerDataType::OUTPUT_POWER:
 			return "OutputPower";
-		case wsOutGoingDataType::OUTPUT_VOLT:
+		case wsPowerDataType::OUTPUT_VOLT:
 			return "OutputVoltage";
-		case wsOutGoingDataType::OUTPUT_CURRENT:
+		case wsPowerDataType::OUTPUT_CURRENT:
 			return "OutputCurrent";
-		case wsOutGoingDataType::OUTPUT_PF:
+		case wsPowerDataType::OUTPUT_PF:
 			return "OutputPowerFactor";
 		default:
 			return "Invalid Data";
@@ -79,17 +92,23 @@ static const char* wsDataTypeToString(wsOutGoingDataType type)
 namespace Node_Core
 {
 static constexpr size_t WS_BUFFER_SIZE = 256;
+
 static constexpr TickType_t QUEUE_TIMEOUT_MS = pdMS_TO_TICKS(100);
 static constexpr TickType_t DATABIT_TIMEOUT_MS = pdMS_TO_TICKS(200);
+static constexpr TickType_t DEQUE_MUTEX_TIMEOUT_MS = pdMS_TO_TICKS(100);
 static constexpr TickType_t CLIENT_CONNECT_TIMEOUT_MS = pdMS_TO_TICKS(1000);
+
+static constexpr TickType_t DATA_EVENT_MUTEX_TIMEOUT_MS = pdMS_TO_TICKS(50);
+static constexpr TickType_t PERIODIC_MUTEX_TIMEOUT_MS = pdMS_TO_TICKS(1000);
 
 struct WebSocketMessage
 {
 	uint8_t data[WS_BUFFER_SIZE];
 	size_t len;
 	AwsFrameInfo info;
+	int client_id;
 
-	WebSocketMessage() : len(0), info()
+	WebSocketMessage() : len(0), info(), client_id(0)
 	{
 		memset(data, 0, sizeof(data));
 	}
@@ -110,29 +129,31 @@ class DataHandler
 	static DataHandler& getInstance();
 	void init();
 	QueueHandle_t WebsocketDataQueue = NULL;
-	SemaphoreHandle_t dequeMutex = NULL;
+	SemaphoreHandle_t dataEventMutex = NULL;
+	SemaphoreHandle_t periodicMutex = NULL;
 	std::deque<std::array<char, WS_BUFFER_SIZE>> wsDeque;
 	bool _isReadingsRequested;
+	bool _periodicFillRequest;
+
+	static void periodicDataSender(void* pvParameter);
 
   private:
 	DataHandler();
 
 	ProcessingResult _result;
-
-	// Fixed-size array in deque
-	StaticJsonDocument<WS_BUFFER_SIZE> _blankDoc; // JSON document to store data
-
+	StaticJsonDocument<WS_BUFFER_SIZE> _blankDoc;
+	std::deque<std::array<char, WS_BUFFER_SIZE>> wsDequePeriodic;
 	static void wsDataProcessor(void* pVparamter);
 	TaskHandle_t dataTaskHandler = NULL;
 
 	// data handling functions
-
+	void sendData(AsyncWebSocket* websocket, int clientId);
 	void processWsMessage(WebSocketMessage& wsMsg);
 	void handleWsIncomingCommands(wsIncomingCommands cmd);
 	void fillDequeWithData();
+	void fillPeriodicDeque();
 	wsIncomingCommands getWebSocketCommand(const char* incomingCommand);
-	void prepWebSocketData(wsOutGoingDataType type, const char* data);
-	void sendRandomTestData();
+	StaticJsonDocument<WS_BUFFER_SIZE> prepData(wsOutGoingDataType type);
 
 	DataHandler(const DataHandler&) = delete;
 	DataHandler& operator=(const DataHandler&) = delete;

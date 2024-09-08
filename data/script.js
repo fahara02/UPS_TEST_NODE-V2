@@ -38,7 +38,7 @@ function getReadings() {
   }
 }
 
-setInterval(getReadings, 5000);
+
 
 function onMessage(event) {
   console.log(event.data);
@@ -66,20 +66,33 @@ function onWebSocketMessage(event) {
     const data = JSON.parse(event.data);
 
     // Handle specific message types
-    switch (data.messageType) {
-      case 'testStarted':
-        appendLog('Server: Test has started');
-        break;
-      case 'testStopped':
-        appendLog('Server: Test has stopped');
-        break;
-      default:
-        appendLog('Server: Unknown message received');
-        break;
-    }
+    if (data.error) {
+      // Handle error messages
+      appendLog('Error received: ' + data.error);
+      // Optionally, update the DOM or display an error message to the user
+      //showError(data.error, data.details);
+    } else if (data.warning) {
+      // Handle warning messages
+      appendLog('Warning received: ' + data.warning);
+      // Optionally, update the DOM or display a warning message to the user
+     // showWarning(data.warning);
+    } else {
+      // Handle other specific message types
+      switch (data.messageType) {
+        case 'testStarted':
+          appendLog('Server: Test has started');
+          break;
+        case 'testStopped':
+          appendLog('Server: Test has stopped');
+          break;
+        default:
+          appendLog('Server: Unknown message received');
+          break;
+      }
 
-    // Update DOM elements based on message data
-    updateDOMElements(data);
+      // Update DOM elements based on message data
+      updateDOMElements(data);
+    }
   } catch (error) {
     console.error('Error parsing WebSocket message:', error);
   }

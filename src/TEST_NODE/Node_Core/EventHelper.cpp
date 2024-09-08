@@ -13,6 +13,7 @@ EventGroupHandle_t EventHelper::dataEventGroup = nullptr;
 EventGroupHandle_t EventHelper::testControlEvent = nullptr;
 EventGroupHandle_t EventHelper::syncControlEvent = nullptr;
 EventGroupHandle_t EventHelper::wsClientEventGroup = nullptr;
+EventGroupHandle_t EventHelper::wsClientUpdateEventGroup = nullptr;
 
 const EventBits_t EventHelper::SYSTEM_EVENT_BITS_MASK =
 	static_cast<EventBits_t>(SystemEvent::NONE) | static_cast<EventBits_t>(SystemEvent::ERROR) |
@@ -63,6 +64,12 @@ const EventBits_t EventHelper::ALL_WS_CLIENT_BITS_MASK =
 	static_cast<EventBits_t>(wsClientStatus::DATA) |
 	static_cast<EventBits_t>(wsClientStatus::PONG) |
 	static_cast<EventBits_t>(wsClientStatus::ERROR);
+const EventBits_t EventHelper::ALL_WS_CLIENT_UPDATE_BITS_MASK =
+	static_cast<EventBits_t>(wsClientUpdate::GET_READING) |
+	static_cast<EventBits_t>(wsClientUpdate::STOP_READING) |
+	static_cast<EventBits_t>(wsClientUpdate::BLINK_BLUE) |
+	static_cast<EventBits_t>(wsClientUpdate::BLINK_GREEN) |
+	static_cast<EventBits_t>(wsClientUpdate::BLINK_RED);
 
 const EventBits_t ALL_SYNC_BITS_MASK = (1 << MAX_SYNC_COMMAND) - 1;
 
@@ -92,6 +99,8 @@ void EventHelper::initializeEventGroups()
 		syncControlEvent = xEventGroupCreate();
 	if(wsClientEventGroup == nullptr)
 		wsClientEventGroup = xEventGroupCreate();
+	if(wsClientUpdateEventGroup == nullptr)
+		wsClientUpdateEventGroup = xEventGroupCreate();
 
 	logger.log(LogLevel::SUCCESS, "All event groups created!");
 }
@@ -150,6 +159,11 @@ void EventHelper::cleanupEventGroups()
 		vEventGroupDelete(wsClientEventGroup);
 		wsClientEventGroup = nullptr;
 	}
+	if(wsClientUpdateEventGroup != nullptr)
+	{
+		vEventGroupDelete(wsClientUpdateEventGroup);
+		wsClientUpdateEventGroup = nullptr;
+	}
 }
 
 void EventHelper::setBits(SystemEvent e)
@@ -193,6 +207,10 @@ void EventHelper::setBits(wsClientStatus e)
 {
 	xEventGroupSetBits(wsClientEventGroup, static_cast<EventBits_t>(e));
 }
+void EventHelper::setBits(wsClientUpdate e)
+{
+	xEventGroupSetBits(wsClientUpdateEventGroup, static_cast<EventBits_t>(e));
+}
 
 // Clear bits for specific event types
 void EventHelper::clearBits(SystemEvent e)
@@ -232,7 +250,10 @@ void EventHelper::clearBits(wsClientStatus e)
 {
 	xEventGroupClearBits(wsClientEventGroup, static_cast<EventBits_t>(e));
 }
-
+void EventHelper::clearBits(wsClientUpdate e)
+{
+	xEventGroupClearBits(wsClientUpdateEventGroup, static_cast<EventBits_t>(e));
+}
 // Reset all bits in specific event groups
 void EventHelper::resetSystemEventBits()
 {
@@ -270,5 +291,9 @@ void EventHelper::resetAllSyncBits()
 void EventHelper::resetAllwsClientBits()
 {
 	xEventGroupClearBits(wsClientEventGroup, ALL_WS_CLIENT_BITS_MASK);
+}
+void EventHelper::resetAllwsClientUpdateBits()
+{
+	xEventGroupClearBits(wsClientUpdateEventGroup, ALL_WS_CLIENT_UPDATE_BITS_MASK);
 }
 } // namespace Node_Core

@@ -12,6 +12,7 @@ class TestSync;
 
 namespace Node_Core
 {
+
 enum class wsClientStatus : EventBits_t
 {
 	CONNECTED = 1 << 0,
@@ -19,6 +20,15 @@ enum class wsClientStatus : EventBits_t
 	DATA = 1 << 2,
 	PONG = 1 << 3,
 	ERROR = 1 << 4
+};
+
+enum class wsClientUpdate : EventBits_t
+{
+	GET_READING = 1 << 0,
+	STOP_READING = 1 << 1,
+	BLINK_BLUE = 1 << 2,
+	BLINK_GREEN = 1 << 3,
+	BLINK_RED = 1 << 4
 };
 enum class SystemEvent : EventBits_t
 {
@@ -96,6 +106,7 @@ class EventHelper
 	static void setBits(TestType e);
 	static void setBits(SyncCommand e);
 	static void setBits(wsClientStatus e);
+	static void setBits(wsClientUpdate e);
 
 	static void clearBits(SystemEvent e);
 	static void clearBits(SystemInitEvent e);
@@ -106,6 +117,7 @@ class EventHelper
 	static void clearBits(TestType e);
 	static void clearBits(SyncCommand e);
 	static void clearBits(wsClientStatus e);
+	static void clearBits(wsClientUpdate e);
 
 	static void resetSystemEventBits();
 	static void resetSystemInitEventBits();
@@ -116,6 +128,7 @@ class EventHelper
 	static void resetAllTestBits();
 	static void resetAllSyncBits();
 	static void resetAllwsClientBits();
+	static void resetAllwsClientUpdateBits();
 
 	static EventGroupHandle_t systemEventGroup;
 	static EventGroupHandle_t systemInitEventGroup;
@@ -126,6 +139,7 @@ class EventHelper
 	static EventGroupHandle_t testControlEvent;
 	static EventGroupHandle_t syncControlEvent;
 	static EventGroupHandle_t wsClientEventGroup;
+	static EventGroupHandle_t wsClientUpdateEventGroup;
 
 	static void initializeEventGroups();
 
@@ -142,6 +156,7 @@ class EventHelper
 	static const EventBits_t ALL_TEST_BITS_MASK;
 	static const EventBits_t ALL_SYNC_BITS_MASK;
 	static const EventBits_t ALL_WS_CLIENT_BITS_MASK;
+	static const EventBits_t ALL_WS_CLIENT_UPDATE_BITS_MASK;
 };
 
 } // namespace Node_Core

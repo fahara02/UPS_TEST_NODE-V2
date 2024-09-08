@@ -284,6 +284,18 @@ void TestServer::createServerTask()
 {
 	xTaskCreatePinnedToCore(wsClientCleanup, "WSCleanupTask", 4096, _ws, 5, NULL, 0);
 }
+
+void TestServer::createPeriodicTask()
+{
+	// Initialize the member struct with necessary values
+	DataHandler& dataHandler = DataHandler::getInstance();
+	periodicTaskParams.ws = _ws;
+
+	// Pass the pointer to the member struct
+	xTaskCreate(dataHandler.periodicDataSender, "PeriodicDataSender", 4096, &periodicTaskParams, 1,
+				nullptr);
+}
+
 void TestServer::wsClientCleanup(void* pvParameters)
 {
 	AsyncWebSocket* ws = static_cast<AsyncWebSocket*>(pvParameters);
@@ -409,6 +421,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 			Serial.printf("WebSocket client #%u disconnected\n", client->id());
 			EventHelper::clearBits(wsClientStatus::CONNECTED);
 			EventHelper::setBits(wsClientStatus::DISCONNECTED);
+			EventHelper::clearBits(wsClientUpdate::GET_READING);
 			pingTimer.detach();
 			break;
 
@@ -421,9 +434,15 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 				if(len >= WS_BUFFER_SIZE)
 				{
 					Serial.println("Received data exceeds buffer size; discarding message.");
-					client->text("Error: Message too large.");
+					// Construct and send error message for oversized data
+					StaticJsonDocument<256> errorMsg;
+					errorMsg["error"] = "Message too large";
+					String errorStr;
+					serializeJson(errorMsg, errorStr);
+					client->text(errorStr);
 					return;
 				}
+
 				EventHelper::setBits(wsClientStatus::DATA);
 
 				WebSocketMessage wsMsg;
@@ -435,32 +454,50 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 									   static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE,
 									   pdFALSE, CLIENT_CONNECT_TIMEOUT_MS))
 				{
+					wsMsg.client_id = client->id();
+
 					if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
 					{
-						DataHandler::getInstance()._isReadingsRequested = true;
+						EventHelper::setBits(wsClientUpdate::GET_READING);
 						Serial.printf("Message from client: %s\n", wsMsg.data);
-						// if(xSemaphoreTake(DataHandler::getInstance().dequeMutex, portMAX_DELAY))
-						// { // Take the mutex
-						Serial.println("checking if deque is empty");
+						StaticJsonDocument<256> ackMsg;
+						ackMsg["SUCCESS"] = "Received Get Readings Command";
+						String ackStr;
+						serializeJson(ackMsg, ackStr);
+						client->text(ackStr);
 
-						if(!DataHandler::getInstance().wsDeque.empty())
-						{
-							Serial.println("sending data...");
-							const std::array<char, WS_BUFFER_SIZE>& jsonData =
-								DataHandler::getInstance().wsDeque.front();
-							DataHandler::getInstance().wsDeque.pop_front();
-							//	xSemaphoreGive(DataHandler::getInstance().dequeMutex); // Release
-							// the
-							// mutex
-							client->text(jsonData.data(), strlen(jsonData.data()));
-						}
-						else
-						{
-							// xSemaphoreGive(DataHandler::getInstance().dequeMutex); // Release the
-							// mutex
-							client->text("Data not available yet");
-						}
-						//	}
+						// // if(xSemaphoreTake(DataHandler::getInstance().dataEventMutex,
+						// // portMAX_DELAY))
+						// // {
+						// Serial.println("Checking if deque is empty");
+
+						// if(!DataHandler::getInstance().wsDeque.empty())
+						// {
+						// 	Serial.println("Sending data...");
+						// 	const std::array<char, WS_BUFFER_SIZE>& jsonData =
+						// 		DataHandler::getInstance().wsDeque.front();
+						// 	DataHandler::getInstance().wsDeque.pop_front();
+						// 	// xSemaphoreGive(DataHandler::getInstance().dataEventMutex);
+						// 	client->text(jsonData.data(), jsonData.size());
+
+						// 	if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
+						// 				  QUEUE_TIMEOUT_MS) != pdPASS)
+						// 	{
+						// 		Serial.println(
+						// 			"Failed to enqueue WebSocket message within timeout.");
+						// 	}
+						// }
+						// else
+						// {
+						// 	// xSemaphoreGive(DataHandler::getInstance().dataEventMutex);
+						// 	//  Construct JSON error message for data not available
+						// 	StaticJsonDocument<256> errorMsg;
+						// 	errorMsg["warning"] = "Data not available yet";
+						// 	String errorStr;
+						// 	serializeJson(errorMsg, errorStr);
+						// 	client->text(errorStr);
+						// }
+						// //}
 					}
 					else
 					{
@@ -472,12 +509,27 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 						}
 					}
 				}
-
-				// Process the message as needed
+				else
+				{
+					Serial.println("Client not connected in time.");
+					// Construct JSON error message for connection timeout
+					StaticJsonDocument<256> errorMsg;
+					errorMsg["error"] = "Connection timeout";
+					String errorStr;
+					serializeJson(errorMsg, errorStr);
+					client->text(errorStr);
+				}
 			}
 			else
 			{
 				Serial.println("Incomplete or invalid WebSocket frame.");
+
+				StaticJsonDocument<256> errorMsg;
+				errorMsg["error"] = "Invalid WebSocket frame";
+				errorMsg["details"] = "The WebSocket frame is incomplete or invalid.";
+				String errorStr;
+				serializeJson(errorMsg, errorStr);
+				client->text(errorStr);
 			}
 			break;
 		}
