@@ -292,7 +292,7 @@ void TestServer::createPeriodicTask()
 	periodicTaskParams.ws = _ws;
 
 	// Pass the pointer to the member struct
-	xTaskCreate(dataHandler.periodicDataSender, "PeriodicDataSender", 4096, &periodicTaskParams, 1,
+	xTaskCreate(dataHandler.periodicDataSender, "PeriodicDataSender", 4096, &periodicTaskParams, 2,
 				nullptr);
 }
 
@@ -414,7 +414,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 						  client->remoteIP().toString().c_str());
 			EventHelper::clearBits(wsClientStatus::DISCONNECTED);
 			EventHelper::setBits(wsClientStatus::CONNECTED);
-			pingTimer.attach(30, sendPing, client);
+			pingTimer.attach(10, sendPing, client);
 			break;
 
 		case WS_EVT_DISCONNECT:
@@ -465,43 +465,9 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 						String ackStr;
 						serializeJson(ackMsg, ackStr);
 						client->text(ackStr);
-
-						// // if(xSemaphoreTake(DataHandler::getInstance().dataEventMutex,
-						// // portMAX_DELAY))
-						// // {
-						// Serial.println("Checking if deque is empty");
-
-						// if(!DataHandler::getInstance().wsDeque.empty())
-						// {
-						// 	Serial.println("Sending data...");
-						// 	const std::array<char, WS_BUFFER_SIZE>& jsonData =
-						// 		DataHandler::getInstance().wsDeque.front();
-						// 	DataHandler::getInstance().wsDeque.pop_front();
-						// 	// xSemaphoreGive(DataHandler::getInstance().dataEventMutex);
-						// 	client->text(jsonData.data(), jsonData.size());
-
-						// 	if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
-						// 				  QUEUE_TIMEOUT_MS) != pdPASS)
-						// 	{
-						// 		Serial.println(
-						// 			"Failed to enqueue WebSocket message within timeout.");
-						// 	}
-						// }
-						// else
-						// {
-						// 	// xSemaphoreGive(DataHandler::getInstance().dataEventMutex);
-						// 	//  Construct JSON error message for data not available
-						// 	StaticJsonDocument<256> errorMsg;
-						// 	errorMsg["warning"] = "Data not available yet";
-						// 	String errorStr;
-						// 	serializeJson(errorMsg, errorStr);
-						// 	client->text(errorStr);
-						// }
-						// //}
 					}
 					else
 					{
-						// Enqueue message for processing
 						if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
 									  QUEUE_TIMEOUT_MS) != pdPASS)
 						{

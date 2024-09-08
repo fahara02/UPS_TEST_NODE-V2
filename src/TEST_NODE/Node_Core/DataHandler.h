@@ -99,7 +99,7 @@ static constexpr TickType_t DEQUE_MUTEX_TIMEOUT_MS = pdMS_TO_TICKS(100);
 static constexpr TickType_t CLIENT_CONNECT_TIMEOUT_MS = pdMS_TO_TICKS(1000);
 
 static constexpr TickType_t DATA_EVENT_MUTEX_TIMEOUT_MS = pdMS_TO_TICKS(50);
-static constexpr TickType_t PERIODIC_MUTEX_TIMEOUT_MS = pdMS_TO_TICKS(1000);
+static constexpr TickType_t PERIODIC_MUTEX_TIMEOUT_MS = pdMS_TO_TICKS(100);
 
 struct WebSocketMessage
 {
@@ -131,7 +131,7 @@ class DataHandler
 	QueueHandle_t WebsocketDataQueue = NULL;
 	SemaphoreHandle_t dataEventMutex = NULL;
 	SemaphoreHandle_t periodicMutex = NULL;
-	std::deque<std::array<char, WS_BUFFER_SIZE>> wsDeque;
+
 	bool _isReadingsRequested;
 	bool _periodicFillRequest;
 
@@ -150,10 +150,11 @@ class DataHandler
 	void sendData(AsyncWebSocket* websocket, int clientId);
 	void processWsMessage(WebSocketMessage& wsMsg);
 	void handleWsIncomingCommands(wsIncomingCommands cmd);
-	void fillDequeWithData();
+
 	void fillPeriodicDeque();
 	wsIncomingCommands getWebSocketCommand(const char* incomingCommand);
 	StaticJsonDocument<WS_BUFFER_SIZE> prepData(wsOutGoingDataType type);
+	bool isValidUTF8(const char* data, size_t len);
 
 	DataHandler(const DataHandler&) = delete;
 	DataHandler& operator=(const DataHandler&) = delete;

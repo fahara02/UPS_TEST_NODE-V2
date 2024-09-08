@@ -20,42 +20,36 @@ DataHandler::DataHandler() :
 
 void DataHandler::init()
 {
-	fillDequeWithData();
+	fillPeriodicDeque();
 	xTaskCreatePinnedToCore(wsDataProcessor, "ProcessWsData", 8192, this, 4, &dataTaskHandler, 0);
 }
 
-// void DataHandler::wsDataProcessor(void* pVparamter)
-// {
-// 	DataHandler* instance = static_cast<DataHandler*>(pVparamter);
-// 	WebSocketMessage wsMsg;
+void DataHandler::wsDataProcessor(void* pVparamter)
+{
+	DataHandler* instance = static_cast<DataHandler*>(pVparamter);
+	WebSocketMessage wsMsg;
 
-// 	while(true)
-// 	{
-// 		int result = xEventGroupWaitBits(EventHelper::wsClientEventGroup,
-// 										 static_cast<EventBits_t>(wsClientStatus::DATA), pdFALSE,
-// 										 pdFALSE, portMAX_DELAY);
-// 		if((result & static_cast<EventBits_t>(wsClientStatus::DATA)) != 0)
-// 		{
-// 			if(instance->_isReadingsRequested)
-// 			{
-// 				instance->fillDequeWithData();
-// 				instance->_isReadingsRequested = false;
-// 			}
+	while(true)
+	{
+		int result = xEventGroupWaitBits(EventHelper::wsClientEventGroup,
+										 static_cast<EventBits_t>(wsClientStatus::DATA), pdFALSE,
+										 pdFALSE, portMAX_DELAY);
+		if((result & static_cast<EventBits_t>(wsClientStatus::DATA)) != 0)
+		{
+			if(xQueueReceive(instance->WebsocketDataQueue, &wsMsg, QUEUE_TIMEOUT_MS))
+			{
+				logger.log(LogLevel::INFO, "Processing WebSocket data in DataHandler task");
+				instance->processWsMessage(wsMsg);
+			}
 
-// 			if(xQueueReceive(instance->WebsocketDataQueue, &wsMsg, QUEUE_TIMEOUT_MS))
-// 			{
-// 				logger.log(LogLevel::INFO, "Processing WebSocket data in DataHandler task");
-// 				instance->processWsMessage(wsMsg);
-// 			}
+			EventHelper::clearBits(wsClientStatus::DATA);
+		}
 
-// 			EventHelper::clearBits(wsClientStatus::DATA);
-// 		}
+		vTaskDelay(200 / portTICK_PERIOD_MS); // Add a delay to allow other tasks to run
+	}
 
-// 		vTaskDelay(200 / portTICK_PERIOD_MS); // Add a delay to allow other tasks to run
-// 	}
-
-// 	vTaskDelete(NULL);
-// }
+	vTaskDelete(NULL);
+}
 
 void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 {
@@ -81,30 +75,6 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 		_periodicFillRequest = true;
 	}
 }
-
-// void DataHandler::fillDequeWithData()
-// {
-// 	StaticJsonDocument<WS_BUFFER_SIZE> wsData = prepData(wsOutGoingDataType::POWER_READINGS);
-
-// 	if(xSemaphoreTake(dequeMutex, portMAX_DELAY))
-// 	{
-// 		if(wsDeque.size() < 10)
-// 		{
-// 			std::array<char, WS_BUFFER_SIZE> jsonBuffer;
-// 			size_t len = serializeJson(wsData, jsonBuffer.data(), jsonBuffer.size());
-
-// 			if(len > 0 && len < jsonBuffer.size())
-// 			{
-// 				wsDeque.push_back(jsonBuffer);
-
-// 				logger.log(LogLevel::INFO, "Added random data to wsDeque: ");
-// 			}
-// 		}
-// 		xSemaphoreGive(dequeMutex);
-// 	}
-
-// 	wsData.clear();
-// }
 
 void DataHandler::handleWsIncomingCommands(wsIncomingCommands cmd)
 {
@@ -199,113 +169,91 @@ StaticJsonDocument<WS_BUFFER_SIZE> DataHandler::prepData(wsOutGoingDataType type
 	return doc;
 }
 
-// void DataHandler::sendData(AsyncWebSocket* websocket, int clientId)
+// void DataHandler::fillPeriodicDeque()
 // {
 // 	StaticJsonDocument<WS_BUFFER_SIZE> wsData = prepData(wsOutGoingDataType::POWER_READINGS);
-
-// 	if(xSemaphoreTake(DataHandler::getInstance().dequeMutex, DEQUE_MUTEX_TIMEOUT_MS))
+// 	if(xSemaphoreTake(periodicMutex, portMAX_DELAY))
 // 	{
-// 		if(!DataHandler::getInstance().wsDeque.empty())
+// 		logger.log(LogLevel::INFO, "MUTEX taken to fill...");
+// 		if(wsDequePeriodic.size() < 10)
 // 		{
-// 			const std::array<char, WS_BUFFER_SIZE>& jsonData =
-// 				DataHandler::getInstance().wsDeque.front();
-// 			DataHandler::getInstance().wsDeque.pop_front();
+// 			std::array<char, WS_BUFFER_SIZE> jsonBuffer;
+// 			size_t len = serializeJson(wsData, jsonBuffer.data(), jsonBuffer.size());
 
-// 			Serial.println("Sending Periodic data...->");
-// 			websocket->text(clientId, jsonData.data());
-
-// 			xSemaphoreGive(DataHandler::getInstance().dequeMutex);
-// 			_periodicFillRequest = true;
-// 		}
-// 		else
-// 		{
-// 			_periodicFillRequest = true;
-// 			xSemaphoreGive(DataHandler::getInstance().dequeMutex);
-// 		}
-// 	}
-// }
-
-// void DataHandler::periodicDataSender(void* pvParameter)
-// {
-// 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
-// 	DataHandler& instance = DataHandler::getInstance();
-// 	AsyncWebSocket* websocket = params->ws; // WebSocket instance from TestServer
-
-// 	while(true)
-// 	{
-// 		int result = xEventGroupWaitBits(EventHelper::wsClientEventGroup,
-// 										 static_cast<EventBits_t>(wsClientStatus::CONNECTED),
-// 										 pdFALSE, pdFALSE, portMAX_DELAY);
-// 		// Send data to all connected clients periodically
-// 		for(auto& client: websocket->getClients())
-// 		{
-// 			if(client.status() == WS_CONNECTED)
+// 			if(len > 0 && len < jsonBuffer.size())
 // 			{
-// 				instance.sendData(websocket, client.id());
+// 				wsDequePeriodic.push_back(jsonBuffer);
+// 				logger.log(LogLevel::INFO, "Added random data to wsDequePeriodic: ");
+// 				logger.log(LogLevel ::INFO, "MUTEX releasing from fill...");
+// 				xSemaphoreGive(periodicMutex);
 // 			}
 // 		}
 
-// 		if(instance._periodicFillRequest)
+// 		else
 // 		{
-// 			instance.fillDequeWithData();
-// 			instance._periodicFillRequest = false;
+// 			xSemaphoreGive(periodicMutex);
+// 			logger.log(LogLevel::ERROR, "releasing mutex without fill ");
 // 		}
-
-// 		vTaskDelay(3000 / portTICK_PERIOD_MS); // Send data every 3 seconds
 // 	}
+// 	wsData.clear();
 // }
-
-void DataHandler::fillDequeWithData()
-{
-	StaticJsonDocument<WS_BUFFER_SIZE> wsData = prepData(wsOutGoingDataType::POWER_READINGS);
-	if(xSemaphoreTake(dataEventMutex, portMAX_DELAY))
-	{
-		if(wsDeque.size() < 10)
-		{
-			std::array<char, WS_BUFFER_SIZE> jsonBuffer;
-			size_t len = serializeJson(wsData, jsonBuffer.data(), jsonBuffer.size());
-
-			if(len > 0 && len < jsonBuffer.size())
-			{
-				wsDeque.push_back(jsonBuffer);
-				logger.log(LogLevel::INFO, "Added random data to wsDeque: ");
-
-				xSemaphoreGive(dataEventMutex);
-			}
-		}
-
-		else
-		{
-			logger.log(LogLevel::WARNING, "deque is filled");
-		}
-	}
-	wsData.clear();
-}
 
 void DataHandler::fillPeriodicDeque()
 {
 	StaticJsonDocument<WS_BUFFER_SIZE> wsData = prepData(wsOutGoingDataType::POWER_READINGS);
+
 	if(xSemaphoreTake(periodicMutex, portMAX_DELAY))
 	{
+		// logger.log(LogLevel::INFO, "MUTEX taken to fill...");
+
 		if(wsDequePeriodic.size() < 10)
 		{
+			// Buffer to hold the serialized JSON data
 			std::array<char, WS_BUFFER_SIZE> jsonBuffer;
 			size_t len = serializeJson(wsData, jsonBuffer.data(), jsonBuffer.size());
 
-			if(len > 0 && len < jsonBuffer.size())
+			// Check if the data was serialized successfully
+			if(len == 0)
 			{
-				wsDequePeriodic.push_back(jsonBuffer);
-				logger.log(LogLevel::INFO, "Added random data to wsDequePeriodic: ");
+				logger.log(LogLevel::ERROR, "Serialization failed: Empty JSON.");
+			}
+			else if(len >= jsonBuffer.size())
+			{
+				logger.log(LogLevel::ERROR, "Serialization failed: Buffer overflow.");
+			}
+			else
+			{
+				// Log the serialized JSON data for debugging
+				logger.log(LogLevel::INFO, "Serialized JSON:%s ", jsonBuffer.data());
 
-				xSemaphoreGive(periodicMutex);
+				// Check if the serialized data is valid UTF-8
+				if(isValidUTF8(jsonBuffer.data(), len))
+				{
+					// Push the serialized data into the deque
+					wsDequePeriodic.push_back(jsonBuffer);
+					logger.log(LogLevel::INFO, "Added data to wsDequePeriodic.");
+				}
+				else
+				{
+					logger.log(LogLevel::ERROR, "Invalid UTF-8 data detected.");
+				}
 			}
 		}
-
 		else
 		{
-			logger.log(LogLevel::WARNING, "wsDequePeriodic is filled");
+			logger.log(LogLevel::ERROR, "Deque is full, cannot add more data.");
 		}
+
+		// Release the mutex
+		logger.log(LogLevel::INFO, "MUTEX releasing from fill...");
+		xSemaphoreGive(periodicMutex);
 	}
+	else
+	{
+		logger.log(LogLevel::WARNING, "Failed to acquire MUTEX for filling deque.");
+	}
+
+	// Clear the JSON document
 	wsData.clear();
 }
 
@@ -321,79 +269,179 @@ void DataHandler::periodicDataSender(void* pvParameter)
 		xEventGroupWaitBits(EventHelper::wsClientEventGroup,
 							static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE, pdFALSE,
 							portMAX_DELAY);
-
+		logger.log(LogLevel::INFO, "websocket client connected..");
 		if(instance._periodicFillRequest)
 		{
+			logger.log(LogLevel::INFO, "delegating to fill  deque...");
 			instance._periodicFillRequest = false; // Reset the request flag
 			instance.fillPeriodicDeque();
 		}
 
-		xEventGroupWaitBits(EventHelper::wsClientEventGroup,
-							static_cast<EventBits_t>(wsClientUpdate::GET_READING), pdFALSE, pdFALSE,
-							portMAX_DELAY);
+		// xEventGroupWaitBits(EventHelper::wsClientEventGroup,
+		// 					static_cast<EventBits_t>(wsClientUpdate::GET_READING), pdFALSE, pdFALSE,
+		// 					portMAX_DELAY);
 
 		for(auto& client: websocket->getClients())
 		{
 			if(client.status() == WS_CONNECTED)
 			{
+				logger.log(LogLevel::INFO, "delegating to send peridic data..");
 				instance.sendData(websocket, client.id());
 			}
 		}
 
-		vTaskDelay(5000 / portTICK_PERIOD_MS); // Send data every 3 seconds
+		vTaskDelay(2000 / portTICK_PERIOD_MS); // Send data every 3 seconds
 	}
 }
 
-void DataHandler::wsDataProcessor(void* pVparamter)
+// void DataHandler::sendData(AsyncWebSocket* websocket, int clientId)
+// {
+// 	if(xSemaphoreTake(periodicMutex, PERIODIC_MUTEX_TIMEOUT_MS))
+// 	{
+// 		// logger.log(LogLevel::INFO, "MUTEX taken to send...");
+// 		if(!wsDequePeriodic.empty())
+// 		{
+// 			const std::array<char, WS_BUFFER_SIZE>& jsonData = wsDequePeriodic.front();
+// 			wsDequePeriodic.pop_front();
+// 			websocket->text(clientId, jsonData.data());
+// 			// logger.log(LogLevel ::SUCCESS, "a new data send...");
+// 			_periodicFillRequest = true;
+// 			xSemaphoreGive(periodicMutex);
+// 			// logger.log(LogLevel::INFO, "MUTEX released after send...");
+// 		}
+
+// 		else
+// 		{
+// 			logger.log(LogLevel::ERROR, "releasing mutex without send...,deque is empty ");
+// 			xSemaphoreGive(periodicMutex);
+// 			_periodicFillRequest = true;
+// 		}
+// 	}
+// 	else
+// 	{
+// 		logger.log(LogLevel::WARNING, "Timeout to acquire  mutex; cannot send data.");
+// 		_periodicFillRequest = true;
+// 	}
+// }
+
+bool DataHandler::isValidUTF8(const char* data, size_t len)
 {
-	DataHandler* instance = static_cast<DataHandler*>(pVparamter);
-	WebSocketMessage wsMsg;
-
-	while(true)
+	for(size_t i = 0; i < len; i++)
 	{
-		int result = xEventGroupWaitBits(EventHelper::wsClientEventGroup,
-										 static_cast<EventBits_t>(wsClientStatus::DATA), pdFALSE,
-										 pdFALSE, portMAX_DELAY);
-		if((result & static_cast<EventBits_t>(wsClientStatus::DATA)) != 0)
-		{
-			if(xQueueReceive(instance->WebsocketDataQueue, &wsMsg, QUEUE_TIMEOUT_MS))
-			{
-				logger.log(LogLevel::INFO, "Processing WebSocket data in DataHandler task");
-				instance->processWsMessage(wsMsg);
-			}
-
-			EventHelper::clearBits(wsClientStatus::DATA);
-		}
-
-		vTaskDelay(200 / portTICK_PERIOD_MS); // Add a delay to allow other tasks to run
+		unsigned char c = static_cast<unsigned char>(data[i]);
+		if(c <= 0x7F)
+			continue; // ASCII
+		if((c >> 5) == 0x6)
+			i++; // 2-byte sequence
+		else if((c >> 4) == 0xE)
+			i += 2; // 3-byte sequence
+		else if((c >> 3) == 0x1E)
+			i += 3; // 4-byte sequence
+		else
+			return false; // Invalid UTF-8
 	}
-
-	vTaskDelete(NULL);
+	return true;
 }
+
+// void DataHandler::sendData(AsyncWebSocket* websocket, int clientId)
+// {
+// 	StaticJsonDocument<WS_BUFFER_SIZE> doc;
+// 	// Prepare the JSON document
+// 	// StaticJsonDocument<WS_BUFFER_SIZE> doc = prepData(wsOutGoingDataType::POWER_READINGS);
+// 	int randomCurrentInput = random(20, 100);
+// 	int randomCurrentOutput = random(20, 100);
+// 	int randomVoltageInput = random(200, 240);
+// 	int randomVoltageOutput = random(200, 240);
+// 	float randomPowerFactorInput = random(80, 100) / 100.0;
+// 	float randomPowerFactorOutput = random(80, 100) / 100.0;
+// 	int randomWattageInput = random(1000, 5000);
+// 	int randomWattageOutput = random(1000, 5000);
+
+// 	// Populate the JSON document with these random values
+// 	doc["inputCurrent"] = randomCurrentInput;
+// 	doc["outputCurrent"] = randomCurrentOutput;
+// 	doc["inputVoltage"] = randomVoltageInput;
+// 	doc["outputVoltage"] = randomVoltageOutput;
+// 	doc["inputPowerFactor"] = randomPowerFactorInput;
+// 	doc["outputPowerFactor"] = randomPowerFactorOutput;
+// 	doc["inputWattage"] = randomWattageInput;
+// 	doc["outputWattage"] = randomWattageOutput;
+
+// 	const size_t len = measureJson(doc);
+
+// 	AsyncWebSocketMessageBuffer* buffer = websocket->makeBuffer(len);
+// 	if(!buffer)
+// 	{
+// 		logger.log(LogLevel::ERROR, "Failed to create WebSocket buffer");
+// 		return;
+// 	}
+// 	if(buffer)
+// 	{
+// 		serializeJson(doc, buffer->get(), len);
+// 		websocket->text(clientId, buffer);
+// 		logger.log(LogLevel::SUCCESS, "finally send data through websocket buffer...");
+// 	}
+// 	// Serialize the JSON document into the buffer
+
+// 	// Queue the message for sending
+// 	// websocket->client(clientId)->_queueMessage(buffer, WS_TEXT, false);
+
+// 	// Clean up
+// 	delete buffer;
+// }
 
 void DataHandler::sendData(AsyncWebSocket* websocket, int clientId)
 {
-	if(xSemaphoreTake(periodicMutex, portMAX_DELAY))
-	{
-		if(!wsDeque.empty())
-		{
-			const std::array<char, WS_BUFFER_SIZE>& jsonData = wsDeque.front();
-			wsDeque.pop_front();
-			_periodicFillRequest = true;
-			xSemaphoreGive(periodicMutex);
+	StaticJsonDocument<WS_BUFFER_SIZE> doc;
 
-			// Send data to the client
-			websocket->text(clientId, jsonData.data());
-		}
-		else
-		{
-			xSemaphoreGive(periodicMutex);
-		}
+	int randomCurrentInput = random(20, 100);
+	int randomCurrentOutput = random(20, 100);
+	int randomVoltageInput = random(200, 240);
+	int randomVoltageOutput = random(200, 240);
+	float randomPowerFactorInput = random(80, 100) / 100.0;
+	float randomPowerFactorOutput = random(80, 100) / 100.0;
+	int randomWattageInput = random(1000, 5000);
+	int randomWattageOutput = random(1000, 5000);
+
+	// Populate the JSON document with these random values
+	doc["inputCurrent"] = randomCurrentInput;
+	doc["outputCurrent"] = randomCurrentOutput;
+	doc["inputVoltage"] = randomVoltageInput;
+	doc["outputVoltage"] = randomVoltageOutput;
+	doc["inputPowerFactor"] = randomPowerFactorInput;
+	doc["outputPowerFactor"] = randomPowerFactorOutput;
+	doc["inputWattage"] = randomWattageInput;
+	doc["outputWattage"] = randomWattageOutput;
+
+	std::array<char, WS_BUFFER_SIZE> jsonBuffer;
+	size_t len = serializeJson(doc, jsonBuffer.data(), jsonBuffer.size());
+
+	if(len == 0)
+	{
+		logger.log(LogLevel::ERROR, "Serialization failed: Empty JSON.");
+	}
+	else if(len >= jsonBuffer.size())
+	{
+		logger.log(LogLevel::ERROR, "Serialization failed: Buffer overflow.");
 	}
 	else
 	{
-		logger.log(LogLevel::WARNING, "Failed to acquire consumer mutex; cannot send data.");
+		// Log the serialized JSON data for debugging
+		logger.log(LogLevel::INFO, "Serialized JSON:%s ", jsonBuffer.data());
+
+		// Check if the serialized data is valid UTF-8
+		if(isValidUTF8(jsonBuffer.data(), len))
+		{
+			websocket->text(clientId, jsonBuffer.data());
+			logger.log(LogLevel ::SUCCESS, "a new data send...");
+		}
+		else
+		{
+			logger.log(LogLevel::ERROR, "Invalid UTF-8 data detected.");
+		}
 	}
+
+	doc.clear();
 }
 
 } // namespace Node_Core

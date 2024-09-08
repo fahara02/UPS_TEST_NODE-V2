@@ -128,7 +128,7 @@ void modbusRTUTask(void* pvParameters)
 	while(true)
 	{
 		// Log modbus task activities
-		Mycila::TaskMonitor.log();
+		// Mycila::TaskMonitor.log();
 
 		// Monitor and log the available free heap memory
 		size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_8BIT); // For standard heap (DRAM)
