@@ -11,7 +11,7 @@ DataHandler& DataHandler::getInstance()
 }
 
 DataHandler::DataHandler() :
-	_isReadingsRequested(false), _periodicFillRequest(false), _result(ProcessingResult::PENDING)
+	_isReadingsRequested(false), _periodicSendRequest(false), _result(ProcessingResult::PENDING)
 {
 	WebsocketDataQueue = xQueueCreate(10, sizeof(WebSocketMessage));
 	dataEventMutex = xSemaphoreCreateMutex();
@@ -34,15 +34,20 @@ void DataHandler::wsDataProcessor(void* pVparamter)
 		int result = xEventGroupWaitBits(EventHelper::wsClientEventGroup,
 										 static_cast<EventBits_t>(wsClientStatus::DATA), pdFALSE,
 										 pdFALSE, portMAX_DELAY);
+
+		logger.log(LogLevel::INTR, "DATA Bit is set,,,high priority task");
 		if((result & static_cast<EventBits_t>(wsClientStatus::DATA)) != 0)
 		{
 			if(xQueueReceive(instance->WebsocketDataQueue, &wsMsg, QUEUE_TIMEOUT_MS))
 			{
 				logger.log(LogLevel::INFO, "Processing WebSocket data in DataHandler task");
 				instance->processWsMessage(wsMsg);
+				EventHelper::clearBits(wsClientStatus::DATA);
 			}
-
-			EventHelper::clearBits(wsClientStatus::DATA);
+			else
+			{
+				logger.log(LogLevel::ERROR, "Queue timeout!!!!!");
+			}
 		}
 
 		vTaskDelay(200 / portTICK_PERIOD_MS); // Add a delay to allow other tasks to run
@@ -65,14 +70,15 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 	message[wsMsg.len] = '\0';
 
 	wsIncomingCommands cmd = getWebSocketCommand(message);
-
+	logger.log(LogLevel::INFO, "processing Message: %s", message);
 	if(cmd != wsIncomingCommands::INVALID_COMMAND && cmd != wsIncomingCommands::GET_READINGS)
 	{
 		handleWsIncomingCommands(cmd);
 	}
 	else if(cmd == wsIncomingCommands::GET_READINGS)
 	{
-		_periodicFillRequest = true;
+		_periodicSendRequest = true;
+		logger.log(LogLevel::INTR, "GET_READINGS command received, enabling periodic sending.");
 	}
 }
 
@@ -228,42 +234,36 @@ void DataHandler::fillPeriodicDeque()
 	wsData.clear();
 }
 
-void DataHandler::periodicDataSender(void* pvParameter)
-{
-	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
-	DataHandler& instance = DataHandler::getInstance();
-	AsyncWebSocket* websocket = params->ws; // WebSocket instance from TestServer
+// void DataHandler::periodicDataSender(void* pvParameter)
+// {
+// 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
+// 	DataHandler& instance = DataHandler::getInstance();
+// 	AsyncWebSocket* websocket = params->ws; // WebSocket instance from TestServer
 
-	while(true)
-	{
-		// Wait for connection status
-		// xEventGroupWaitBits(EventHelper::wsClientEventGroup,
-		// 					static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE, pdFALSE,
-		// 					portMAX_DELAY);
-		// logger.log(LogLevel::INFO, "websocket client connected..");
-		if(instance._periodicFillRequest)
-		{
-			logger.log(LogLevel::INFO, "delegating to fill  deque...");
-			instance._periodicFillRequest = false; // Reset the request flag
-			instance.fillPeriodicDeque();
-		}
+// 	while(true)
+// 	{
+// 		// Wait for connection status
+// 		// xEventGroupWaitBits(EventHelper::wsClientEventGroup,
+// 		// 					static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE, pdFALSE,
+// 		// 					portMAX_DELAY);
+// 		// logger.log(LogLevel::INFO, "websocket client connected..");
 
-		xEventGroupWaitBits(EventHelper::wsClientEventGroup,
-							static_cast<EventBits_t>(wsClientUpdate::GET_READING), pdFALSE, pdFALSE,
-							portMAX_DELAY);
+// 		xEventGroupWaitBits(EventHelper::wsClientEventGroup,
+// 							static_cast<EventBits_t>(wsClientUpdate::GET_READING), pdFALSE, pdFALSE,
+// 							portMAX_DELAY);
 
-		for(auto& client: websocket->getClients())
-		{
-			if(client.status() == WS_CONNECTED)
-			{
-				logger.log(LogLevel::INFO, "delegating to send peridic data..");
-				instance.sendData(websocket, client.id());
-			}
-		}
+// 		for(auto& client: websocket->getClients())
+// 		{
+// 			if(client.status() == WS_CONNECTED)
+// 			{
+// 				logger.log(LogLevel::INFO, "delegating to send peridic data..");
+// 				instance.sendData(websocket, client.id());
+// 			}
+// 		}
 
-		vTaskDelay(1000 / portTICK_PERIOD_MS); // Send data every 3 seconds
-	}
-}
+// 		vTaskDelay(1000 / portTICK_PERIOD_MS); // Send data every 3 seconds
+// 	}
+// }
 
 bool DataHandler::isValidUTF8(const char* data, size_t len)
 {
@@ -286,6 +286,7 @@ bool DataHandler::isValidUTF8(const char* data, size_t len)
 
 void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDataType type)
 {
+	EventBits_t bits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
 	StaticJsonDocument<WS_BUFFER_SIZE> doc;
 
 	if(type == wsOutGoingDataType::POWER_READINGS)
@@ -316,15 +317,55 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 
 		if(isValidUTF8(jsonBuffer.data(), len))
 		{
-			websocket->text(clientId, jsonBuffer.data());
-			logger.log(LogLevel ::SUCCESS, "a new data send...");
-			serializeJsonPretty(doc, Serial);
+			if(bits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
+			{
+				websocket->text(clientId, jsonBuffer.data());
+				logger.log(LogLevel ::SUCCESS, "a new data send...");
+				serializeJsonPretty(doc, Serial);
+			}
 		}
 		else
 		{
 			logger.log(LogLevel::ERROR, "Invalid UTF-8 data detected.");
 		}
 	}
+}
+
+void DataHandler::periodicDataSender(void* pvParameter)
+{
+	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
+	DataHandler& instance = DataHandler::getInstance();
+	AsyncWebSocket* websocket = params->ws; // WebSocket instance from TestServer
+
+	while(true)
+	{
+		// Wait for the GET_READING bit, but don't clear it after sending
+		EventBits_t eventBits = xEventGroupWaitBits(
+			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
+			pdFALSE, pdFALSE, portMAX_DELAY);
+
+		// Only proceed if periodic sending is enabled (checked via the internal flag)
+		if(instance._periodicSendRequest)
+		{
+			for(auto& client: websocket->getClients())
+			{
+				if(client.status() == WS_CONNECTED)
+				{
+					logger.log(LogLevel::INFO, "delegating to send periodic data..");
+					instance.sendData(websocket, client.id());
+				}
+			}
+
+			// Continue sending every 3 seconds or as needed
+			vTaskDelay(1000 / portTICK_PERIOD_MS);
+		}
+		else
+		{
+			// Brief delay to avoid busy-waiting if periodic sending is disabled
+			vTaskDelay(500 / portTICK_PERIOD_MS);
+		}
+	}
+	vTaskDelete(NULL);
 }
 
 } // namespace Node_Core

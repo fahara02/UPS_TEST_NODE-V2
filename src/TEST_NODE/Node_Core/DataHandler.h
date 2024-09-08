@@ -133,7 +133,7 @@ class DataHandler
 	SemaphoreHandle_t periodicMutex = NULL;
 
 	bool _isReadingsRequested;
-	bool _periodicFillRequest;
+	bool _periodicSendRequest;
 
 	static void periodicDataSender(void* pvParameter);
 

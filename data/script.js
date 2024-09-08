@@ -18,15 +18,16 @@ function initWebSocket() {
   websocket.onmessage = onWebSocketMessage;
   websocket.onerror = onWebSocketError;  
 }
+function onWebSocketError(event) {
+  console.error('WebSocket error: ', event);
+}
 
 window.addEventListener('beforeunload', () => {
   if (websocket && websocket.readyState === WebSocket.OPEN) {
     websocket.close();
   }
  });
-function onWebSocketError(event) {
-  console.error('WebSocket error: ', event);
-}
+
 // WebSocket open event
 function onWebSocketOpen(event) {
   console.log('WebSocket connection opened');

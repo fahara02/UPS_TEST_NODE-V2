@@ -414,7 +414,11 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 						  client->remoteIP().toString().c_str());
 			EventHelper::clearBits(wsClientStatus::DISCONNECTED);
 			EventHelper::setBits(wsClientStatus::CONNECTED);
-			pingTimer.attach(10, sendPing, client);
+			if(!pingTimer.active())
+			{
+				pingTimer.attach(10, sendPing, client);
+				Serial.println("Ping timer attached.");
+			}
 			break;
 
 		case WS_EVT_DISCONNECT:
@@ -422,7 +426,11 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 			EventHelper::clearBits(wsClientStatus::CONNECTED);
 			EventHelper::setBits(wsClientStatus::DISCONNECTED);
 			EventHelper::clearBits(wsClientUpdate::GET_READING);
-			pingTimer.detach();
+			if(pingTimer.active())
+			{
+				pingTimer.detach();
+				Serial.println("Ping timer detached.");
+			}
 			break;
 
 		case WS_EVT_DATA:
@@ -431,6 +439,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 
 			if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
 			{
+				EventHelper::setBits(wsClientStatus::DATA);
 				if(len >= WS_BUFFER_SIZE)
 				{
 					Serial.println("Received data exceeds buffer size; discarding message.");
@@ -442,8 +451,6 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 					client->text(errorStr);
 					return;
 				}
-
-				EventHelper::setBits(wsClientStatus::DATA);
 
 				WebSocketMessage wsMsg;
 				memcpy(wsMsg.data, data, len);
@@ -459,12 +466,20 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 					if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
 					{
 						EventHelper::setBits(wsClientUpdate::GET_READING);
-						Serial.printf("Message from client: %s\n", wsMsg.data);
-						StaticJsonDocument<256> ackMsg;
-						ackMsg["SUCCESS"] = "Received Get Readings Command";
-						String ackStr;
-						serializeJson(ackMsg, ackStr);
-						client->text(ackStr);
+						if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
+									  QUEUE_TIMEOUT_MS) == pdTRUE)
+						{
+							Serial.printf("Message from client: %s\n", wsMsg.data);
+							StaticJsonDocument<256> ackMsg;
+							ackMsg["SUCCESS"] = "Received Get Readings Command";
+							String ackStr;
+							serializeJson(ackMsg, ackStr);
+							client->text(ackStr);
+						}
+						else
+						{
+							Serial.println("Failed to enqueue WebSocket message within timeout.");
+						}
 					}
 					else
 					{
