@@ -79,6 +79,10 @@ static const char* wsDataTypeToString(wsOutGoingDataType type)
 namespace Node_Core
 {
 static constexpr size_t WS_BUFFER_SIZE = 256;
+static constexpr TickType_t QUEUE_TIMEOUT_MS = pdMS_TO_TICKS(100);
+static constexpr TickType_t DATABIT_TIMEOUT_MS = pdMS_TO_TICKS(200);
+static constexpr TickType_t CLIENT_CONNECT_TIMEOUT_MS = pdMS_TO_TICKS(1000);
+
 struct WebSocketMessage
 {
 	uint8_t data[WS_BUFFER_SIZE];

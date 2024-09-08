@@ -433,7 +433,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 
 				if(xEventGroupWaitBits(EventHelper::wsClientEventGroup,
 									   static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE,
-									   pdFALSE, portMAX_DELAY))
+									   pdFALSE, CLIENT_CONNECT_TIMEOUT_MS))
 				{
 					if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
 					{
@@ -466,7 +466,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 					{
 						// Enqueue message for processing
 						if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
-									  pdMS_TO_TICKS(100)) != pdPASS)
+									  QUEUE_TIMEOUT_MS) != pdPASS)
 						{
 							Serial.println("Failed to enqueue WebSocket message within timeout.");
 						}

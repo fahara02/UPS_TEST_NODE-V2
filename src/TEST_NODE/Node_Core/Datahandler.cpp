@@ -40,7 +40,7 @@ void DataHandler::wsDataProcessor(void* pVparamter)
 				instance->_isReadingsRequested = false;
 			}
 
-			if(xQueueReceive(instance->WebsocketDataQueue, &wsMsg, 100 / portTICK_PERIOD_MS))
+			if(xQueueReceive(instance->WebsocketDataQueue, &wsMsg, QUEUE_TIMEOUT_MS))
 			{
 				logger.log(LogLevel::INFO, "Processing WebSocket data in DataHandler task");
 				instance->processWsMessage(wsMsg);
