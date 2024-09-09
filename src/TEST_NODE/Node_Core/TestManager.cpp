@@ -2,6 +2,7 @@
 #include "BackupTest.h"
 #include "TesterMemory.h"
 #include "EventHelper.h"
+#include "HPTSettings.h"
 
 extern Logger& logger;
 
@@ -157,25 +158,22 @@ void TestManager::configureInterrupts()
 void TestManager::createManagerTasks()
 {
 	logger.log(LogLevel::INFO, "Testmanager creating its own task");
-	xTaskCreatePinnedToCore(TestManagerTask, "MainTestManager", _cfgTask.mainTest_taskStack, NULL,
-							2, &TestManagerTaskHandle, _cfgTask.mainTest_taskCore);
+	xTaskCreatePinnedToCore(TestManagerTask, "MainTestManager", TestManager_Stack, NULL,
+							TestManager_Priority, &TestManagerTaskHandle, testManager_CORE);
 	logger.log(LogLevel::SUCCESS, "Testmanager task created");
 }
 void TestManager::createISRTasks()
 {
 	logger.log(LogLevel::INFO, "Testmanager creating its ISR task");
-	xTaskCreatePinnedToCore(onMainsPowerLossTask, "MainslossISRTask", _cfgTask.mainsISR_taskStack,
-							NULL, _cfgTask.mainsISR_taskIdlePriority, &ISR_MAINS_POWER_LOSS,
-							_cfgTask.mainsISR_taskCore);
+	xTaskCreatePinnedToCore(onMainsPowerLossTask, "MainslossISRTask", MainLossISR_Stack, NULL,
+							MainLossISR_Priority, &ISR_MAINS_POWER_LOSS, MainLossISR_CORE);
 
 	logger.log(LogLevel::SUCCESS, "ISR1 task created");
-	xTaskCreatePinnedToCore(onUPSPowerGainTask, "UPSgainISRTask", _cfgTask.upsISR_taskStack, NULL,
-							_cfgTask.upsISR_taskIdlePriority, &ISR_UPS_POWER_GAIN,
-							_cfgTask.upsISR_taskCore);
+	xTaskCreatePinnedToCore(onUPSPowerGainTask, "UPSgainISRTask", UPSgainISR_Stack, NULL,
+							UPSgainISR_Priority, &ISR_UPS_POWER_GAIN, UPSgainISR_CORE);
 	logger.log(LogLevel::SUCCESS, "ISR2 task created");
-	xTaskCreatePinnedToCore(onUPSPowerLossTask, "UPSLossISRTask", _cfgTask.upsISR_taskStack, NULL,
-							_cfgTask.upsISR_taskIdlePriority, &ISR_UPS_POWER_LOSS,
-							_cfgTask.upsISR_taskCore);
+	xTaskCreatePinnedToCore(onUPSPowerLossTask, "UPSLossISRTask", UPSlossISR_Stack, NULL,
+							UPSloss_Priority, &ISR_UPS_POWER_LOSS, UPSloss_CORE);
 	logger.log(LogLevel::SUCCESS, "ISR3 task created");
 	logger.log(LogLevel::SUCCESS, "All ISR task Created");
 }
