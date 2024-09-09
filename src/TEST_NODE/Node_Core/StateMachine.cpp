@@ -6,42 +6,27 @@
 #include <iostream>
 #include "pgmspace.h"
 #include "DataHandler.h"
+#include "TestManager.h"
 
 using namespace Node_Core;
 extern Logger& logger;
-extern xSemaphoreHandle state_mutex;
+
 namespace Node_Core
 {
 Preferences preferences;
 
 StateMachine::StateMachine() :
-	_old_state(State::DEVICE_ON), current_state(State::DEVICE_ON), _dataCapturedFlag(false),
-	_retryCount(0)
+	_old_state(State::DEVICE_ON), _currentState(State::DEVICE_ON), _deviceMode(TestMode::MANUAL),
+	_dataCapturedFlag(false), _retryCount(0)
 {
-	// preferences.begin("state_store", true);
-	// uint32_t saved_state =
-	// 	preferences.getUInt("last_state", static_cast<uint32_t>(State::DEVICE_ON));
-	// preferences.end();
-	// if(isValidState(saved_state))
-	// {
-	// 	current_state.store(static_cast<State>(saved_state));
-	// }
-	// else
-	// {
-	// 	current_state.store(getDefaultStateFromConfig()); // Default state from menuconfig
-	// 	Serial.println("No valid previous state found. Using default state from menuconfig.");
-	// }
-	// state_mutex = xSemaphoreCreateMutex();
-	// if (state_mutex == NULL) {
-	//   logger.log(LogLevel::ERROR, "State mutex creation failed!");
-	// }
-}
-void StateMachine::saveCurrentStateToNVS()
-{
-	preferences.begin("state_store", false); // Open preferences in write mode
-	preferences.putUInt("last_state",
-						static_cast<uint32_t>(current_state.load())); // Save current state
-	preferences.end(); // Close preferences
+	eventQueue = xQueueCreate(10, sizeof(Event)); // Adjust size as needed
+
+	if(eventQueue == NULL)
+	{
+		logger.log(LogLevel::ERROR, "Failed to create event queue");
+	}
+
+	xTaskCreate(eventProcessorTask, "EventProcessor", 2048, this, 4, &eventProcessortaskhandle);
 }
 
 bool StateMachine::isValidState(uint32_t state)
@@ -58,37 +43,15 @@ StateMachine& StateMachine::getInstance()
 
 void StateMachine::setState(State new_state)
 {
-	current_state.store(new_state);
-	// saveCurrentStateToNVS();
-
+	_currentState.store(new_state);
 	NotifyStateChanged(new_state);
-
-	// Take the mutex to ensure exclusive access
-	// if (xSemaphoreTake(state_mutex, portMAX_DELAY) == pdTRUE) {
-	//   // Perform the atomic state update
-	//   current_state.store(new_state);
-	//   xSemaphoreGive(state_mutex);
-	// } else {
-	//   // Handle error: Failed to take mutex
-	//   // For example, use a watchdog or error log
-	// }
 }
 
 State StateMachine::getCurrentState() const
 {
-	State state;
-	state = current_state.load();
-	// Take the mutex to ensure exclusive access
-	// if (xSemaphoreTake(state_mutex, portMAX_DELAY) == pdTRUE) {
-	//   // Read the atomic state
-	//   state = current_state.load();
-	//   xSemaphoreGive(state_mutex);
-	// } else {
-	//   // Handle error: Failed to take mutex
-	//   state = State::DEVICE_ON;  // or some default state
-	// }
-	return state;
+	return _currentState.load();
 }
+
 bool StateMachine::isAutoMode() const
 {
 	return _deviceMode.load() == TestMode::AUTO;
@@ -97,12 +60,6 @@ bool StateMachine::isAutoMode() const
 bool StateMachine::isManualMode() const
 {
 	return _deviceMode.load() == TestMode::MANUAL;
-}
-
-void StateMachine::NotifyStateChanged(State state)
-{
-	DataHandler::getInstance().updateState(state);
-	logger.log(LogLevel::INFO, "Notifying others for new %s state", stateToString(state));
 }
 
 void StateMachine::setMode(TestMode new_mode)
@@ -118,12 +75,57 @@ void StateMachine::setMode(TestMode new_mode)
 		logger.log(LogLevel::SUCCESS, "DEVICE MODE SET TO MANUAL");
 	}
 }
+void StateMachine::NotifyStateChanged(State state)
+{
+	DataHandler::getInstance().updateState(state);
+	TestSync::getInstance().updateState(state);
+	TestManager::getInstance().updateState(state);
+	if(isAutoMode())
+	{
+		NotifyModeChanged(TestMode::AUTO);
+	}
+	else if(isManualMode())
+	{
+		NotifyModeChanged(TestMode::MANUAL);
+	}
+
+	logger.log(LogLevel::INFO, "Notifying others for new %s state", stateToString(state));
+}
+
+void StateMachine::NotifyModeChanged(TestMode mode)
+{
+	DataHandler::getInstance().updateMode(mode);
+	TestSync::getInstance().updateMode(mode);
+	TestManager::getInstance().updateMode(mode);
+}
 
 void StateMachine::handleEvent(Event event)
 {
+	if(xQueueSend(eventQueue, &event, 0) != pdPASS)
+	{
+		logger.log(LogLevel::ERROR, "Failed to queue event %s", eventToString(event));
+	}
+}
+
+void StateMachine::eventProcessorTask(void* params)
+{
+	StateMachine* instance = static_cast<StateMachine*>(params);
+
+	while(true)
+	{
+		Event event;
+		if(xQueueReceive(instance->eventQueue, &event, portMAX_DELAY) == pdPASS)
+		{
+			instance->processEvent(event);
+		}
+	}
+}
+
+void StateMachine::processEvent(Event event)
+{
 	logger.log(LogLevel::INFO, "Handling event %s", eventToString(event));
 
-	State old_state = current_state.load(); // Ensure atomic access to current_state
+	State old_state = _currentState.load(); // Ensure atomic access to current_state
 
 	if(event == Event::SYSTEM_FAULT)
 	{
@@ -162,7 +164,7 @@ void StateMachine::handleEvent(Event event)
 	// Manually search for the transition
 	for(const auto& transition: transition_table)
 	{
-		if(transition.current_state == current_state && transition.event == event)
+		if(transition.current_state == _currentState && transition.event == event)
 		{
 			if(transition.guard())
 			{ // Check guard condition
@@ -181,7 +183,7 @@ void StateMachine::handleEvent(Event event)
 				transition.action(); // Execute the associated action
 
 				// Additional logging for special cases
-				if(event == Event::TEST_TIME_END && current_state == State::CURRENT_TEST_CHECK)
+				if(event == Event::TEST_TIME_END && _currentState == State::CURRENT_TEST_CHECK)
 				{
 					logger.log(LogLevel::INFO, "TEST_TIME_END handled in CURRENT_TEST_CHECK");
 				}
@@ -193,7 +195,7 @@ void StateMachine::handleEvent(Event event)
 
 	// No valid transition found
 	logger.log(LogLevel::WARNING, "No transition found for event %s in state %s",
-			   eventToString(event), stateToString(current_state.load()));
+			   eventToString(event), stateToString(_currentState.load()));
 }
 
 void StateMachine::handleError()

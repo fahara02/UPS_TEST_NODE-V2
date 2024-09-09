@@ -133,6 +133,10 @@ class DataHandler
 	{
 		_currentState.store(state);
 	}
+	void updateMode(TestMode mode)
+	{
+		_deviceMode.store(mode);
+	}
 
   private:
 	DataHandler();
@@ -144,7 +148,9 @@ class DataHandler
 
 	ProcessingResult _result;
 	StaticJsonDocument<WS_BUFFER_SIZE> _blankDoc;
-	std::atomic<State> _currentState;
+
+	std::atomic<State> _currentState{State::DEVICE_ON};
+	std::atomic<TestMode> _deviceMode{TestMode::MANUAL};
 
 	static void wsDataProcessor(void* pVparamter);
 	TaskHandle_t dataTaskHandler = NULL;

@@ -42,8 +42,6 @@ SemaphoreHandle_t mainLoss = NULL;
 SemaphoreHandle_t upsLoss = NULL;
 SemaphoreHandle_t upsGain = NULL;
 
-xSemaphoreHandle state_mutex = NULL;
-
 TaskHandle_t modbusRTUTaskHandle = NULL;
 TaskHandle_t switchTestTaskHandle = NULL;
 TaskHandle_t backupTestTaskHandle = NULL;

@@ -26,7 +26,7 @@ class TestSync
   public:
 	static TestSync& getInstance();
 	void init();
-	State refreshState();
+
 	void reportEvent(Event e);
 
 	void parseIncomingJson(JsonVariant json);
@@ -80,6 +80,15 @@ class TestSync
 		return stateMachine.isAutoMode() ? TestMode::AUTO : TestMode::MANUAL;
 	}
 
+	void updateState(State state)
+	{
+		_currentState.store(state);
+	}
+	void updateMode(TestMode mode)
+	{
+		_deviceMode.store(mode);
+	}
+
   private:
 	TestSync();
 
@@ -87,7 +96,8 @@ class TestSync
 	bool _enableCurrentTest = false;
 	bool parsingOngoing = false;
 
-	std::atomic<State> _currentState;
+	std::atomic<State> _currentState{State::DEVICE_ON};
+	std::atomic<TestMode> _deviceMode{TestMode::MANUAL};
 
 	RequiredTest _testList[MAX_TEST];
 	int _testCount = 0;
@@ -109,7 +119,7 @@ class TestSync
 	void stopTest(TestType test);
 	void stopAllTest();
 	void transferTest();
-	void updateMode(TestMode mode);
+
 	void parseTestJson(JsonObject jsonObj);
 	void processNextJson();
 	void checkForDeletedTests();

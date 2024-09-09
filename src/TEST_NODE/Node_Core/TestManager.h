@@ -36,7 +36,15 @@ class TestManager
 	void initializeTestInstances();
 	void UpdateSettings();
 
-	State refreshState();
+
+	void updateState(State state)
+	{
+		_currentState.store(state);
+	}
+	void updateMode(TestMode mode)
+	{
+		_deviceMode.store(mode);
+	}
 
   private:
 	TestManager();
@@ -48,6 +56,8 @@ class TestManager
 	uint8_t _numTest = 0;
 
 	std::atomic<State> _currentState{State::DEVICE_ON};
+	std::atomic<TestMode> _deviceMode{TestMode::MANUAL};
+
 	UPSTestRun _testList[MAX_TEST];
 
 	SetupSpec _cfgSpec;

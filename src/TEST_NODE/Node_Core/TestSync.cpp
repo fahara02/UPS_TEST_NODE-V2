@@ -24,7 +24,6 @@ TestSync::TestSync() :
 
 void TestSync::init()
 {
-	refreshState();
 	Node_Core::EventHelper::initializeEventGroups();
 
 	createSynctask();
@@ -50,18 +49,9 @@ void TestSync::reportEvent(Event event)
 	stateMachine.handleEvent(event);
 }
 
-State TestSync::refreshState()
-{
-	_currentState.store(stateMachine.getCurrentState());
-	return _currentState.load();
-}
 State getState()
 {
 	return stateMachine.getCurrentState();
-}
-void TestSync::updateMode(TestMode mode)
-{
-	stateMachine.setMode(mode);
 }
 
 bool TestSync::iscmdAcknowledged()
@@ -492,7 +482,6 @@ void TestSync::userUpdateObserverTask(void* pvParameters)
 
 		if((updateBits & static_cast<EventBits_t>(UserUpdateEvent::NEW_TEST)) != 0)
 		{
-			instance.refreshState();
 			instance.enableCurrentTest();
 
 			TestManager& manager = TestManager::getInstance();

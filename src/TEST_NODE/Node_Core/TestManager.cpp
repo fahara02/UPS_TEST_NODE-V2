@@ -72,13 +72,6 @@ void TestManager::UpdateSettings()
 	logger.log(LogLevel::SUCCESS, "Testmanager data updated");
 }
 
-State TestManager::refreshState()
-{
-	TestSync& SyncTest = TestSync::getInstance();
-	_currentState.store(SyncTest.refreshState());
-	return _currentState.load();
-}
-
 void TestManager::addTests(RequiredTest testList[], int testNum)
 {
 	if(testNum > MAX_TEST)
@@ -211,11 +204,11 @@ void TestManager::TestManagerTask(void* pvParameters)
 							  pdTRUE, portMAX_DELAY))
 	{
 		TestManager& instance = TestManager::getInstance();
-		State managerState = instance.refreshState();
+
+		State managerState = instance._currentState;
 
 		if(managerState == State::DEVICE_READY)
 		{
-			managerState = instance.refreshState();
 			logger.log(LogLevel::INFO, "Manager state is:%s", stateToString(managerState));
 			vTaskDelay(pdMS_TO_TICKS(100));
 		}
@@ -224,14 +217,11 @@ void TestManager::TestManagerTask(void* pvParameters)
 		{
 			if(instance.isTestPendingAndNotStarted(instance._testList[i]))
 			{
-				managerState = instance.refreshState();
-
 				TestType testType = instance._testList[i].testRequired.testType;
 				bool success = false;
 
 				if(testType == TestType::SwitchTest)
 				{
-					managerState = instance.refreshState();
 					SwitchTestData dataBuff1;
 					success = instance.handleTestState(SwitchTest::getInstance(), managerState, i,
 													   &dataBuff1);
@@ -254,7 +244,6 @@ void TestManager::TestManagerTask(void* pvParameters)
 				}
 				else if(testType == TestType::BackupTest)
 				{
-					managerState = instance.refreshState();
 					BackupTestData dataBuff2;
 					success = instance.handleTestState(BackupTest::getInstance(), managerState, i,
 													   &dataBuff2);
