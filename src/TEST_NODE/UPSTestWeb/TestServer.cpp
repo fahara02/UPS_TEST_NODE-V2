@@ -2,6 +2,8 @@
 #include "AsyncJson.h"
 #include <map>
 #include <Ticker.h>
+#include "HPTSettings.h"
+
 Ticker pingTimer;
 extern TaskHandle_t PeriodicDataHandle;
 // Other includes as necessary
@@ -282,7 +284,8 @@ void TestServer::initWebSocket()
 
 void TestServer::createServerTask()
 {
-	xTaskCreatePinnedToCore(wsClientCleanup, "WSCleanupTask", 4096, _ws, 5, NULL, 0);
+	xTaskCreatePinnedToCore(wsClientCleanup, "WSCleanupTask", WSCleanup_Stack, _ws,
+							WSCleanup_Priority, NULL, WSCleanup_CORE);
 }
 
 void TestServer::createPeriodicTask()
@@ -292,8 +295,9 @@ void TestServer::createPeriodicTask()
 	periodicTaskParams.ws = _ws;
 
 	// Pass the pointer to the member struct
-	xTaskCreatePinnedToCore(dataHandler.periodicDataSender, "wsDataSender", 4096,
-							&periodicTaskParams, 1, &PeriodicDataHandle, 1);
+	xTaskCreatePinnedToCore(dataHandler.periodicDataSender, "wsDataSender", testSync_Stack,
+							&periodicTaskParams, periodicDataSender_Priority, &PeriodicDataHandle,
+							periodicDataSender_CORE);
 }
 
 void TestServer::wsClientCleanup(void* pvParameters)

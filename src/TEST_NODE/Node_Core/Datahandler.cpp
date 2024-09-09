@@ -1,4 +1,5 @@
 #include "DataHandler.h"
+#include "HPTSettings.h"
 
 using namespace Node_Core;
 extern Logger& logger;
@@ -20,8 +21,8 @@ DataHandler::DataHandler() :
 
 void DataHandler::init()
 {
-	xTaskCreatePinnedToCore(wsDataProcessor, "ProcessWsData", 8192, this, 4, &dataTaskHandler,
-							tskNO_AFFINITY);
+	xTaskCreatePinnedToCore(wsDataProcessor, "ProcessWsData", wsDataProcessor_Stack, this,
+							wsDataProcessor_Priority, &dataTaskHandler, wsDataProcessor_CORE);
 }
 
 void DataHandler::wsDataProcessor(void* pVparamter)
