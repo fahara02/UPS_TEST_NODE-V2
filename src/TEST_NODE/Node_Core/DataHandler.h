@@ -93,7 +93,7 @@ namespace Node_Core
 {
 static constexpr size_t WS_BUFFER_SIZE = 256;
 
-static constexpr TickType_t QUEUE_TIMEOUT_MS = pdMS_TO_TICKS(100);
+static constexpr TickType_t QUEUE_TIMEOUT_MS = pdMS_TO_TICKS(10);
 static constexpr TickType_t DATABIT_TIMEOUT_MS = pdMS_TO_TICKS(200);
 
 static constexpr TickType_t CLIENT_CONNECT_TIMEOUT_MS = pdMS_TO_TICKS(1000);
@@ -138,6 +138,8 @@ class DataHandler
 		_deviceMode.store(mode);
 	}
 
+	TaskHandle_t dataTaskHandler = NULL;
+
   private:
 	DataHandler();
 	bool _updateLedStatus;
@@ -153,13 +155,16 @@ class DataHandler
 	std::atomic<TestMode> _deviceMode{TestMode::MANUAL};
 
 	static void wsDataProcessor(void* pVparamter);
-	TaskHandle_t dataTaskHandler = NULL;
+	;
 
 	// data handling functions
 	void sendData(AsyncWebSocket* websocket, int clientId,
 				  wsOutGoingDataType type = wsOutGoingDataType::POWER_READINGS);
+	void sendData(AsyncWebSocketClient* client,
+				  wsOutGoingDataType type = wsOutGoingDataType::LED_STATUS);
 	void processWsMessage(WebSocketMessage& wsMsg);
 	void handleWsIncomingCommands(wsIncomingCommands cmd);
+	void handleUserCommand(UserCommandEvent command);
 
 	wsIncomingCommands getWebSocketCommand(const char* incomingCommand);
 	StaticJsonDocument<WS_BUFFER_SIZE> prepData(wsOutGoingDataType type);

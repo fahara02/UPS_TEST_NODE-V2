@@ -52,7 +52,7 @@ void TestManager::init()
 	}
 	UpdateSettings();
 	setupPins();
-	// createISRTasks();
+	createISRTasks();
 	initializeTestInstances();
 	createManagerTasks();
 	createTestTasks();

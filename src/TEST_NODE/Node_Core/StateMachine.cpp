@@ -20,15 +20,29 @@ StateMachine::StateMachine() :
 	_dataCapturedFlag(false), _retryCount(0)
 {
 	eventQueue = xQueueCreate(10, sizeof(Event)); // Adjust size as needed
-
+	modeQueue = xQueueCreate(10, sizeof(TestMode));
 	if(eventQueue == NULL)
 	{
 		logger.log(LogLevel::ERROR, "Failed to create event queue");
 	}
-
-	xTaskCreate(eventProcessorTask, "EventProcessor", 2048, this, 4, &eventProcessortaskhandle);
+	if(modeQueue == NULL)
+	{
+		logger.log(LogLevel::ERROR, "Failed to create mode queue");
+	}
 }
-
+void StateMachine::init()
+{
+	logger.log(LogLevel::INFO, "Creating EventProcessor task...");
+	if(xTaskCreatePinnedToCore(eventProcessorTask, "EventProcessor", 2048, this, 4,
+							   &eventProcessortaskhandle, 0) != pdPASS)
+	{
+		logger.log(LogLevel::ERROR, "Failed to create event processor task");
+	}
+	else
+	{
+		logger.log(LogLevel::INFO, "EventProcessor task created successfully");
+	}
+}
 bool StateMachine::isValidState(uint32_t state)
 {
 	return state >= static_cast<uint32_t>(State::DEVICE_ON) &&
@@ -67,6 +81,7 @@ void StateMachine::setMode(TestMode new_mode)
 	if(new_mode == TestMode::AUTO)
 	{
 		_deviceMode.store(TestMode::AUTO);
+
 		logger.log(LogLevel::SUCCESS, "DEVICE MODE SET TO AUTO");
 	}
 	else
@@ -74,6 +89,8 @@ void StateMachine::setMode(TestMode new_mode)
 		_deviceMode.store(TestMode::MANUAL);
 		logger.log(LogLevel::SUCCESS, "DEVICE MODE SET TO MANUAL");
 	}
+
+	NotifyModeChanged(new_mode);
 }
 void StateMachine::NotifyStateChanged(State state)
 {
@@ -98,7 +115,13 @@ void StateMachine::NotifyModeChanged(TestMode mode)
 	TestSync::getInstance().updateMode(mode);
 	TestManager::getInstance().updateMode(mode);
 }
-
+void StateMachine::handleMode(TestMode mode)
+{
+	if(xQueueSend(modeQueue, &mode, 0) != pdPASS)
+	{
+		logger.log(LogLevel::ERROR, "Failed to queue mode");
+	}
+}
 void StateMachine::handleEvent(Event event)
 {
 	if(xQueueSend(eventQueue, &event, 0) != pdPASS)
@@ -114,11 +137,19 @@ void StateMachine::eventProcessorTask(void* params)
 	while(true)
 	{
 		Event event;
+		TestMode mode;
 		if(xQueueReceive(instance->eventQueue, &event, portMAX_DELAY) == pdPASS)
 		{
+			logger.log(LogLevel::INTR, "new Event Received!! ");
 			instance->processEvent(event);
 		}
+		if(xQueueReceive(instance->modeQueue, &mode, portMAX_DELAY) == pdPASS)
+		{
+			instance->setMode(mode);
+		}
+		vTaskDelay(pdMS_TO_TICKS(100));
 	}
+	vTaskDelete(NULL);
 }
 
 void StateMachine::processEvent(Event event)

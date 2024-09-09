@@ -26,6 +26,7 @@ using namespace Node_Core;
 
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
+StateMachine& stateMachine = StateMachine::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
 UPSTesterSetup& TesterSetup = UPSTesterSetup::getInstance();
 DataHandler& wsDataHandler = DataHandler::getInstance();
@@ -42,6 +43,9 @@ SemaphoreHandle_t mainLoss = NULL;
 SemaphoreHandle_t upsLoss = NULL;
 SemaphoreHandle_t upsGain = NULL;
 
+TaskHandle_t ISR_MAINS_POWER_LOSS = NULL;
+TaskHandle_t ISR_UPS_POWER_GAIN = NULL;
+TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
 TaskHandle_t modbusRTUTaskHandle = NULL;
 TaskHandle_t switchTestTaskHandle = NULL;
 TaskHandle_t backupTestTaskHandle = NULL;
@@ -50,9 +54,7 @@ TaskHandle_t inputvoltageTestTaskHandle = NULL;
 TaskHandle_t waveformTestTaskHandle = NULL;
 TaskHandle_t tunepwmTestTaskHandle = NULL;
 TaskHandle_t TestManagerTaskHandle = NULL;
-TaskHandle_t ISR_MAINS_POWER_LOSS = NULL;
-TaskHandle_t ISR_UPS_POWER_GAIN = NULL;
-TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
+TaskHandle_t PeriodicDataHandle = NULL;
 
 QueueHandle_t TestManageQueue = NULL;
 QueueHandle_t SwitchTestDataQueue = NULL;
@@ -130,7 +132,7 @@ void modbusRTUTask(void* pvParameters)
 
 		// Monitor and log the available free heap memory
 		size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_8BIT); // For standard heap (DRAM)
-		logger.log(LogLevel::INFO, "Free heap byets: ", freeHeap);
+		// logger.log(LogLevel::INFO, "Free heap byets: ", freeHeap);
 
 		// mb.task();  // Uncomment when Modbus task needs to run
 
@@ -203,9 +205,9 @@ void setup()
 	TestManageQueue = xQueueCreate(messageQueueLength, sizeof(SetupTaskParams));
 	SwitchTestDataQueue = xQueueCreate(messageQueueLength, sizeof(SwitchTestData));
 	BackupTestDataQueue = xQueueCreate(messageQueueLength, sizeof(BackupTestData));
-
+	logger.log(LogLevel::INFO, "initiating statemachine");
+	stateMachine.init();
 	logger.log(LogLevel::INFO, "initiating test sync");
-
 	SyncTest.init();
 	logger.log(LogLevel::INFO, "initiating modbus");
 	modbusRTU_Init();

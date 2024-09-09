@@ -7,6 +7,7 @@
 #include "TestData.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
+#include <freertos/task.h>
 #include <atomic>
 #include "StateMachine.h"
 #include "NodeConstants.h"
@@ -30,7 +31,7 @@ class TestSync
 	void reportEvent(Event e);
 
 	void parseIncomingJson(JsonVariant json);
-	void handleUserCommand(UserCommandEvent command);
+	// void handleUserCommand(UserCommandEvent command);
 	void handleUserUpdate(UserUpdateEvent update);
 	void handleSyncCommand(SyncCommand command);
 	void handleTestEvent(Event e);
@@ -105,8 +106,6 @@ class TestSync
 	int _currentTestIndex = 0;
 
 	std::queue<JsonObject> jsonQueue;
-
-	StateMachine& stateMachine = StateMachine::getInstance();
 
 	void resetAllBits();
 	void createSynctask();

@@ -59,9 +59,9 @@ class StateMachine
 					guard};
 		}
 	};
-
+	void init();
 	void handleEvent(Event event);
-	void setMode(TestMode new_mode);
+	void handleMode(TestMode mode);
 
 	State getCurrentState() const;
 
@@ -84,6 +84,7 @@ class StateMachine
 	OnModeChangedCallback _modeChangeCallback;
 	bool isValidState(uint32_t state);
 
+	void setMode(TestMode new_mode);
 	void setState(State new_state);
 	void saveState(State new_state);
 
@@ -103,6 +104,8 @@ class StateMachine
 	static const Transition* getTransitionTable();
 
 	QueueHandle_t eventQueue;
+	QueueHandle_t modeQueue;
+
 	TaskHandle_t eventProcessortaskhandle = NULL;
 	static void eventProcessorTask(void* params);
 	void processEvent(Event event);

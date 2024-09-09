@@ -3,7 +3,7 @@
 #include <map>
 #include <Ticker.h>
 Ticker pingTimer;
-
+extern TaskHandle_t PeriodicDataHandle;
 // Other includes as necessary
 
 #define ETAG "\"" __DATE__ " " __TIME__ "\""
@@ -293,7 +293,7 @@ void TestServer::createPeriodicTask()
 
 	// Pass the pointer to the member struct
 	xTaskCreate(dataHandler.periodicDataSender, "PeriodicDataSender", 4096, &periodicTaskParams, 2,
-				nullptr);
+				&PeriodicDataHandle);
 }
 
 void TestServer::wsClientCleanup(void* pvParameters)

@@ -1,5 +1,6 @@
 #include "TestSync.h"
 #include "TestManager.h"
+#include "DataHandler.h"
 
 TestSync& TestSync::getInstance()
 {
@@ -45,13 +46,12 @@ void TestSync::createSynctask()
 
 void TestSync::reportEvent(Event event)
 {
-	logger.log(LogLevel::INFO, "REPORTING NEW STATE");
-	stateMachine.handleEvent(event);
+	StateMachine::getInstance().handleEvent(event);
 }
 
 State getState()
 {
-	return stateMachine.getCurrentState();
+	return StateMachine::getInstance().getCurrentState();
 }
 
 bool TestSync::iscmdAcknowledged()
@@ -290,10 +290,12 @@ void TestSync::handleUserUpdate(UserUpdateEvent update)
 		case UserUpdateEvent::NEW_TEST:
 			EventHelper::setBits(UserUpdateEvent::NEW_TEST);
 			EventHelper::clearBits(UserUpdateEvent::DELETE_TEST);
+
 			break;
 		case UserUpdateEvent::DELETE_TEST:
 			EventHelper::setBits(UserUpdateEvent::DELETE_TEST);
 			EventHelper::clearBits(UserUpdateEvent::NEW_TEST);
+
 			break;
 		case UserUpdateEvent::DATA_ENTRY:
 			EventHelper::setBits(UserUpdateEvent::DATA_ENTRY);
@@ -304,36 +306,6 @@ void TestSync::handleUserUpdate(UserUpdateEvent update)
 		default:
 			break;
 	}
-}
-void TestSync::handleUserCommand(UserCommandEvent command)
-{
-	EventBits_t commandBits = static_cast<EventBits_t>(command);
-	switch(command)
-	{
-		case UserCommandEvent ::PAUSE:
-			EventHelper::clearBits(UserCommandEvent::RESUME);
-			break;
-		case UserCommandEvent ::RESUME:
-			EventHelper::clearBits(UserCommandEvent::PAUSE);
-			break;
-		case UserCommandEvent ::AUTO:
-			EventHelper::clearBits(UserCommandEvent::MANUAL);
-
-			break;
-		case UserCommandEvent ::MANUAL:
-			EventHelper::clearBits(UserCommandEvent::AUTO);
-
-			break;
-		case UserCommandEvent ::START:
-			EventHelper::clearBits(UserCommandEvent::STOP);
-			break;
-		case UserCommandEvent ::STOP:
-			EventHelper::clearBits(UserCommandEvent::START);
-			break;
-		default:
-			break;
-	}
-	xEventGroupSetBits(EventHelper::userCommandEventGroup, commandBits);
 }
 
 void TestSync::handleSyncCommand(SyncCommand command)
@@ -385,7 +357,7 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 									  static_cast<EventBits_t>(UserCommandEvent::PAUSE) |
 									  static_cast<EventBits_t>(UserCommandEvent::RESUME);
 
-	State syncState = instance.stateMachine.getCurrentState();
+	State syncState = StateMachine::getInstance().getCurrentState();
 	logger.log(LogLevel::INFO, "Sync Class state is:%s", stateToString(syncState));
 
 	while(xEventGroupWaitBits(EventHelper::userCommandEventGroup, CMD_BITS_MASK, pdFALSE, pdFALSE,
@@ -396,7 +368,7 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 
 		if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::AUTO)) != 0)
 		{
-			StateMachine::getInstance().setMode(TestMode::AUTO);
+			StateMachine::getInstance().handleMode(TestMode::AUTO);
 			instance.handleSyncCommand(SyncCommand::START_OBSERVER);
 			instance.acknowledgeCMD();
 			logger.log(LogLevel::WARNING, "clearing AUTO command bits");
@@ -404,7 +376,7 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 		}
 		else if((cmdResult & static_cast<EventBits_t>(UserCommandEvent::MANUAL)) != 0)
 		{
-			StateMachine::getInstance().setMode(TestMode::MANUAL);
+			StateMachine::getInstance().handleMode(TestMode::MANUAL);
 			instance.handleSyncCommand(SyncCommand::STOP_OBSERVER);
 			instance.acknowledgeCMD();
 			logger.log(LogLevel::WARNING, "clearing MANUAL command bits");
@@ -417,7 +389,7 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			instance.reportEvent(Event::START);
 			logger.log(LogLevel::INFO, "Activating Manager--->");
 			instance.handleSyncCommand(SyncCommand::MANAGER_ACTIVE);
-			if(instance.stateMachine.isManualMode())
+			if(StateMachine::getInstance().isManualMode())
 			{
 				logger.log(LogLevel::INFO, "Starting first manual test--->");
 				instance.startTest(instance._testList[0].testType);
@@ -435,7 +407,7 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 			logger.log(LogLevel::INFO, "Reporting STOP Event--->");
 			instance.reportEvent(Event::STOP);
 
-			if(instance.stateMachine.isManualMode())
+			if(StateMachine::getInstance().isManualMode())
 			{
 				logger.log(LogLevel::INFO, "Stopping First test in manual Mode--->");
 				instance.stopTest(instance._testList[0].testType);
@@ -490,6 +462,8 @@ void TestSync::userUpdateObserverTask(void* pvParameters)
 			logger.log(LogLevel::TEST, "Invoking State Change...");
 			instance.reportEvent(Event::NEW_TEST);
 			vTaskDelay(pdMS_TO_TICKS(200));
+			xTaskNotify(DataHandler::getInstance().dataTaskHandler,
+						static_cast<uint32_t>(UserUpdateEvent::NEW_TEST), eNoAction);
 
 			logger.log(LogLevel::TEST, "Is state changed?");
 			instance.acknowledgeCMD();
@@ -501,6 +475,9 @@ void TestSync::userUpdateObserverTask(void* pvParameters)
 
 			logger.log(LogLevel::TEST, "Invoking State Change...");
 			instance.reportEvent(Event::DELETE_TEST);
+			xTaskNotify(DataHandler::getInstance().dataTaskHandler,
+						static_cast<uint32_t>(UserUpdateEvent::DELETE_TEST), eNoAction);
+
 			instance.acknowledgeCMD();
 			EventHelper::clearBits(UserUpdateEvent::DELETE_TEST);
 		}

@@ -2,6 +2,7 @@
 
 using namespace Node_Core;
 extern Logger& logger;
+extern TaskHandle_t PeriodicDataHandle;
 namespace Node_Core
 {
 DataHandler& DataHandler::getInstance()
@@ -24,8 +25,10 @@ void DataHandler::init()
 
 void DataHandler::wsDataProcessor(void* pVparamter)
 {
+	uint32_t ulNotificationValue;
 	DataHandler* instance = static_cast<DataHandler*>(pVparamter);
 	WebSocketMessage wsMsg;
+	AsyncWebSocketClient* client = wsMsg.client;
 
 	while(true)
 	{
@@ -34,6 +37,7 @@ void DataHandler::wsDataProcessor(void* pVparamter)
 										 pdFALSE, portMAX_DELAY);
 
 		logger.log(LogLevel::INTR, "DATA Bit is set,,,high priority task");
+
 		if((result & static_cast<EventBits_t>(wsClientStatus::DATA)) != 0)
 		{
 			if(xQueueReceive(instance->WebsocketDataQueue, &wsMsg, QUEUE_TIMEOUT_MS))
@@ -47,6 +51,16 @@ void DataHandler::wsDataProcessor(void* pVparamter)
 			{
 				logger.log(LogLevel::ERROR, "Queue timeout!!!!!");
 			}
+		}
+		BaseType_t notificationReceived =
+			xTaskNotifyWait(0x00, 0x00, &ulNotificationValue, portMAX_DELAY);
+		if(ulNotificationValue & static_cast<uint32_t>(UserUpdateEvent::NEW_TEST))
+		{
+			instance->sendData(client, wsOutGoingDataType::LED_STATUS);
+		}
+		else if(ulNotificationValue & static_cast<uint32_t>(UserUpdateEvent::DELETE_TEST))
+		{
+			instance->sendData(client, wsOutGoingDataType::LED_STATUS);
 		}
 
 		vTaskDelay(200 / portTICK_PERIOD_MS); // Add a delay to allow other tasks to run
@@ -70,33 +84,16 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 
 	wsIncomingCommands cmd = getWebSocketCommand(message);
 	logger.log(LogLevel::INFO, "processing Message: %s", message);
+
 	if(cmd != wsIncomingCommands::INVALID_COMMAND && cmd != wsIncomingCommands::GET_READINGS)
 	{
 		handleWsIncomingCommands(cmd);
 
 		AsyncWebSocketClient* client = wsMsg.client;
-		int clientId = wsMsg.client_id;
-		StaticJsonDocument<256> doc;
-
-		doc["type"] = "LED_STATUS";
-		doc["blinkBlue"] = false;
-		doc["blinkGreen"] = false;
-		doc["blinkRed"] = true;
-
-		std::array<char, WS_BUFFER_SIZE> jsonBuffer;
-		size_t len = serializeJson(doc, jsonBuffer.data(), jsonBuffer.size());
-		EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
-
-		if(wsBits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
-		{
-			client->text(jsonBuffer.data(), len);
-			logger.log(LogLevel ::INTR, "SEND TO BLINK RED LED ");
-			serializeJsonPretty(doc, Serial);
-		}
+		sendData(client);
 	}
 	else if(cmd == wsIncomingCommands::GET_READINGS)
 	{
-		_periodicSendRequest = true;
 		logger.log(LogLevel::INTR, "GET_READINGS command received, enabling periodic sending.");
 	}
 }
@@ -105,60 +102,29 @@ void DataHandler::periodicDataSender(void* pvParameter)
 {
 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
 	DataHandler& instance = DataHandler::getInstance();
-	AsyncWebSocket* websocket = params->ws; // WebSocket instance from TestServer
-
+	AsyncWebSocket* websocket = params->ws;
 	while(true)
 	{
-		if(instance._updateLedStatus)
-		{
-			EventBits_t eventBits =
-				xEventGroupWaitBits(EventHelper::wsClientEventGroup,
-									static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE,
-									pdFALSE, portMAX_DELAY);
-			for(auto& client: websocket->getClients())
-			{
-				if(client.status() == WS_CONNECTED)
-				{
-					logger.log(LogLevel::INTR, "updating LED Status!!");
-					instance.sendData(websocket, client.id(), wsOutGoingDataType::LED_STATUS);
-					instance._updateLedStatus = false;
-				}
-			}
-		}
-
-		// Wait for the GET_READING bit, but don't clear it after sending
 		EventBits_t eventBits = xEventGroupWaitBits(
 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
 			pdFALSE, pdFALSE, portMAX_DELAY);
 
-		if(instance._periodicSendRequest)
+		for(auto& client: websocket->getClients())
 		{
-			for(auto& client: websocket->getClients())
+			if(client.status() == WS_CONNECTED)
 			{
-				if(client.status() == WS_CONNECTED)
-				{
-					logger.log(LogLevel::INFO, "delegating to send periodic data..");
-					instance.sendData(websocket, client.id());
-				}
+				// logger.log(LogLevel::INFO, "delegating to send periodic data..");
+				instance.sendData(websocket, client.id());
 			}
+		}
 
-			// Continue sending every 3 seconds or as needed
-			vTaskDelay(1000 / portTICK_PERIOD_MS);
-		}
-		else
-		{
-			// Brief delay to avoid busy-waiting if periodic sending is disabled
-			vTaskDelay(500 / portTICK_PERIOD_MS);
-		}
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
 	vTaskDelete(NULL);
 }
 void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDataType type)
 {
 	EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
-	TestMode mode = TestSync::getInstance().getMode();
-	// EventBits_t cmdBits = xEventGroupGetBits(EventHelper::userCommandEventGroup);
-	// EventBits_t systemInitEventbits = xEventGroupGetBits(EventHelper::systemInitEventGroup);
 
 	StaticJsonDocument<WS_BUFFER_SIZE> doc;
 
@@ -167,36 +133,12 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 		doc = prepData(wsOutGoingDataType::POWER_READINGS);
 	}
 	else if(type == wsOutGoingDataType::LED_STATUS)
-	{ // start with all blink false
-
+	{
 		logger.log(LogLevel::INTR, "FOR LED STATUS STATE:%s ", stateToString(_currentState));
-
-		if(_currentState == State::TEST_START)
-		{
-			logger.log(LogLevel::SUCCESS, "BLINKING RED LED");
-			_blinkRed = true;
-		}
-		else if(_currentState != State::TEST_START)
-		{
-			_blinkRed = false;
-		}
-		else if(_currentState == State::SYSTEM_PAUSED)
-		{
-			_blinkRed = false;
-		}
-		else if(_currentState == State::DEVICE_SETUP)
-		{
-			_blinkGreen = true;
-		}
-		else if(mode == TestMode::AUTO)
+		if(_currentState == State::READY_TO_PROCEED)
 		{
 			_blinkBlue = true;
 		}
-		else if(mode == TestMode::MANUAL)
-		{
-			_blinkBlue = false;
-		}
-
 		doc["type"] = "LED_STATUS";
 		doc["blinkBlue"] = _blinkBlue;
 		doc["blinkGreen"] = _blinkGreen;
@@ -221,15 +163,73 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 	}
 	else
 	{
-		// logger.log(LogLevel::INFO, "Serialized JSON:%s ", jsonBuffer.data());
-		logger.log(LogLevel::INFO, "Sending data--> ");
+		// logger.log(LogLevel::INFO, "Sending data--> ");
 
 		if(isValidUTF8(jsonBuffer.data(), len))
 		{
 			if(wsBits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
 			{
 				websocket->text(clientId, jsonBuffer.data());
-				logger.log(LogLevel ::SUCCESS, "a new data send...");
+				// logger.log(LogLevel ::SUCCESS, "a new data send...");
+			}
+		}
+		else
+		{
+			logger.log(LogLevel::ERROR, "Invalid UTF-8 data detected.");
+		}
+	}
+}
+
+void DataHandler::sendData(AsyncWebSocketClient* client, wsOutGoingDataType type)
+{
+	EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
+
+	StaticJsonDocument<WS_BUFFER_SIZE> doc;
+
+	if(type == wsOutGoingDataType::POWER_READINGS)
+	{
+		doc = prepData(wsOutGoingDataType::POWER_READINGS);
+	}
+	else if(type == wsOutGoingDataType::LED_STATUS)
+	{ // start with all blink false
+
+		logger.log(LogLevel::INTR, "FOR LED STATUS STATE:%s ", stateToString(_currentState));
+		if(_currentState == State::READY_TO_PROCEED)
+		{
+			_blinkBlue = true;
+		}
+		doc["type"] = "LED_STATUS";
+		doc["blinkBlue"] = _blinkBlue;
+		doc["blinkGreen"] = _blinkGreen;
+		doc["blinkRed"] = _blinkRed;
+	}
+	else
+	{
+		logger.log(LogLevel::ERROR, "not implemented yet");
+		return;
+	}
+
+	std::array<char, WS_BUFFER_SIZE> jsonBuffer;
+	size_t len = serializeJson(doc, jsonBuffer.data(), jsonBuffer.size());
+
+	if(len == 0)
+	{
+		logger.log(LogLevel::ERROR, "Serialization failed: Empty JSON.");
+	}
+	else if(len >= jsonBuffer.size())
+	{
+		logger.log(LogLevel::ERROR, "Serialization failed: Buffer overflow.");
+	}
+	else
+	{
+		logger.log(LogLevel::INFO, "Sending data--> ");
+
+		if(isValidUTF8(jsonBuffer.data(), len))
+		{
+			if(wsBits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
+			{
+				client->text(jsonBuffer.data(), len);
+				logger.log(LogLevel ::INTR, "SEND LED STATUS ");
 				serializeJsonPretty(doc, Serial);
 			}
 		}
@@ -242,38 +242,71 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 
 void DataHandler::handleWsIncomingCommands(wsIncomingCommands cmd)
 {
-	TestSync& SyncTest = TestSync::getInstance();
-	DataHandler& instance = DataHandler::getInstance();
-
 	if(cmd == wsIncomingCommands::TEST_START)
 	{
+		_blinkRed = true;
 		logger.log(LogLevel::SUCCESS, "handling TEST START EVENT");
-		SyncTest.handleUserCommand(UserCommandEvent::START);
+		handleUserCommand(UserCommandEvent::START);
 	}
 	else if(cmd == wsIncomingCommands::TEST_STOP)
 	{
+		_blinkRed = false;
 		logger.log(LogLevel::SUCCESS, "handling TEST STOP EVENT");
-		SyncTest.handleUserCommand(UserCommandEvent::STOP);
+		handleUserCommand(UserCommandEvent::STOP);
 	}
 	else if(cmd == wsIncomingCommands::TEST_PAUSE)
 	{
+		_blinkRed = false;
 		logger.log(LogLevel::SUCCESS, "handling TEST PAUSE EVENT");
-		SyncTest.handleUserCommand(UserCommandEvent::PAUSE);
+		handleUserCommand(UserCommandEvent::PAUSE);
 	}
 	else if(cmd == wsIncomingCommands::AUTO_MODE)
 	{
+		_blinkBlue = true;
+		handleUserCommand(UserCommandEvent::AUTO);
 		logger.log(LogLevel::SUCCESS, "handling command set to AUTO ");
-		SyncTest.handleUserCommand(UserCommandEvent::AUTO);
 	}
 	else if(cmd == wsIncomingCommands::MANUAL_MODE)
 	{
+		_blinkBlue = false;
+		handleUserCommand(UserCommandEvent::MANUAL);
 		logger.log(LogLevel::SUCCESS, "handling command set to MANUAL ");
-		SyncTest.handleUserCommand(UserCommandEvent::MANUAL);
 	}
 	else
 	{
 		logger.log(LogLevel::ERROR, "invalid command ");
 	}
+}
+
+void DataHandler::handleUserCommand(UserCommandEvent command)
+{
+	EventBits_t commandBits = static_cast<EventBits_t>(command);
+	switch(command)
+	{
+		case UserCommandEvent ::PAUSE:
+			EventHelper::clearBits(UserCommandEvent::RESUME);
+			break;
+		case UserCommandEvent ::RESUME:
+			EventHelper::clearBits(UserCommandEvent::PAUSE);
+			break;
+		case UserCommandEvent ::AUTO:
+			EventHelper::clearBits(UserCommandEvent::MANUAL);
+
+			break;
+		case UserCommandEvent ::MANUAL:
+			EventHelper::clearBits(UserCommandEvent::AUTO);
+
+			break;
+		case UserCommandEvent ::START:
+			EventHelper::clearBits(UserCommandEvent::STOP);
+			break;
+		case UserCommandEvent ::STOP:
+			EventHelper::clearBits(UserCommandEvent::START);
+			break;
+		default:
+			break;
+	}
+	xEventGroupSetBits(EventHelper::userCommandEventGroup, commandBits);
 }
 
 StaticJsonDocument<WS_BUFFER_SIZE> DataHandler::prepData(wsOutGoingDataType type)
