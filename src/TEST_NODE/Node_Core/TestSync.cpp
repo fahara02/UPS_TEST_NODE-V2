@@ -1,6 +1,7 @@
 #include "TestSync.h"
 #include "TestManager.h"
 #include "DataHandler.h"
+#include "HPTSettings.h"
 
 TestSync& TestSync::getInstance()
 {
@@ -34,12 +35,12 @@ void TestSync::init()
 
 void TestSync::createSynctask()
 {
-	xTaskCreatePinnedToCore(userCommandObserverTask, "commandObserver", 8192, NULL, 4,
-							&commandObserverTaskHandle, 0);
-	xTaskCreatePinnedToCore(userUpdateObserverTask, "updateObserver", 8192, NULL, 4,
-							&updateObserverTaskHandle, 0);
-	xTaskCreatePinnedToCore(testSyncObserverTask, "testObserver", 4096, NULL, 1,
-							&testObserverTaskHandle, 0);
+	xTaskCreatePinnedToCore(userCommandTask, "userCommand", userCommand_Stack, NULL,
+							userCommand_Priority, &commandObserverTaskHandle, userCommand_CORE);
+	xTaskCreatePinnedToCore(userUpdateTask, "userUpdate", userUpdate_Stack, NULL,
+							userUpdate_Priority, &updateObserverTaskHandle, userUpdate_CORE);
+	xTaskCreatePinnedToCore(testSyncTask, "testSync", testSync_Stack, NULL, testSync_Priority,
+							&testObserverTaskHandle, testSync_CORE);
 
 	logger.log(LogLevel::INFO, "testSync task created initialization");
 }
@@ -346,7 +347,7 @@ void TestSync::handleTestEvent(Event event)
 	// instance.stateMachine.handleEventbits(eventBit);
 }
 
-void TestSync::userCommandObserverTask(void* pvParameters)
+void TestSync::userCommandTask(void* pvParameters)
 {
 	TestSync& instance = TestSync::getInstance();
 
@@ -439,7 +440,7 @@ void TestSync::userCommandObserverTask(void* pvParameters)
 	vTaskDelete(NULL);
 }
 
-void TestSync::userUpdateObserverTask(void* pvParameters)
+void TestSync::userUpdateTask(void* pvParameters)
 {
 	TestSync& instance = TestSync::getInstance();
 	const EventBits_t UPDATE_BITS_MASK = static_cast<EventBits_t>(UserUpdateEvent::USER_TUNE) |
@@ -487,7 +488,7 @@ void TestSync::userUpdateObserverTask(void* pvParameters)
 	vTaskDelete(NULL);
 }
 
-void TestSync::testSyncObserverTask(void* pvParameters)
+void TestSync::testSyncTask(void* pvParameters)
 {
 	TestSync& instance = TestSync::getInstance();
 	while(xEventGroupWaitBits(EventHelper::syncControlEvent,

@@ -110,9 +110,9 @@ class TestSync
 	void resetAllBits();
 	void createSynctask();
 
-	static void userCommandObserverTask(void* pvParameters);
-	static void userUpdateObserverTask(void* pvParameters);
-	static void testSyncObserverTask(void* pvParameters);
+	static void userCommandTask(void* pvParameters);
+	static void userUpdateTask(void* pvParameters);
+	static void testSyncTask(void* pvParameters);
 
 	void startTest(TestType test);
 	void stopTest(TestType test);

@@ -21,11 +21,13 @@
 #include "TestServer.h"
 #include "UPSTime.h"
 #include "DataHandler.h"
+#include "TaskMonitor.h"
 
 using namespace Node_Core;
-
+using namespace Node_Utility;
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
+TaskMonitor& monitor = TaskMonitor::getInstance();
 StateMachine& stateMachine = StateMachine::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
 UPSTesterSetup& TesterSetup = UPSTesterSetup::getInstance();
@@ -126,9 +128,6 @@ void modbusRTUTask(void* pvParameters)
 {
 	while(true)
 	{
-		// Log modbus task activities
-		Mycila::TaskMonitor.log();
-
 		// Monitor and log the available free heap memory
 		size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_8BIT); // For standard heap (DRAM)
 		logger.log(LogLevel::INFO, "Free heap byets: ", freeHeap);
@@ -241,32 +240,21 @@ void setup()
 	{
 		logger.log(LogLevel::SUCCESS, "Websocket is enabled");
 	}
-	Mycila::TaskMonitor.begin(10);
-	Mycila::TaskMonitor.addTask("async_tcp");
-	Mycila::TaskMonitor.addTask("ProcessWsData");
-	Mycila::TaskMonitor.addTask("wsDataSender");
-	Mycila::TaskMonitor.addTask("commandObserver");
-	Mycila::TaskMonitor.addTask("updateObserver");
-	Mycila::TaskMonitor.addTask("testObserver");
-	Mycila::TaskMonitor.addTask("MainTestManager");
-	Mycila::TaskMonitor.addTask("SwitchTestTask");
-	Mycila::TaskMonitor.addTask("BackUpTestTask");
-	Mycila::TaskMonitor.addTask("WSCleanupTask");
+
+	monitor.setPrintDelay(2000);
+
+	monitor.addTask("async_tcp");
+	monitor.addTask("ProcessWsData");
+	monitor.addTask("wsDataSender");
+	monitor.addTask("userCommand");
+	monitor.addTask("userUpdate");
+	monitor.addTask("testSync");
+	monitor.addTask("MainTestManager");
+	monitor.addTask("SwitchTestTask");
+	monitor.addTask("BackUpTestTask");
+	monitor.addTask("WSCleanupTask");
 }
 void loop()
 {
 	vTaskDelete(NULL);
-}
-void printTaskList()
-{
-	// Create a buffer to store the task information
-	const size_t taskListSize = 1024;
-	char taskList[taskListSize];
-
-	// Retrieve the list of tasks
-	vTaskList(taskList);
-
-	// Print the task list to the serial monitor
-	Serial.println("Task List:");
-	Serial.println(taskList);
 }
