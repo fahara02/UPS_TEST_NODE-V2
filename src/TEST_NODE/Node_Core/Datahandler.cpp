@@ -20,7 +20,8 @@ DataHandler::DataHandler() :
 
 void DataHandler::init()
 {
-	xTaskCreatePinnedToCore(wsDataProcessor, "ProcessWsData", 8192, this, 4, &dataTaskHandler, 1);
+	xTaskCreatePinnedToCore(wsDataProcessor, "ProcessWsData", 8192, this, 4, &dataTaskHandler,
+							tskNO_AFFINITY);
 }
 
 void DataHandler::wsDataProcessor(void* pVparamter)
