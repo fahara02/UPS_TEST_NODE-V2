@@ -59,7 +59,7 @@ class StateMachine
 					guard};
 		}
 	};
-	void init();
+
 	void handleEvent(Event event);
 	void handleMode(TestMode mode);
 
@@ -106,9 +106,6 @@ class StateMachine
 	QueueHandle_t eventQueue;
 	QueueHandle_t modeQueue;
 
-	TaskHandle_t eventProcessortaskhandle = NULL;
-	static void eventProcessorTask(void* params);
-	void processEvent(Event event);
 	StateMachine(const StateMachine&) = delete;
 	StateMachine& operator=(const StateMachine&) = delete;
 };

@@ -19,30 +19,8 @@ StateMachine::StateMachine() :
 	_old_state(State::DEVICE_ON), _currentState(State::DEVICE_ON), _deviceMode(TestMode::MANUAL),
 	_dataCapturedFlag(false), _retryCount(0)
 {
-	eventQueue = xQueueCreate(10, sizeof(Event)); // Adjust size as needed
-	modeQueue = xQueueCreate(10, sizeof(TestMode));
-	if(eventQueue == NULL)
-	{
-		logger.log(LogLevel::ERROR, "Failed to create event queue");
-	}
-	if(modeQueue == NULL)
-	{
-		logger.log(LogLevel::ERROR, "Failed to create mode queue");
-	}
 }
-void StateMachine::init()
-{
-	logger.log(LogLevel::INFO, "Creating EventProcessor task...");
-	if(xTaskCreatePinnedToCore(eventProcessorTask, "EventProcessor", 2048, this, 4,
-							   &eventProcessortaskhandle, 0) != pdPASS)
-	{
-		logger.log(LogLevel::ERROR, "Failed to create event processor task");
-	}
-	else
-	{
-		logger.log(LogLevel::INFO, "EventProcessor task created successfully");
-	}
-}
+
 bool StateMachine::isValidState(uint32_t state)
 {
 	return state >= static_cast<uint32_t>(State::DEVICE_ON) &&
@@ -117,42 +95,10 @@ void StateMachine::NotifyModeChanged(TestMode mode)
 }
 void StateMachine::handleMode(TestMode mode)
 {
-	if(xQueueSend(modeQueue, &mode, 0) != pdPASS)
-	{
-		logger.log(LogLevel::ERROR, "Failed to queue mode");
-	}
+	setMode(mode);
 }
+
 void StateMachine::handleEvent(Event event)
-{
-	if(xQueueSend(eventQueue, &event, 0) != pdPASS)
-	{
-		logger.log(LogLevel::ERROR, "Failed to queue event %s", eventToString(event));
-	}
-}
-
-void StateMachine::eventProcessorTask(void* params)
-{
-	StateMachine* instance = static_cast<StateMachine*>(params);
-
-	while(true)
-	{
-		Event event;
-		TestMode mode;
-		if(xQueueReceive(instance->eventQueue, &event, portMAX_DELAY) == pdPASS)
-		{
-			logger.log(LogLevel::INTR, "new Event Received!! ");
-			instance->processEvent(event);
-		}
-		if(xQueueReceive(instance->modeQueue, &mode, portMAX_DELAY) == pdPASS)
-		{
-			instance->setMode(mode);
-		}
-		vTaskDelay(pdMS_TO_TICKS(100));
-	}
-	vTaskDelete(NULL);
-}
-
-void StateMachine::processEvent(Event event)
 {
 	logger.log(LogLevel::INFO, "Handling event %s", eventToString(event));
 

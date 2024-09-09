@@ -20,7 +20,7 @@ DataHandler::DataHandler() :
 
 void DataHandler::init()
 {
-	xTaskCreatePinnedToCore(wsDataProcessor, "ProcessWsData", 8192, this, 4, &dataTaskHandler, 0);
+	xTaskCreatePinnedToCore(wsDataProcessor, "ProcessWsData", 8192, this, 4, &dataTaskHandler, 1);
 }
 
 void DataHandler::wsDataProcessor(void* pVparamter)
@@ -52,16 +52,16 @@ void DataHandler::wsDataProcessor(void* pVparamter)
 				logger.log(LogLevel::ERROR, "Queue timeout!!!!!");
 			}
 		}
-		BaseType_t notificationReceived =
-			xTaskNotifyWait(0x00, 0x00, &ulNotificationValue, portMAX_DELAY);
-		if(ulNotificationValue & static_cast<uint32_t>(UserUpdateEvent::NEW_TEST))
-		{
-			instance->sendData(client, wsOutGoingDataType::LED_STATUS);
-		}
-		else if(ulNotificationValue & static_cast<uint32_t>(UserUpdateEvent::DELETE_TEST))
-		{
-			instance->sendData(client, wsOutGoingDataType::LED_STATUS);
-		}
+		// BaseType_t notificationReceived =
+		// 	xTaskNotifyWait(0x00, 0x00, &ulNotificationValue, portMAX_DELAY);
+		// if(ulNotificationValue & static_cast<uint32_t>(UserUpdateEvent::NEW_TEST))
+		// {
+		// 	instance->sendData(client, wsOutGoingDataType::LED_STATUS);
+		// }
+		// else if(ulNotificationValue & static_cast<uint32_t>(UserUpdateEvent::DELETE_TEST))
+		// {
+		// 	instance->sendData(client, wsOutGoingDataType::LED_STATUS);
+		// }
 
 		vTaskDelay(200 / portTICK_PERIOD_MS); // Add a delay to allow other tasks to run
 	}

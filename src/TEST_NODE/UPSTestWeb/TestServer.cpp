@@ -292,8 +292,8 @@ void TestServer::createPeriodicTask()
 	periodicTaskParams.ws = _ws;
 
 	// Pass the pointer to the member struct
-	xTaskCreate(dataHandler.periodicDataSender, "PeriodicDataSender", 4096, &periodicTaskParams, 2,
-				&PeriodicDataHandle);
+	xTaskCreatePinnedToCore(dataHandler.periodicDataSender, "wsDataSender", 4096,
+							&periodicTaskParams, 1, &PeriodicDataHandle, 1);
 }
 
 void TestServer::wsClientCleanup(void* pvParameters)

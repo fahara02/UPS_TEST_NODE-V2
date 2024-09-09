@@ -462,8 +462,8 @@ void TestSync::userUpdateObserverTask(void* pvParameters)
 			logger.log(LogLevel::TEST, "Invoking State Change...");
 			instance.reportEvent(Event::NEW_TEST);
 			vTaskDelay(pdMS_TO_TICKS(200));
-			xTaskNotify(DataHandler::getInstance().dataTaskHandler,
-						static_cast<uint32_t>(UserUpdateEvent::NEW_TEST), eNoAction);
+			// xTaskNotify(DataHandler::getInstance().dataTaskHandler,
+			// 			static_cast<uint32_t>(UserUpdateEvent::NEW_TEST), eNoAction);
 
 			logger.log(LogLevel::TEST, "Is state changed?");
 			instance.acknowledgeCMD();
@@ -475,8 +475,8 @@ void TestSync::userUpdateObserverTask(void* pvParameters)
 
 			logger.log(LogLevel::TEST, "Invoking State Change...");
 			instance.reportEvent(Event::DELETE_TEST);
-			xTaskNotify(DataHandler::getInstance().dataTaskHandler,
-						static_cast<uint32_t>(UserUpdateEvent::DELETE_TEST), eNoAction);
+			// xTaskNotify(DataHandler::getInstance().dataTaskHandler,
+			// 			static_cast<uint32_t>(UserUpdateEvent::DELETE_TEST), eNoAction);
 
 			instance.acknowledgeCMD();
 			EventHelper::clearBits(UserUpdateEvent::DELETE_TEST);
