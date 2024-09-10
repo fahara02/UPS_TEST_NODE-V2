@@ -157,92 +157,25 @@ void DataHandler::periodicDataSender(void* pvParameter)
 	DataHandler& instance = DataHandler::getInstance();
 	AsyncWebSocket* websocket = params->ws;
 	TickType_t lastWakeTime = xTaskGetTickCount();
-
 	while(true)
 	{
-		// Wait for an event or timeout
 		EventBits_t eventBits = xEventGroupWaitBits(
 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
 
-		std::vector<int> clientsToCheck;
-
-		if(xSemaphoreTake(instance.clientListMutex, portMAX_DELAY) == pdTRUE)
+		for(auto& client: websocket->getClients())
 		{
-			clientsToCheck.assign(instance.connectedClients.begin(),
-								  instance.connectedClients.end());
-			xSemaphoreGive(instance.clientListMutex);
-		}
-
-		for(int clientId: clientsToCheck)
-		{
-			if(websocket->hasClient(clientId))
+			if(client.status() == WS_CONNECTED)
 			{
-				AsyncWebSocketClient* client = websocket->client(clientId);
-
-				if(client != nullptr)
-				{
-					logger.log(LogLevel::INFO, "Client object for ID %d is not nullptr", clientId);
-
-					if(client->status() == WS_CONNECTED)
-					{
-						logger.log(LogLevel::INFO, "Client ID %d is connected. Sending data...",
-								   clientId);
-						instance.sendData(websocket, clientId);
-					}
-					else
-					{
-						logger.log(
-							LogLevel::ERROR,
-							"WebSocket connection is not active for client ID %d. Status: %d",
-							clientId, client->status());
-						instance.updateClientList(clientId, false); // Update client list if needed
-					}
-				}
-				else
-				{
-					logger.log(LogLevel::ERROR, "Client object for ID %d is nullptr", clientId);
-					instance.updateClientList(clientId, false); // Update client list if needed
-				}
-			}
-			else
-			{
-				logger.log(LogLevel::ERROR, "Not connected clientId: %d", clientId);
-				instance.updateClientList(clientId, false); // Update client list if needed
+				// logger.log(LogLevel::INFO, "delegating to send periodic data..");
+				instance.sendData(websocket, client.id());
 			}
 		}
 
 		vTaskDelayUntil(&lastWakeTime, 1000 / portTICK_PERIOD_MS);
 	}
-
 	vTaskDelete(NULL);
 }
-
-// void DataHandler::periodicDataSender(void* pvParameter)
-// {
-// 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
-// 	DataHandler& instance = DataHandler::getInstance();
-// 	AsyncWebSocket* websocket = params->ws;
-// 	TickType_t lastWakeTime = xTaskGetTickCount();
-// 	while(true)
-// 	{
-// 		EventBits_t eventBits = xEventGroupWaitBits(
-// 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
-// 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
-
-// 		for(auto& client: websocket->getClients())
-// 		{
-// 			if(client.status() == WS_CONNECTED)
-// 			{
-// 				// logger.log(LogLevel::INFO, "delegating to send periodic data..");
-// 				instance.sendData(websocket, client.id());
-// 			}
-// 		}
-
-// 		vTaskDelayUntil(&lastWakeTime, 1000 / portTICK_PERIOD_MS);
-// 	}
-// 	vTaskDelete(NULL);
-// }
 void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDataType type)
 {
 	EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);

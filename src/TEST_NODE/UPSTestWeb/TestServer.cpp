@@ -404,6 +404,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 					if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
 					{
 						EventHelper::setBits(wsClientUpdate::GET_READING);
+
 						if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
 									  QUEUE_TIMEOUT_MS) == pdTRUE)
 						{
