@@ -6,8 +6,9 @@
 #include "Settings.h"
 #include "Logger.h"
 #include "TestSync.h"
-#include <deque>
+
 #include <array>
+#include <set>
 
 enum class wsIncomingCommands
 {
@@ -144,6 +145,8 @@ class DataHandler
 		_newClietId.store(Id);
 	}
 
+	void updateClientList(int clientId, bool connected);
+
   private:
 	DataHandler();
 	bool _updateLedStatus;
@@ -152,7 +155,7 @@ class DataHandler
 	bool _blinkGreen;
 	bool _blinkRed;
 	std::atomic<int> _newClietId{0};
-
+	std::set<int> connectedClients;
 	ProcessingResult _result;
 	StaticJsonDocument<WS_BUFFER_SIZE> _blankDoc;
 
@@ -160,7 +163,6 @@ class DataHandler
 	std::atomic<TestMode> _deviceMode{TestMode::MANUAL};
 
 	static void wsDataProcessor(void* pVparamter);
-	;
 
 	// data handling functions
 	void sendData(AsyncWebSocket* websocket, int clientId,
@@ -172,6 +174,7 @@ class DataHandler
 	void handleUserCommand(UserCommandEvent command);
 
 	SemaphoreHandle_t websocketMutex;
+	SemaphoreHandle_t clientListMutex;
 
 	wsIncomingCommands getWebSocketCommand(const char* incomingCommand);
 	StaticJsonDocument<WS_BUFFER_SIZE> prepData(wsOutGoingDataType type);

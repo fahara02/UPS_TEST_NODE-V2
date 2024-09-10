@@ -339,9 +339,10 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 		case WS_EVT_CONNECT:
 			Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
 						  client->remoteIP().toString().c_str());
-			DataHandler::getInstance().updateNewClientId(client->id());
+
 			EventHelper::clearBits(wsClientStatus::DISCONNECTED);
 			EventHelper::setBits(wsClientStatus::CONNECTED);
+			DataHandler::getInstance().updateClientList(client->id(), true);
 			if(!pingTimer.active())
 			{
 				pingTimer.attach(10, sendPing, client);
@@ -352,6 +353,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 		case WS_EVT_DISCONNECT:
 			Serial.printf("WebSocket client #%u disconnected\n", client->id());
 			// server->client(client->id())->close();
+			DataHandler::getInstance().updateClientList(client->id(), false);
 			EventHelper::clearBits(wsClientStatus::CONNECTED);
 			EventHelper::setBits(wsClientStatus::DISCONNECTED);
 			EventHelper::clearBits(wsClientUpdate::GET_READING);
@@ -385,15 +387,23 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 				wsMsg.len = len;
 				wsMsg.info = *info;
 
+				if(client == nullptr)
+				{
+					Serial.println("Client object is nullptr.");
+					return;
+				}
+
 				if(xEventGroupWaitBits(EventHelper::wsClientEventGroup,
 									   static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE,
 									   pdFALSE, CLIENT_CONNECT_TIMEOUT_MS))
+
 				{
 					EventHelper::setBits(wsClientStatus::DATA);
 					wsMsg.client_id = client->id();
 					wsMsg.client = client;
 					if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
 					{
+						EventHelper::setBits(wsClientUpdate::GET_READING);
 						if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
 									  QUEUE_TIMEOUT_MS) == pdTRUE)
 						{

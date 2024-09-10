@@ -18,12 +18,29 @@ DataHandler::DataHandler() :
 {
 	WebsocketDataQueue = xQueueCreate(10, sizeof(WebSocketMessage));
 	websocketMutex = xSemaphoreCreateMutex();
+	clientListMutex = xSemaphoreCreateMutex();
 }
 
 void DataHandler::init()
 {
 	xTaskCreatePinnedToCore(wsDataProcessor, "ProcessWsData", wsDataProcessor_Stack, this,
 							wsDataProcessor_Priority, &dataTaskHandler, wsDataProcessor_CORE);
+}
+
+void DataHandler::updateClientList(int clientId, bool connected)
+{
+	if(xSemaphoreTake(clientListMutex, portMAX_DELAY) == pdTRUE)
+	{
+		if(connected)
+		{
+			connectedClients.insert(clientId);
+		}
+		else
+		{
+			connectedClients.erase(clientId);
+		}
+		xSemaphoreGive(clientListMutex);
+	}
 }
 
 void DataHandler::wsDataProcessor(void* pVparamter)
@@ -96,9 +113,44 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 	else if(cmd == wsIncomingCommands::GET_READINGS)
 	{
 		logger.log(LogLevel::INTR, "GET_READINGS command received, enabling periodic sending.");
-		EventHelper::setBits(wsClientUpdate::GET_READING);
 	}
 }
+// void DataHandler::periodicDataSender(void* pvParameter)
+// {
+// 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
+// 	DataHandler& instance = DataHandler::getInstance();
+// 	AsyncWebSocket* websocket = params->ws;
+// 	TickType_t lastWakeTime = xTaskGetTickCount();
+
+// 	while(true)
+// 	{
+// 		// Wait for an event or timeout
+// 		EventBits_t eventBits = xEventGroupWaitBits(
+// 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
+// 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
+
+// 		int lastclientId = instance._newClietId.load();
+
+// 		for(int i = 0; i < 2; i++)
+// 		{
+// 			int newClientid = lastclientId + i;
+// 			if(websocket->hasClient(newClientid))
+// 			{
+// 				instance.sendData(websocket, newClientid);
+// 			}
+// 			else
+// 			{
+// 				logger.log(LogLevel::INFO, "Client  is no longer connected. Skipping.",
+// 						   newClientid);
+// 			}
+// 		}
+
+// 		vTaskDelayUntil(&lastWakeTime, 1000 / portTICK_PERIOD_MS);
+// 	}
+
+// 	vTaskDelete(NULL);
+// }
+
 void DataHandler::periodicDataSender(void* pvParameter)
 {
 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
@@ -112,16 +164,51 @@ void DataHandler::periodicDataSender(void* pvParameter)
 		EventBits_t eventBits = xEventGroupWaitBits(
 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
-		int clientId = instance._newClietId.load();
-		for(auto& client: websocket->getClients())
+
+		std::vector<int> clientsToCheck;
+
+		if(xSemaphoreTake(instance.clientListMutex, portMAX_DELAY) == pdTRUE)
 		{
-			if(client.status() == WS_CONNECTED)
+			clientsToCheck.assign(instance.connectedClients.begin(),
+								  instance.connectedClients.end());
+			xSemaphoreGive(instance.clientListMutex);
+		}
+
+		for(int clientId: clientsToCheck)
+		{
+			if(websocket->hasClient(clientId))
 			{
-				instance.sendData(websocket, clientId);
+				AsyncWebSocketClient* client = websocket->client(clientId);
+
+				if(client != nullptr)
+				{
+					logger.log(LogLevel::INFO, "Client object for ID %d is not nullptr", clientId);
+
+					if(client->status() == WS_CONNECTED)
+					{
+						logger.log(LogLevel::INFO, "Client ID %d is connected. Sending data...",
+								   clientId);
+						instance.sendData(websocket, clientId);
+					}
+					else
+					{
+						logger.log(
+							LogLevel::ERROR,
+							"WebSocket connection is not active for client ID %d. Status: %d",
+							clientId, client->status());
+						instance.updateClientList(clientId, false); // Update client list if needed
+					}
+				}
+				else
+				{
+					logger.log(LogLevel::ERROR, "Client object for ID %d is nullptr", clientId);
+					instance.updateClientList(clientId, false); // Update client list if needed
+				}
 			}
 			else
 			{
-				logger.log(LogLevel::INFO, "Client %d is no longer connected. Skipping.", clientId);
+				logger.log(LogLevel::ERROR, "Not connected clientId: %d", clientId);
+				instance.updateClientList(clientId, false); // Update client list if needed
 			}
 		}
 
@@ -226,7 +313,7 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 	}
 	else
 	{
-		logger.log(LogLevel::ERROR, "WebSocket connection is not active.");
+		logger.log(LogLevel::ERROR, "WebSocket connection is not active. for client id ", clientId);
 	}
 }
 
