@@ -97,7 +97,7 @@ static constexpr TickType_t QUEUE_TIMEOUT_MS = pdMS_TO_TICKS(10);
 static constexpr TickType_t DATABIT_TIMEOUT_MS = pdMS_TO_TICKS(200);
 
 static constexpr TickType_t CLIENT_CONNECT_TIMEOUT_MS = pdMS_TO_TICKS(1000);
-
+static constexpr TickType_t READ_TIMEOUT_MS = pdMS_TO_TICKS(2000);
 struct WebSocketMessage
 {
 	uint8_t data[WS_BUFFER_SIZE];
@@ -139,6 +139,10 @@ class DataHandler
 	}
 
 	TaskHandle_t dataTaskHandler = NULL;
+	void updateNewClientId(int Id)
+	{
+		_newClietId.store(Id);
+	}
 
   private:
 	DataHandler();
@@ -147,6 +151,7 @@ class DataHandler
 	bool _blinkBlue;
 	bool _blinkGreen;
 	bool _blinkRed;
+	std::atomic<int> _newClietId{0};
 
 	ProcessingResult _result;
 	StaticJsonDocument<WS_BUFFER_SIZE> _blankDoc;
@@ -166,8 +171,11 @@ class DataHandler
 	void handleWsIncomingCommands(wsIncomingCommands cmd);
 	void handleUserCommand(UserCommandEvent command);
 
+	SemaphoreHandle_t websocketMutex;
+
 	wsIncomingCommands getWebSocketCommand(const char* incomingCommand);
 	StaticJsonDocument<WS_BUFFER_SIZE> prepData(wsOutGoingDataType type);
+	void cleanUpClients(AsyncWebSocket* websocket);
 	bool isValidUTF8(const char* data, size_t len);
 
 	DataHandler(const DataHandler&) = delete;

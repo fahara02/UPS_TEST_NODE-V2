@@ -339,6 +339,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 		case WS_EVT_CONNECT:
 			Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
 						  client->remoteIP().toString().c_str());
+			DataHandler::getInstance().updateNewClientId(client->id());
 			EventHelper::clearBits(wsClientStatus::DISCONNECTED);
 			EventHelper::setBits(wsClientStatus::CONNECTED);
 			if(!pingTimer.active())
@@ -350,6 +351,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 
 		case WS_EVT_DISCONNECT:
 			Serial.printf("WebSocket client #%u disconnected\n", client->id());
+			// server->client(client->id())->close();
 			EventHelper::clearBits(wsClientStatus::CONNECTED);
 			EventHelper::setBits(wsClientStatus::DISCONNECTED);
 			EventHelper::clearBits(wsClientUpdate::GET_READING);

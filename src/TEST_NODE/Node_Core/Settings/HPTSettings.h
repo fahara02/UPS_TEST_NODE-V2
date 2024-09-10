@@ -17,6 +17,8 @@ static const uint32_t TestManager_Stack = 4096;
 static const uint32_t MainLossISR_Stack = 1024;
 static const uint32_t UPSgainISR_Stack = 1024;
 static const uint32_t UPSlossISR_Stack = 1024;
+static const uint32_t switchTest_Stack = 1024;
+static const uint32_t backupTest_Stack = 1024;
 
 static const uint32_t monitor_Stack = 2048;
 static const uint32_t modbus_Stack = 4096;
@@ -42,7 +44,7 @@ static UBaseType_t timer_Priority = 1;
 // ALL task Core
 static BaseType_t AsyncTCP_CORE = 1;
 static BaseType_t wsDataProcessor_CORE = tskNO_AFFINITY;
-static BaseType_t periodicDataSender_CORE = 1;
+static BaseType_t periodicDataSender_CORE = tskNO_AFFINITY;
 static BaseType_t WSCleanup_CORE = 0;
 
 static BaseType_t userCommand_CORE = 0;

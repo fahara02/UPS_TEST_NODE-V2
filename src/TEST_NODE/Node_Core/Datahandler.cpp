@@ -17,6 +17,7 @@ DataHandler::DataHandler() :
 	_blinkRed(false), _result(ProcessingResult::PENDING), _currentState(State::DEVICE_ON)
 {
 	WebsocketDataQueue = xQueueCreate(10, sizeof(WebSocketMessage));
+	websocketMutex = xSemaphoreCreateMutex();
 }
 
 void DataHandler::init()
@@ -54,16 +55,6 @@ void DataHandler::wsDataProcessor(void* pVparamter)
 				logger.log(LogLevel::ERROR, "Queue timeout!!!!!");
 			}
 		}
-		// BaseType_t notificationReceived =
-		// 	xTaskNotifyWait(0x00, 0x00, &ulNotificationValue, portMAX_DELAY);
-		// if(ulNotificationValue & static_cast<uint32_t>(UserUpdateEvent::NEW_TEST))
-		// {
-		// 	instance->sendData(client, wsOutGoingDataType::LED_STATUS);
-		// }
-		// else if(ulNotificationValue & static_cast<uint32_t>(UserUpdateEvent::DELETE_TEST))
-		// {
-		// 	instance->sendData(client, wsOutGoingDataType::LED_STATUS);
-		// }
 
 		vTaskDelay(200 / portTICK_PERIOD_MS); // Add a delay to allow other tasks to run
 	}
@@ -92,7 +83,15 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 		handleWsIncomingCommands(cmd);
 
 		AsyncWebSocketClient* client = wsMsg.client;
-		sendData(client);
+		if(client == nullptr || (client->status() != AwsClientStatus::WS_CONNECTED))
+		{
+			logger.log(LogLevel::ERROR,
+					   " not connected or is null, aborting from processMsg function.");
+		}
+		else
+		{
+			sendData(client);
+		}
 	}
 	else if(cmd == wsIncomingCommands::GET_READINGS)
 	{
@@ -100,49 +99,75 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 		EventHelper::setBits(wsClientUpdate::GET_READING);
 	}
 }
-
 void DataHandler::periodicDataSender(void* pvParameter)
 {
 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
 	DataHandler& instance = DataHandler::getInstance();
 	AsyncWebSocket* websocket = params->ws;
 	TickType_t lastWakeTime = xTaskGetTickCount();
+
 	while(true)
 	{
+		// Wait for an event or timeout
 		EventBits_t eventBits = xEventGroupWaitBits(
 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
-			pdFALSE, pdFALSE, portMAX_DELAY);
-
+			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
+		int clientId = instance._newClietId.load();
 		for(auto& client: websocket->getClients())
 		{
 			if(client.status() == WS_CONNECTED)
 			{
-				// logger.log(LogLevel::INFO, "delegating to send periodic data..");
-				instance.sendData(websocket, client.id());
+				instance.sendData(websocket, clientId);
+			}
+			else
+			{
+				logger.log(LogLevel::INFO, "Client %d is no longer connected. Skipping.", clientId);
 			}
 		}
 
 		vTaskDelayUntil(&lastWakeTime, 1000 / portTICK_PERIOD_MS);
 	}
+
 	vTaskDelete(NULL);
 }
+
+// void DataHandler::periodicDataSender(void* pvParameter)
+// {
+// 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
+// 	DataHandler& instance = DataHandler::getInstance();
+// 	AsyncWebSocket* websocket = params->ws;
+// 	TickType_t lastWakeTime = xTaskGetTickCount();
+// 	while(true)
+// 	{
+// 		EventBits_t eventBits = xEventGroupWaitBits(
+// 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
+// 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
+
+// 		for(auto& client: websocket->getClients())
+// 		{
+// 			if(client.status() == WS_CONNECTED)
+// 			{
+// 				// logger.log(LogLevel::INFO, "delegating to send periodic data..");
+// 				instance.sendData(websocket, client.id());
+// 			}
+// 		}
+
+// 		vTaskDelayUntil(&lastWakeTime, 1000 / portTICK_PERIOD_MS);
+// 	}
+// 	vTaskDelete(NULL);
+// }
 void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDataType type)
 {
 	EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
-
 	StaticJsonDocument<WS_BUFFER_SIZE> doc;
 
+	// Prepare JSON data
 	if(type == wsOutGoingDataType::POWER_READINGS)
 	{
 		doc = prepData(wsOutGoingDataType::POWER_READINGS);
 	}
 	else if(type == wsOutGoingDataType::LED_STATUS)
 	{
-		logger.log(LogLevel::INTR, "FOR LED STATUS STATE:%s ", stateToString(_currentState));
-		if(_currentState == State::READY_TO_PROCEED)
-		{
-			_blinkBlue = true;
-		}
 		doc["type"] = "LED_STATUS";
 		doc["blinkBlue"] = _blinkBlue;
 		doc["blinkGreen"] = _blinkGreen;
@@ -150,7 +175,7 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 	}
 	else
 	{
-		logger.log(LogLevel::ERROR, "not implemented yet");
+		logger.log(LogLevel::ERROR, "Not implemented yet");
 		return;
 	}
 
@@ -160,27 +185,48 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 	if(len == 0)
 	{
 		logger.log(LogLevel::ERROR, "Serialization failed: Empty JSON.");
+		return;
 	}
 	else if(len >= jsonBuffer.size())
 	{
 		logger.log(LogLevel::ERROR, "Serialization failed: Buffer overflow.");
+		return;
 	}
-	else
+	else if(!isValidUTF8(jsonBuffer.data(), len))
 	{
-		// logger.log(LogLevel::INFO, "Sending data--> ");
+		logger.log(LogLevel::ERROR, "Invalid UTF-8 data detected.");
+		return;
+	}
 
-		if(isValidUTF8(jsonBuffer.data(), len))
+	// Check WebSocket connection and send data
+	if(wsBits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
+	{
+		if(xSemaphoreTake(websocketMutex, portMAX_DELAY) == pdTRUE)
 		{
-			if(wsBits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
+			AsyncWebSocketClient* client = websocket->client(clientId);
+			if(client == nullptr || (client->status() != AwsClientStatus::WS_CONNECTED))
+			{
+				logger.log(LogLevel::ERROR, "Client is not connected or is null, aborting send.");
+			}
+			else if(client->status() == WS_CONNECTED)
 			{
 				websocket->text(clientId, jsonBuffer.data());
-				// logger.log(LogLevel ::SUCCESS, "a new data send...");
+				logger.log(LogLevel::SUCCESS, "Data sent successfully to client %d.", clientId);
 			}
+			else
+			{
+				logger.log(LogLevel::ERROR, "Client %d is no longer connected.", clientId);
+			}
+			xSemaphoreGive(websocketMutex); // Ensure the mutex is released
 		}
 		else
 		{
-			logger.log(LogLevel::ERROR, "Invalid UTF-8 data detected.");
+			logger.log(LogLevel::ERROR, "Failed to take WebSocket mutex.");
 		}
+	}
+	else
+	{
+		logger.log(LogLevel::ERROR, "WebSocket connection is not active.");
 	}
 }
 
@@ -230,11 +276,24 @@ void DataHandler::sendData(AsyncWebSocketClient* client, wsOutGoingDataType type
 
 		if(isValidUTF8(jsonBuffer.data(), len))
 		{
-			if(wsBits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
+			if(xSemaphoreTake(websocketMutex, portMAX_DELAY) == pdTRUE)
 			{
-				client->text(jsonBuffer.data(), len);
-				logger.log(LogLevel ::INTR, "SEND LED STATUS ");
-				serializeJsonPretty(doc, Serial);
+				if(client == nullptr || (client->status() != AwsClientStatus::WS_CONNECTED))
+				{
+					logger.log(LogLevel::ERROR,
+							   "Client is not connected or is null, aborting send.");
+				}
+				else if(wsBits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
+				{
+					client->text(jsonBuffer.data(), len);
+					logger.log(LogLevel ::INTR, "SEND LED STATUS ");
+					serializeJsonPretty(doc, Serial);
+				}
+				else
+				{
+					logger.log(LogLevel::ERROR, "recent Client  is no longer connected.");
+				}
+				xSemaphoreGive(websocketMutex);
 			}
 		}
 		else
@@ -389,6 +448,19 @@ bool DataHandler::isValidUTF8(const char* data, size_t len)
 	}
 	return true;
 }
+
+// void DataHandler::cleanUpClients(AsyncWebSocket* websocket)
+// {
+// 	for(auto& client: websocket->getClients())
+// 	{
+// 		if(client.status() != WS_CONNECTED)
+// 		{
+// 			// Clean up client resources if needed
+// 			logger.log(LogLevel::INFO, "Client %d disconnected. Cleaning up.", client.id());
+// 			websocket->client(client.id())->close();
+// 		}
+// 	}
+// }
 
 // void DataHandler::fillPeriodicDeque()
 // {
