@@ -150,6 +150,7 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 
 // 	vTaskDelete(NULL);
 // }
+#include <set> // Ensure this is included if using std::set
 
 void DataHandler::periodicDataSender(void* pvParameter)
 {
@@ -157,25 +158,70 @@ void DataHandler::periodicDataSender(void* pvParameter)
 	DataHandler& instance = DataHandler::getInstance();
 	AsyncWebSocket* websocket = params->ws;
 	TickType_t lastWakeTime = xTaskGetTickCount();
+
 	while(true)
 	{
+		// Wait for an event or timeout
 		EventBits_t eventBits = xEventGroupWaitBits(
 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
 
-		for(auto& client: websocket->getClients())
+		// Local copy of connected clients to avoid modifying the list while iterating
+		std::set<int> clientsToCheck = instance.connectedClients;
+
+		for(int clientId: clientsToCheck)
 		{
-			if(client.status() == WS_CONNECTED)
+			// Check if the client exists and is connected
+			AsyncWebSocketClient* client = websocket->client(clientId);
+			if(client != nullptr)
 			{
-				// logger.log(LogLevel::INFO, "delegating to send periodic data..");
-				instance.sendData(websocket, client.id());
+				AwsClientStatus status = client->status();
+				if(status == WS_CONNECTED)
+				{
+					// Send data to the connected client
+					instance.sendData(websocket, clientId);
+				}
+			}
+			else
+			{
+				// Log error if client object is nullptr
+				logger.log(LogLevel::ERROR, "Client object for ID %d is nullptr", clientId);
+				// Update client list if needed
+				instance.updateClientList(clientId, false);
 			}
 		}
 
 		vTaskDelayUntil(&lastWakeTime, 1000 / portTICK_PERIOD_MS);
 	}
+
 	vTaskDelete(NULL);
 }
+
+// void DataHandler::periodicDataSender(void* pvParameter)
+// {
+// 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
+// 	DataHandler& instance = DataHandler::getInstance();
+// 	AsyncWebSocket* websocket = params->ws;
+// 	TickType_t lastWakeTime = xTaskGetTickCount();
+// 	while(true)
+// 	{
+// 		EventBits_t eventBits = xEventGroupWaitBits(
+// 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
+// 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
+
+// 		for(auto& client: websocket->getClients())
+// 		{
+// 			if(client.status() == WS_CONNECTED)
+// 			{
+// 				// logger.log(LogLevel::INFO, "delegating to send periodic data..");
+// 				instance.sendData(websocket, client.id());
+// 			}
+// 		}
+
+// 		vTaskDelayUntil(&lastWakeTime, 1000 / portTICK_PERIOD_MS);
+// 	}
+// 	vTaskDelete(NULL);
+// }
 void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDataType type)
 {
 	EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
@@ -218,35 +264,27 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 		return;
 	}
 
-	// Check WebSocket connection and send data
-	if(wsBits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
+	if(xSemaphoreTake(websocketMutex, portMAX_DELAY) == pdTRUE)
 	{
-		if(xSemaphoreTake(websocketMutex, portMAX_DELAY) == pdTRUE)
+		AsyncWebSocketClient* client = websocket->client(clientId);
+		if(client == nullptr || (client->status() != AwsClientStatus::WS_CONNECTED))
 		{
-			AsyncWebSocketClient* client = websocket->client(clientId);
-			if(client == nullptr || (client->status() != AwsClientStatus::WS_CONNECTED))
-			{
-				logger.log(LogLevel::ERROR, "Client is not connected or is null, aborting send.");
-			}
-			else if(client->status() == WS_CONNECTED)
-			{
-				websocket->text(clientId, jsonBuffer.data());
-				logger.log(LogLevel::SUCCESS, "Data sent successfully to client %d.", clientId);
-			}
-			else
-			{
-				logger.log(LogLevel::ERROR, "Client %d is no longer connected.", clientId);
-			}
-			xSemaphoreGive(websocketMutex); // Ensure the mutex is released
+			logger.log(LogLevel::ERROR, "Client is not connected or is null, aborting send.");
+		}
+		else if(client->status() == WS_CONNECTED)
+		{
+			websocket->text(clientId, jsonBuffer.data());
+			logger.log(LogLevel::SUCCESS, "Data sent successfully to client %d.", clientId);
 		}
 		else
 		{
-			logger.log(LogLevel::ERROR, "Failed to take WebSocket mutex.");
+			logger.log(LogLevel::ERROR, "Client %d is no longer connected.", clientId);
 		}
+		xSemaphoreGive(websocketMutex); // Ensure the mutex is released
 	}
 	else
 	{
-		logger.log(LogLevel::ERROR, "WebSocket connection is not active. for client id ", clientId);
+		logger.log(LogLevel::ERROR, "Failed to take WebSocket mutex.");
 	}
 }
 
