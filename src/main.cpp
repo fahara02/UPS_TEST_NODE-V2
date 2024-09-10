@@ -55,7 +55,6 @@ TaskHandle_t waveformTestTaskHandle = NULL;
 TaskHandle_t tunepwmTestTaskHandle = NULL;
 TaskHandle_t TestManagerTaskHandle = NULL;
 
-
 QueueHandle_t TestManageQueue = NULL;
 QueueHandle_t SwitchTestDataQueue = NULL;
 QueueHandle_t BackupTestDataQueue = NULL;
@@ -239,7 +238,7 @@ void setup()
 	vTaskDelay(pdTICKS_TO_MS(100));
 	Manager.passEvent(Event::LOAD_BANK_CHECKED);
 	vTaskDelay(pdTICKS_TO_MS(100));
-
+	TesterSetup.addObserver(&switchTest);
 	TestServer testServer(&server, &ws, TesterSetup, SyncTest);
 	testServer.servePages(TesterSetup, SyncTest);
 	testServer.begin();

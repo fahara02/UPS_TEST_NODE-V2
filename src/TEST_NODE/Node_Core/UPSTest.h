@@ -53,6 +53,7 @@ class UPSTest
 	virtual bool processTestImpl() = 0;
 
   private:
+	OnSetupSpecCallback _specCallback;
 	// Prevent copying
 	UPSTest(const UPSTest&) = delete;
 	UPSTest& operator=(const UPSTest&) = delete;

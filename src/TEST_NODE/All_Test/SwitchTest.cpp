@@ -69,12 +69,12 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 			{
 				xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 				logger.log(LogLevel::TEST,
-						   "Switchtask VA rating is: ", taskParam.task_TestVARating);
+						   "Switchtask VA rating is: ", switchTest._cfgTest_SW.testVARating);
 				logger.log(LogLevel::TEST,
-						   "Switchtask duration is: ", taskParam.task_testDuration_ms);
+						   "Switchtask duration is: ", switchTest._cfgTest_SW.testDuration_ms);
 
-				switchTest._currentTestResult =
-					switchTest.run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
+				switchTest._currentTestResult = switchTest.run(
+					switchTest._cfgTest_SW.testVARating, switchTest._cfgTest_SW.testDuration_ms);
 			}
 			if(switchTest._sendTestData_SW)
 			{

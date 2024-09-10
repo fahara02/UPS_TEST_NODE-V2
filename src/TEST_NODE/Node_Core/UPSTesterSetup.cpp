@@ -265,34 +265,34 @@ bool UPSTesterSetup::updateField(T& currentField, const T& newField,
 	return false; // No update occurred
 }
 
-void UPSTesterSetup::notifySpecUpdated(const SetupSpec newSpec, bool SaveSetting)
-{
-	bool updated = false;
+// void UPSTesterSetup::notifySpecUpdated(const SetupSpec newSpec, bool SaveSetting)
+// {
+// 	bool updated = false;
 
-	// Update individual fields using the updated template function
-	updated |= updateField(_spec.Rating_va, newSpec.Rating_va, _specSetCallback, _spec);
-	updated |=
-		updateField(_spec.RatedVoltage_volt, newSpec.RatedVoltage_volt, _specSetCallback, _spec);
-	updated |=
-		updateField(_spec.RatedCurrent_amp, newSpec.RatedCurrent_amp, _specSetCallback, _spec);
-	updated |= updateField(_spec.MinInputVoltage_volt, newSpec.MinInputVoltage_volt,
-						   _specSetCallback, _spec);
-	updated |= updateField(_spec.MaxInputVoltage_volt, newSpec.MaxInputVoltage_volt,
-						   _specSetCallback, _spec);
-	updated |=
-		updateField(_spec.AvgSwitchTime_ms, newSpec.AvgSwitchTime_ms, _specSetCallback, _spec);
-	updated |=
-		updateField(_spec.AvgBackupTime_ms, newSpec.AvgBackupTime_ms, _specSetCallback, _spec);
+// 	// Update individual fields using the updated template function
+// 	updated |= updateField(_spec.Rating_va, newSpec.Rating_va, _specSetCallback, _spec);
+// 	updated |=
+// 		updateField(_spec.RatedVoltage_volt, newSpec.RatedVoltage_volt, _specSetCallback, _spec);
+// 	updated |=
+// 		updateField(_spec.RatedCurrent_amp, newSpec.RatedCurrent_amp, _specSetCallback, _spec);
+// 	updated |= updateField(_spec.MinInputVoltage_volt, newSpec.MinInputVoltage_volt,
+// 						   _specSetCallback, _spec);
+// 	updated |= updateField(_spec.MaxInputVoltage_volt, newSpec.MaxInputVoltage_volt,
+// 						   _specSetCallback, _spec);
+// 	updated |=
+// 		updateField(_spec.AvgSwitchTime_ms, newSpec.AvgSwitchTime_ms, _specSetCallback, _spec);
+// 	updated |=
+// 		updateField(_spec.AvgBackupTime_ms, newSpec.AvgBackupTime_ms, _specSetCallback, _spec);
 
-	if(updated)
-	{
-		//_spec.lastUpdate()= millis();
-		if(SaveSetting)
-		{
-			serializeSettings("/tester_settings.json");
-		}
-	}
-}
+// 	if(updated)
+// 	{
+// 		//_spec.lastUpdate()= millis();
+// 		if(SaveSetting)
+// 		{
+// 			serializeSettings("/tester_settings.json");
+// 		}
+// 	}
+// }
 
 void UPSTesterSetup::serializeSettings(const char* filename)
 {
@@ -522,42 +522,6 @@ void UPSTesterSetup::notifyAllSettingsApplied()
 							{_spec, _testSetting, _taskSetting, _taskParamsSetting,
 							 _hardwareSetting, _networkSetting, _modbusSetting, _reportSetting});
 	}
-}
-
-// Register Callback Methods
-void UPSTesterSetup::registerSpecCallback(OnSetupSpecCallback callback)
-{
-	_specSetCallback = callback;
-}
-
-void UPSTesterSetup::registerTestCallback(OnSetupTestCallback callback)
-{
-	_testSetCallback = callback;
-}
-void UPSTesterSetup::registerTaskCallback(OnSetupTaskCallback callback)
-{
-	_taskSetCallback = callback;
-}
-void UPSTesterSetup::registerTaskParamsCallback(OnSetupTaskParamsCallback callback)
-{
-	_taskParamsSetCallback = callback;
-}
-void UPSTesterSetup::registerNetworkCallback(OnSetupNetworkCallback callback)
-{
-	_commSetCallback = callback;
-}
-void UPSTesterSetup::registerModbusCallback(OnSetupModbusCallback callback)
-{
-	_modbusSetCallback = callback;
-}
-void UPSTesterSetup::registerHardwareCallback(OnSetupHardwareCallback callback)
-{
-	_hardwareSetCallback = callback;
-}
-
-void UPSTesterSetup::registerReportCallback(OnSetupReportCallback callback)
-{
-	_reportSetCallback = callback;
 }
 
 // void UPSTesterSetup::loadFactorySettings() {

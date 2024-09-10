@@ -6,6 +6,8 @@
 #include <IPAddress.h>
 #include <functional>
 #include <stdint.h>
+#include "SettingsSubject.h"
+
 const unsigned long ONE_DAY_MS = 86400000UL; // 1 day in milliseconds
 
 namespace Node_Core
@@ -22,7 +24,7 @@ using OnSetupModbusCallback = std::function<void(bool modbus_updated, SetupModbu
 using OnSetupReportCallback = std::function<void(bool report_updated, SetupReport setting)>;
 using OnAllSettingCallback = std::function<void(bool allsettings_updated, SetupUPSTest settings)>;
 
-class UPSTesterSetup
+class UPSTesterSetup : public SettingsSubject
 {
   public:
 	static UPSTesterSetup& getInstance();
@@ -75,7 +77,7 @@ class UPSTesterSetup
 	bool updateField(T& currentField, const T& newField, std::function<void(bool, U)> callback,
 					 U setup);
 	void updateSettings(SettingType settingType, const void* newSetting);
-	void notifySpecUpdated(const SetupSpec newSpec, bool SaveSetting = false);
+	// void notifySpecUpdated(const SetupSpec newSpec, bool SaveSetting = false);
 
 	void loadSettings(SettingType settingType, const void* newSetting);
 	void loadFactorySettings();
@@ -97,6 +99,18 @@ class UPSTesterSetup
 	void registerModbusCallback(OnSetupModbusCallback callback);
 	void registerReportCallback(OnSetupReportCallback callback);
 	void registerAllSettingCallback(OnAllSettingCallback callback);
+
+	void notifySpecUpdated(const SetupSpec& newSpec, bool saveSetting)
+	{
+		_spec = newSpec;
+		notifyObservers(SettingType::SPEC, &_spec);
+	}
+
+	void notifyTestUpdated(const SetupTest& newTest, bool saveSetting)
+	{
+		_testSetting = newTest;
+		notifyObservers(SettingType::TEST, &_testSetting);
+	}
 
   private:
 	UPSTesterSetup();

@@ -4,10 +4,12 @@
 #include "UPSTest.h"
 #include "TestManager.h"
 #include "EventHelper.h"
+#include "SettingsObserver.h"
+
 using namespace Node_Core;
 extern QueueHandle_t SwitchTestDataQueue;
 extern TaskHandle_t switchTestTaskHandle;
-class SwitchTest : public UPSTest<SwitchTest, SwitchTestData>
+class SwitchTest : public UPSTest<SwitchTest, SwitchTestData>, public SettingsObserver
 {
   public:
 	static constexpr TestType test_type = TestType::SwitchTest;
@@ -65,6 +67,23 @@ class SwitchTest : public UPSTest<SwitchTest, SwitchTestData>
 	static void SwitchTestTask(void* pvParameters);
 
 	void UpdateSettings();
+
+	void onSettingsUpdate(SettingType type, const void* settings) override
+	{
+		if(type == SettingType::SPEC)
+		{
+			_cfgSpec_SW = *static_cast<const SetupSpec*>(settings);
+			Serial.println("Switch test Spec settings updated !!!");
+		}
+		else if(type == SettingType::TEST)
+		{
+			_cfgTest_SW = *static_cast<const SetupTest*>(settings);
+			Serial.println("Switch test Test settings updated !!!");
+		}
+		else
+		{
+		}
+	}
 
   protected:
   private:

@@ -240,11 +240,11 @@ void PageBuilder::sendSpecTable(AsyncResponseStream* response, SetupSpec& spec)
 }
 void PageBuilder::sendTestTable(AsyncResponseStream* response, SetupTest& test)
 {
-	sendTableRow(response, "Test Standard", test.TestStandard);
-	sendInputField(response, "TestStandard", test.TestStandard);
+	// sendTableRow(response, "Test Standard", test.TestStandard);
+	// sendInputField(response, "TestStandard", test.TestStandard);
 
-	sendTableRow(response, "Test Mode", static_cast<int>(test.mode));
-	sendDropdown(response, "TestMode", {"AUTO", "MANUAL"}, "AUTO");
+	// sendTableRow(response, "Test Mode", static_cast<int>(test.mode));
+	// sendDropdown(response, "TestMode", {"AUTO", "MANUAL"}, "AUTO");
 
 	sendTableRow(response, "Test VA Rating", static_cast<double>(test.testVARating));
 	sendInputField(response, "TestVARating", test.testVARating, UPS_MIN_VA, UPS_MAX_VA);
