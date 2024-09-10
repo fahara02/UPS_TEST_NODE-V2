@@ -161,32 +161,26 @@ void DataHandler::periodicDataSender(void* pvParameter)
 
 	while(true)
 	{
-		// Wait for an event or timeout
 		EventBits_t eventBits = xEventGroupWaitBits(
 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
 
-		// Local copy of connected clients to avoid modifying the list while iterating
 		std::set<int> clientsToCheck = instance.connectedClients;
 
 		for(int clientId: clientsToCheck)
 		{
-			// Check if the client exists and is connected
 			AsyncWebSocketClient* client = websocket->client(clientId);
 			if(client != nullptr)
 			{
 				AwsClientStatus status = client->status();
 				if(status == WS_CONNECTED)
 				{
-					// Send data to the connected client
 					instance.sendData(websocket, clientId);
 				}
 			}
 			else
 			{
-				// Log error if client object is nullptr
 				logger.log(LogLevel::ERROR, "Client object for ID %d is nullptr", clientId);
-				// Update client list if needed
 				instance.updateClientList(clientId, false);
 			}
 		}
@@ -197,31 +191,6 @@ void DataHandler::periodicDataSender(void* pvParameter)
 	vTaskDelete(NULL);
 }
 
-// void DataHandler::periodicDataSender(void* pvParameter)
-// {
-// 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
-// 	DataHandler& instance = DataHandler::getInstance();
-// 	AsyncWebSocket* websocket = params->ws;
-// 	TickType_t lastWakeTime = xTaskGetTickCount();
-// 	while(true)
-// 	{
-// 		EventBits_t eventBits = xEventGroupWaitBits(
-// 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
-// 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
-
-// 		for(auto& client: websocket->getClients())
-// 		{
-// 			if(client.status() == WS_CONNECTED)
-// 			{
-// 				// logger.log(LogLevel::INFO, "delegating to send periodic data..");
-// 				instance.sendData(websocket, client.id());
-// 			}
-// 		}
-
-// 		vTaskDelayUntil(&lastWakeTime, 1000 / portTICK_PERIOD_MS);
-// 	}
-// 	vTaskDelete(NULL);
-// }
 void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDataType type)
 {
 	EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
@@ -341,7 +310,7 @@ void DataHandler::sendData(AsyncWebSocketClient* client, wsOutGoingDataType type
 					logger.log(LogLevel::ERROR,
 							   "Client is not connected or is null, aborting send.");
 				}
-				else if(wsBits & static_cast<EventBits_t>(wsClientStatus::CONNECTED))
+				else if(client->status() == AwsClientStatus::WS_CONNECTED)
 				{
 					client->text(jsonBuffer.data(), len);
 					logger.log(LogLevel ::INTR, "SEND LED STATUS ");
