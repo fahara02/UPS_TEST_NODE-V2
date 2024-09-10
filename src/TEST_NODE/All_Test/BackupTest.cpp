@@ -22,18 +22,8 @@ void BackupTest::init()
 		};
 		_initialized_BT = true;
 
-		UpdateSettings();
 		logger.log(LogLevel::SUCCESS, "BackupTest initialised ");
 	}
-}
-
-void BackupTest::UpdateSettings()
-{
-	_cfgSpec_BT = TesterSetup.specSetup();
-	_cfgTest_BT = TesterSetup.testSetup();
-	_cfgTask_BT = TesterSetup.taskSetup();
-	_cfgTaskParam_BT = TesterSetup.paramSetup();
-	_cfgHardware_BT = TesterSetup.hardwareSetup();
 }
 
 BackupTestData& BackupTest::data()
@@ -71,10 +61,10 @@ void BackupTest::BackupTestTask(void* pvParameters)
 				logger.log(LogLevel::TEST,
 						   "Backuptask VA rating is: ", taskParam.task_TestVARating);
 				logger.log(LogLevel::TEST,
-						   "Backuptask duration is: ", taskParam.task_testDuration_ms);
+						   "Backuptask duration is: ", taskParam.task_BTtestDuration_ms);
 
 				backupTest._currentTestResult =
-					backupTest.run(taskParam.task_TestVARating, taskParam.task_testDuration_ms);
+					backupTest.run(taskParam.task_TestVARating, taskParam.task_BTtestDuration_ms);
 			}
 			if(backupTest._sendTestData_BT)
 			{

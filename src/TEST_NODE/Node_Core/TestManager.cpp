@@ -4,7 +4,6 @@
 #include "EventHelper.h"
 #include "HPTSettings.h"
 
-
 extern Logger& logger;
 
 extern void IRAM_ATTR keyISR1(void* pvParameters);
@@ -52,7 +51,7 @@ void TestManager::init()
 	{
 		return; // Already initialized, do nothing
 	}
-	UpdateSettings();
+
 	setupPins();
 	createISRTasks();
 	initializeTestInstances();
@@ -62,16 +61,6 @@ void TestManager::init()
 	// pauseAllTest();
 
 	_initialized = true; // Mark as initialized
-}
-
-void TestManager::UpdateSettings()
-{
-	_cfgSpec = TesterSetup.specSetup();
-	_cfgTest = TesterSetup.testSetup();
-	_cfgTask = TesterSetup.taskSetup();
-	_cfgTaskParam = TesterSetup.paramSetup();
-	_cfgHardware = TesterSetup.hardwareSetup();
-	logger.log(LogLevel::SUCCESS, "Testmanager data updated");
 }
 
 void TestManager::addTests(RequiredTest testList[], int testNum)
@@ -184,13 +173,13 @@ void TestManager::createTestTasks()
 	SwitchTest& switchTest = UPSTest<SwitchTest, SwitchTestData>::getInstance();
 	BackupTest& backupTest = UPSTest<BackupTest, BackupTestData>::getInstance();
 	xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
-	xTaskCreatePinnedToCore(switchTest.SwitchTestTask, "SwitchTestTask", 4096, NULL,
-							_cfgTask.mainTest_taskIdlePriority, &switchTestTaskHandle, 0);
+	xTaskCreatePinnedToCore(switchTest.SwitchTestTask, "SwitchTestTask", switchTest_Stack, NULL,
+							SwitchTest_Priority, &switchTestTaskHandle, SwitchTest_CORE);
 	logger.log(LogLevel::SUCCESS, "Switch Test task created");
 	logger.log(LogLevel::INFO, "Creating Backuptest task ");
 	xQueueSend(TestManageQueue, &_cfgTaskParam, 100);
-	xTaskCreatePinnedToCore(backupTest.BackupTestTask, "BackUpTestTask", 4096, NULL,
-							_cfgTask.mainTest_taskIdlePriority, &backupTestTaskHandle, 0);
+	xTaskCreatePinnedToCore(backupTest.BackupTestTask, "BackUpTestTask", backupTest_Stack, NULL,
+							BackUpTest_Priority, &backupTestTaskHandle, BackUpTest_CORE);
 	logger.log(LogLevel::SUCCESS, "Switch Test task created");
 }
 
@@ -365,7 +354,7 @@ bool TestManager::isTestPendingAndNotStarted(const UPSTestRun& test)
 void TestManager::configureTest(LoadPercentage load)
 {
 	SetupTaskParams task_Param;
-	task_Param = TesterSetup.paramSetup();
+
 	switch(load)
 	{
 		case LoadPercentage::LOAD_0P:
@@ -375,22 +364,22 @@ void TestManager::configureTest(LoadPercentage load)
 			break;
 		case LoadPercentage::LOAD_25P:
 
-			task_Param.task_TestVARating = _cfgTest.testVARating * 25 / 100;
+			task_Param.task_TestVARating = _cfgSpec.Rating_va * 25 / 100;
 			logger.log(LogLevel::INFO, "Setup switch test at 25 percent load");
 			break;
 		case LoadPercentage::LOAD_50P:
 
-			task_Param.task_TestVARating = _cfgTest.testVARating * 50 / 100;
+			task_Param.task_TestVARating = _cfgSpec.Rating_va * 50 / 100;
 			logger.log(LogLevel::INFO, "Setup switch test at 50 percent load");
 			break;
 		case LoadPercentage::LOAD_75P:
 
-			task_Param.task_TestVARating = _cfgTest.testVARating * 75 / 100;
+			task_Param.task_TestVARating = _cfgSpec.Rating_va * 75 / 100;
 			logger.log(LogLevel::INFO, "Setup switch test at 75 percent load");
 			break;
 		case LoadPercentage::LOAD_100P:
 
-			task_Param.task_TestVARating = _cfgTest.testVARating;
+			task_Param.task_TestVARating = _cfgSpec.Rating_va;
 			logger.log(LogLevel::INFO, "Setup switch test at 100 percent load");
 			break;
 		default:

@@ -33,81 +33,39 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 		case SettingType::SPEC:
 			_spec = *static_cast<const SetupSpec*>(newSetting);
 
-			if(_specSetCallback)
-			{
-				_specSetCallback(true, _spec);
-			}
 			break;
 
 		case SettingType::TEST:
 		{
 			const SetupTest* newTest = static_cast<const SetupTest*>(newSetting);
-			bool modeChanged = (_testSetting.mode != newTest->mode);
-			_testSetting = *newTest;
 
-			if(_testSetCallback)
-			{
-				_testSetCallback(true, _testSetting);
-			}
-			if(modeChanged && _testModeCallback)
-			{
-				_testModeCallback(_testSetting.mode);
-			}
+			_testSetting = *newTest;
 		}
 		break;
-
-		case SettingType::TASK:
-			_taskSetting = *static_cast<const SetupTask*>(newSetting);
-
-			if(_taskSetCallback)
-			{
-				_taskSetCallback(true, _taskSetting);
-			}
-			break;
 
 		case SettingType::TASK_PARAMS:
 			_taskParamsSetting = *static_cast<const SetupTaskParams*>(newSetting);
 
-			if(_taskParamsSetCallback)
-			{
-				_taskParamsSetCallback(true, _taskParamsSetting);
-			}
 			break;
 
 		case SettingType::HARDWARE:
 			_hardwareSetting = *static_cast<const SetupHardware*>(newSetting);
 
-			if(_hardwareSetCallback)
-			{
-				_hardwareSetCallback(true, _hardwareSetting);
-			}
 			break;
 
 		case SettingType::NETWORK:
 			_networkSetting = *static_cast<const SetupNetwork*>(newSetting);
 
-			if(_commSetCallback)
-			{
-				_commSetCallback(true, _networkSetting);
-			}
 			break;
 
 		case SettingType::MODBUS:
 			_modbusSetting = *static_cast<const SetupModbus*>(newSetting);
 
-			if(_modbusSetCallback)
-			{
-				_modbusSetCallback(true, _modbusSetting);
-			}
 			break;
 
 		case SettingType::REPORT:
 			_reportSetting = *static_cast<const SetupReport*>(newSetting);
 
-			if(_reportSetCallback)
-			{
-				_reportSetCallback(true, _reportSetting);
-			}
 			break;
 
 		case SettingType::ALL:
@@ -129,10 +87,7 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 		updatedSettingsCount++;
 	if(currentTime - _testSetting.lastUpdate() <= ONE_DAY_MS)
 		updatedSettingsCount++;
-	if(currentTime - _taskSetting.lastsetting_updated <= ONE_DAY_MS)
-		updatedSettingsCount++;
-	if(currentTime - _taskParamsSetting.lastsetting_updated <= ONE_DAY_MS)
-		updatedSettingsCount++;
+
 	if(currentTime - _hardwareSetting.lastsetting_updated <= ONE_DAY_MS)
 		updatedSettingsCount++;
 	if(currentTime - _networkSetting.lastsetting_updated <= ONE_DAY_MS)
@@ -156,10 +111,6 @@ void UPSTesterSetup::updateSettings(SettingType settingType, const void* newSett
 		_user_update_call = false;
 	}
 	// Trigger the all settings callback if available
-	if(_allSettingCallback)
-	{
-		_allSettingCallback(allsettings_updated, _allSetting);
-	}
 
 	serializeSettings("/tester_settings.json");
 }
@@ -174,125 +125,10 @@ bool UPSTesterSetup::setField(T& setup, const U Field, V Fieldvalue)
 {
 	if(setup.setField(Field, Fieldvalue))
 	{
-		SettingType settingType = setup.typeofSetting;
-		switch(settingType)
-		{
-			case SettingType::ALL:
-				if(_allSettingCallback)
-				{
-					_allSettingCallback(true, setup);
-				}
-				break;
-
-			case SettingType::SPEC:
-				if(_specSetCallback)
-				{
-					_specSetCallback(true, setup.spec);
-				}
-				break;
-
-			case SettingType::TEST:
-				if(_testSetCallback)
-				{
-					_testSetCallback(true, setup.testSetting);
-				}
-				break;
-
-			case SettingType::TASK:
-				if(_taskSetCallback)
-				{
-					_taskSetCallback(true, setup.taskSetting);
-				}
-				break;
-
-			case SettingType::TASK_PARAMS:
-				if(_taskParamsSetCallback)
-				{
-					_taskParamsSetCallback(true, setup.paramsSetting);
-				}
-				break;
-
-			case SettingType::HARDWARE:
-				if(_hardwareSetCallback)
-				{
-					_hardwareSetCallback(true, setup.hardwareSetting);
-				}
-				break;
-
-			case SettingType::NETWORK:
-				if(_commSetCallback)
-				{
-					_commSetCallback(true, setup.commSetting);
-				}
-				break;
-
-			case SettingType::MODBUS:
-				if(_modbusSetCallback)
-				{
-					_modbusSetCallback(true, setup.modbusSetting);
-				}
-				break;
-
-			case SettingType::REPORT:
-				if(_reportSetCallback)
-				{
-					_reportSetCallback(true, setup.reportSetting);
-				}
-				break;
-
-			default:
-				return false;
-		}
-
 		return true;
 	}
 	return false;
 }
-
-template<typename T, typename U>
-bool UPSTesterSetup::updateField(T& currentField, const T& newField,
-								 std::function<void(bool, U)> callback, U setup)
-{
-	if(currentField != newField)
-	{
-		currentField = newField;
-		if(callback)
-		{
-			callback(true, setup);
-		}
-		return true; // Field was updated
-	}
-	return false; // No update occurred
-}
-
-// void UPSTesterSetup::notifySpecUpdated(const SetupSpec newSpec, bool SaveSetting)
-// {
-// 	bool updated = false;
-
-// 	// Update individual fields using the updated template function
-// 	updated |= updateField(_spec.Rating_va, newSpec.Rating_va, _specSetCallback, _spec);
-// 	updated |=
-// 		updateField(_spec.RatedVoltage_volt, newSpec.RatedVoltage_volt, _specSetCallback, _spec);
-// 	updated |=
-// 		updateField(_spec.RatedCurrent_amp, newSpec.RatedCurrent_amp, _specSetCallback, _spec);
-// 	updated |= updateField(_spec.MinInputVoltage_volt, newSpec.MinInputVoltage_volt,
-// 						   _specSetCallback, _spec);
-// 	updated |= updateField(_spec.MaxInputVoltage_volt, newSpec.MaxInputVoltage_volt,
-// 						   _specSetCallback, _spec);
-// 	updated |=
-// 		updateField(_spec.AvgSwitchTime_ms, newSpec.AvgSwitchTime_ms, _specSetCallback, _spec);
-// 	updated |=
-// 		updateField(_spec.AvgBackupTime_ms, newSpec.AvgBackupTime_ms, _specSetCallback, _spec);
-
-// 	if(updated)
-// 	{
-// 		//_spec.lastUpdate()= millis();
-// 		if(SaveSetting)
-// 		{
-// 			serializeSettings("/tester_settings.json");
-// 		}
-// 	}
-// }
 
 void UPSTesterSetup::serializeSettings(const char* filename)
 {
@@ -307,31 +143,14 @@ void UPSTesterSetup::serializeSettings(const char* filename)
 	doc["spec"]["AvgSwitchTime_ms"] = _spec.AvgSwitchTime_ms;
 	doc["spec"]["AvgBackupTime_ms"] = _spec.AvgBackupTime_ms;
 
-	doc["test"]["TestStandard"] = _testSetting.TestStandard;
-	doc["test"]["mode"] = static_cast<int>(_testSetting.mode);
 	doc["test"]["inputVoltage_volt"] = _testSetting.inputVoltage_volt;
+	doc["test"]["switch_TestDuration"] = _testSetting.switch_testDuration_ms;
+	doc["test"]["backup_TestDuration"] = _testSetting.backup_testDuration_ms;
 	doc["test"]["min_valid_switch_time_ms"] = _testSetting.min_valid_switch_time_ms;
 	doc["test"]["max_valid_switch_time_ms"] = _testSetting.max_valid_switch_time_ms;
 	doc["test"]["ToleranceSwitchTime_ms"] = _testSetting.ToleranceSwitchTime_ms;
 	doc["test"]["ToleranceBackUpTime_ms"] = _testSetting.ToleranceBackUpTime_ms;
 	doc["test"]["MaxRetest"] = _testSetting.MaxRetest;
-
-	doc["task"]["mainTest_taskCore"] = _taskSetting.mainTest_taskCore;
-	doc["task"]["mainsISR_taskCore"] = _taskSetting.mainsISR_taskCore;
-	doc["task"]["upsISR_taskCore"] = _taskSetting.upsISR_taskCore;
-	doc["task"]["mainTest_taskIdlePriority"] = _taskSetting.mainTest_taskIdlePriority;
-	doc["task"]["mainsISR_taskIdlePriority"] = _taskSetting.mainsISR_taskIdlePriority;
-	doc["task"]["upsISR_taskIdlePriority"] = _taskSetting.upsISR_taskIdlePriority;
-	doc["task"]["mainTest_taskStack"] = _taskSetting.mainTest_taskStack;
-	doc["task"]["mainsISR_taskStack"] = _taskSetting.mainsISR_taskStack;
-	doc["task"]["upsISR_taskStack"] = _taskSetting.upsISR_taskStack;
-	doc["task"]["lastsetting_updated"] = _taskSetting.lastsetting_updated;
-
-	doc["task_params"]["flag_mains_power_loss"] = _taskParamsSetting.flag_mains_power_loss;
-	doc["task_params"]["flag_ups_power_gain"] = _taskParamsSetting.flag_ups_power_gain;
-	doc["task_params"]["task_TestVARating"] = _taskParamsSetting.task_TestVARating;
-	doc["task_params"]["testDuration_ms"] = _taskParamsSetting.task_testDuration_ms;
-	doc["task_params"]["lastsetting_updated"] = _taskParamsSetting.lastsetting_updated;
 
 	doc["hardware"]["pwmchannelNo"] = _hardwareSetting.pwmchannelNo;
 	doc["hardware"]["pwmResolusion_bits"] = _hardwareSetting.pwmResolusion_bits;
@@ -418,11 +237,13 @@ void UPSTesterSetup::deserializeSettings(const char* filename)
 	_spec.AvgSwitchTime_ms = doc["spec"]["AvgSwitchTime_ms"] | _spec.AvgSwitchTime_ms;
 	_spec.AvgBackupTime_ms = doc["spec"]["AvgBackupTime_ms"] | _spec.AvgBackupTime_ms;
 
-	_testSetting.TestStandard = doc["test"]["TestStandard"] | _testSetting.TestStandard;
-	_testSetting.mode =
-		static_cast<TestMode>(doc["test"]["mode"] | static_cast<int>(_testSetting.mode));
 	_testSetting.inputVoltage_volt =
 		doc["test"]["inputVoltage_volt"] | _testSetting.inputVoltage_volt;
+	_testSetting.switch_testDuration_ms =
+		doc["test"]["switch_TestDuration"] | _testSetting.switch_testDuration_ms;
+	_testSetting.backup_testDuration_ms =
+		doc["test"]["backup_TestDuration"] | _testSetting.backup_testDuration_ms;
+
 	_testSetting.min_valid_switch_time_ms =
 		doc["test"]["min_valid_switch_time_ms"] | _testSetting.min_valid_switch_time_ms;
 	_testSetting.max_valid_switch_time_ms =
@@ -432,36 +253,6 @@ void UPSTesterSetup::deserializeSettings(const char* filename)
 	_testSetting.ToleranceBackUpTime_ms =
 		doc["test"]["ToleranceBackUpTime_ms"] | _testSetting.ToleranceBackUpTime_ms;
 	_testSetting.MaxRetest = doc["test"]["MaxRetest"] | _testSetting.MaxRetest;
-
-	_taskSetting.mainTest_taskCore =
-		doc["task"]["mainTest_taskCore"] | _taskSetting.mainTest_taskCore;
-	_taskSetting.mainsISR_taskCore =
-		doc["task"]["mainsISR_taskCore"] | _taskSetting.mainsISR_taskCore;
-	_taskSetting.upsISR_taskCore = doc["task"]["upsISR_taskCore"] | _taskSetting.upsISR_taskCore;
-	_taskSetting.mainTest_taskIdlePriority =
-		doc["task"]["mainTest_taskIdlePriority"] | _taskSetting.mainTest_taskIdlePriority;
-	_taskSetting.mainsISR_taskIdlePriority =
-		doc["task"]["mainsISR_taskIdlePriority"] | _taskSetting.mainsISR_taskIdlePriority;
-	_taskSetting.upsISR_taskIdlePriority =
-		doc["task"]["upsISR_taskIdlePriority"] | _taskSetting.upsISR_taskIdlePriority;
-	_taskSetting.mainTest_taskStack =
-		doc["task"]["mainTest_taskStack"] | _taskSetting.mainTest_taskStack;
-	_taskSetting.mainsISR_taskStack =
-		doc["task"]["mainsISR_taskStack"] | _taskSetting.mainsISR_taskStack;
-	_taskSetting.upsISR_taskStack = doc["task"]["upsISR_taskStack"] | _taskSetting.upsISR_taskStack;
-	_taskSetting.lastsetting_updated =
-		doc["task"]["lastsetting_updated"] | _taskSetting.lastsetting_updated;
-
-	_taskParamsSetting.flag_mains_power_loss =
-		doc["task_params"]["flag_mains_power_loss"] | _taskParamsSetting.flag_mains_power_loss;
-	_taskParamsSetting.flag_ups_power_gain =
-		doc["task_params"]["flag_ups_power_gain"] | _taskParamsSetting.flag_ups_power_gain;
-	_taskParamsSetting.task_TestVARating =
-		doc["task_params"]["task_TestVARating"] | _taskParamsSetting.task_TestVARating;
-	_taskParamsSetting.task_testDuration_ms =
-		doc["task_params"]["task_testDuration_ms"] | _taskParamsSetting.task_testDuration_ms;
-	_taskParamsSetting.lastsetting_updated =
-		doc["task_params"]["lastsetting_updated"] | _taskParamsSetting.lastsetting_updated;
 
 	_hardwareSetting.pwmchannelNo = doc["hardware"]["pwmchannelNo"] | _hardwareSetting.pwmchannelNo;
 	_hardwareSetting.pwmResolusion_bits =
@@ -512,16 +303,6 @@ void UPSTesterSetup::deserializeSettings(const char* filename)
 	_reportSetting.brandName = doc["report"]["brandName"] | _reportSetting.brandName;
 	_reportSetting.serialNumber = doc["report"]["serialNumber"] | _reportSetting.serialNumber;
 	_reportSetting.sampleNumber = doc["report"]["sampleNumber"] | _reportSetting.sampleNumber;
-}
-
-void UPSTesterSetup::notifyAllSettingsApplied()
-{
-	if(_allSettingCallback)
-	{
-		_allSettingCallback(true,
-							{_spec, _testSetting, _taskSetting, _taskParamsSetting,
-							 _hardwareSetting, _networkSetting, _modbusSetting, _reportSetting});
-	}
 }
 
 // void UPSTesterSetup::loadFactorySettings() {

@@ -17,8 +17,8 @@ static const uint32_t TestManager_Stack = 4096;
 static const uint32_t MainLossISR_Stack = 1024;
 static const uint32_t UPSgainISR_Stack = 1024;
 static const uint32_t UPSlossISR_Stack = 1024;
-static const uint32_t switchTest_Stack = 1024;
-static const uint32_t backupTest_Stack = 1024;
+static const uint32_t switchTest_Stack = 4096;
+static const uint32_t backupTest_Stack = 4096;
 
 static const uint32_t monitor_Stack = 2048;
 static const uint32_t modbus_Stack = 4096;
@@ -37,6 +37,8 @@ static UBaseType_t TestManager_Priority = 3;
 static UBaseType_t MainLossISR_Priority = 1;
 static UBaseType_t UPSgainISR_Priority = 1;
 static UBaseType_t UPSloss_Priority = 1;
+static UBaseType_t SwitchTest_Priority = 1;
+static UBaseType_t BackUpTest_Priority = 1;
 
 static UBaseType_t monitor_Priority = 1;
 static UBaseType_t modbus_Priority = 1;
@@ -55,6 +57,8 @@ static BaseType_t testManager_CORE = 0;
 static BaseType_t MainLossISR_CORE = 1;
 static BaseType_t UPSgainISR_CORE = 1;
 static BaseType_t UPSloss_CORE = 1;
+static BaseType_t SwitchTest_CORE = 0;
+static BaseType_t BackUpTest_CORE = 0;
 
 static BaseType_t monitor_CORE = 1;
 static BaseType_t modbus_CORE = 0;

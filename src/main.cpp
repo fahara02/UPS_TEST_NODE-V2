@@ -238,7 +238,11 @@ void setup()
 	vTaskDelay(pdTICKS_TO_MS(100));
 	Manager.passEvent(Event::LOAD_BANK_CHECKED);
 	vTaskDelay(pdTICKS_TO_MS(100));
+
+	TesterSetup.addObserver(&Manager);
 	TesterSetup.addObserver(&switchTest);
+	TesterSetup.addObserver(&backupTest);
+
 	TestServer testServer(&server, &ws, TesterSetup, SyncTest);
 	testServer.servePages(TesterSetup, SyncTest);
 	testServer.begin();

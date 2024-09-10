@@ -16,7 +16,7 @@
 
 using namespace Node_Core;
 
-class TestManager
+class TestManager : public SettingsObserver
 {
   public:
 	static TestManager& getInstance();
@@ -34,8 +34,6 @@ class TestManager
 	static void onUPSPowerGainTask(void* pvParameters);
 	static void onUPSPowerLossTask(void* pvParameters);
 	void initializeTestInstances();
-	void UpdateSettings();
-
 
 	void updateState(State state)
 	{
@@ -44,6 +42,32 @@ class TestManager
 	void updateMode(TestMode mode)
 	{
 		_deviceMode.store(mode);
+	}
+
+	void onSettingsUpdate(SettingType type, const void* settings) override
+	{
+		if(type == SettingType::SPEC)
+		{
+			_cfgSpec = *static_cast<const SetupSpec*>(settings);
+			Serial.println("TestManager Spec settings updated !!!");
+		}
+		else if(type == SettingType::TEST)
+		{
+			_cfgTest = *static_cast<const SetupTest*>(settings);
+			Serial.println("Testmanager Test settings updated !!!");
+		}
+		else
+		{
+		}
+
+		ReconfigureTaskParams();
+	}
+
+	void ReconfigureTaskParams()
+	{
+		_cfgTaskParam.task_TestVARating = _cfgSpec.Rating_va;
+		_cfgTaskParam.task_SWtestDuration_ms = _cfgTest.switch_testDuration_ms;
+		_cfgTaskParam.task_BTtestDuration_ms = _cfgTest.backup_testDuration_ms;
 	}
 
   private:
@@ -62,7 +86,6 @@ class TestManager
 
 	SetupSpec _cfgSpec;
 	SetupTest _cfgTest;
-	SetupTask _cfgTask;
 	SetupTaskParams _cfgTaskParam;
 	SetupHardware _cfgHardware;
 

@@ -7,7 +7,7 @@
 #include "EventHelper.h"
 extern QueueHandle_t BackupTestDataQueue;
 extern TaskHandle_t backupTestTaskHandle;
-class BackupTest : public UPSTest<BackupTest, BackupTestData>
+class BackupTest : public UPSTest<BackupTest, BackupTestData>, public SettingsObserver
 {
   public:
 	static constexpr TestType test_type = TestType::BackupTest;
@@ -55,21 +55,25 @@ class BackupTest : public UPSTest<BackupTest, BackupTestData>
 	void init() override;
 	TestResult run(uint16_t testVARating = 4000, unsigned long testduration = 10000) override;
 	static void BackupTestTask(void* pvParameters);
-	void UpdateSettings();
+
+  protected:
+	void onSettingsUpdate(SettingType type, const void* settings) override
+	{
+		if(type == SettingType::TEST)
+		{
+			_cfgTest_BT = *static_cast<const SetupTest*>(settings);
+			Serial.println("BackUpTest Test settings updated !!!");
+		}
+	}
 
   private:
 	friend class TestManager;
 
-	SetupSpec _cfgSpec_BT;
-	SetupTest _cfgTest_BT;
-	SetupTask _cfgTask_BT;
-	SetupTaskParams _cfgTaskParam_BT;
-	SetupHardware _cfgHardware_BT;
-	SetupTuning _cfgTuning_BT;
-
 	uint8_t _currentTest_BT = 0;
 	unsigned long _testDuration_BT = 0;
 	TestResult _currentTestResult = TestResult::TEST_PENDING;
+
+	SetupTest _cfgTest_BT;
 
 	bool _initialized_BT = false;
 	bool _testinProgress_BT = false;

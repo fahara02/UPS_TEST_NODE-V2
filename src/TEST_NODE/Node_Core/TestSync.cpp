@@ -339,14 +339,6 @@ void TestSync::handleSyncCommand(SyncCommand command)
 	xEventGroupSetBits(EventHelper::syncControlEvent, commandBits);
 }
 
-void TestSync::handleTestEvent(Event event)
-{
-	TestSync& instance = TestSync::getInstance();
-	logger.log(LogLevel::INFO, "Handling Test event %s", eventToString(event));
-	// Event eventBit = static_cast<Event>(event_bits);
-	// instance.stateMachine.handleEventbits(eventBit);
-}
-
 void TestSync::userCommandTask(void* pvParameters)
 {
 	TestSync& instance = TestSync::getInstance();
@@ -460,7 +452,6 @@ void TestSync::userUpdateTask(void* pvParameters)
 			TestManager& manager = TestManager::getInstance();
 			logger.log(LogLevel::WARNING, "Adding Test to manager");
 			instance.transferTest();
-			logger.log(LogLevel::TEST, "Invoking State Change...");
 			instance.reportEvent(Event::NEW_TEST);
 			vTaskDelay(pdMS_TO_TICKS(200));
 			xTaskNotify(DataHandler::getInstance().PeriodicDataHandle,

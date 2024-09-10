@@ -66,38 +66,22 @@ class SwitchTest : public UPSTest<SwitchTest, SwitchTestData>, public SettingsOb
 	TestResult run(uint16_t testVARating = 4000, unsigned long testduration = 10000) override;
 	static void SwitchTestTask(void* pvParameters);
 
-	void UpdateSettings();
-
+  protected:
 	void onSettingsUpdate(SettingType type, const void* settings) override
 	{
-		if(type == SettingType::SPEC)
-		{
-			_cfgSpec_SW = *static_cast<const SetupSpec*>(settings);
-			Serial.println("Switch test Spec settings updated !!!");
-		}
-		else if(type == SettingType::TEST)
+		if(type == SettingType::TEST)
 		{
 			_cfgTest_SW = *static_cast<const SetupTest*>(settings);
-			Serial.println("Switch test Test settings updated !!!");
-		}
-		else
-		{
+			Serial.println("SwitchTest Test settings updated !!!");
 		}
 	}
 
-  protected:
   private:
 	friend class TestManager;
+	SetupTest _cfgTest_SW;
 
 	// static SwitchTest* instanceSW; // Static pointer to hold the instance
 	SwitchTestData _data_SW = SwitchTestData();
-
-	SetupSpec _cfgSpec_SW;
-	SetupTest _cfgTest_SW;
-	SetupTask _cfgTask_SW;
-	SetupTaskParams _cfgTaskParam_SW;
-	SetupHardware _cfgHardware_SW;
-	SetupTuning _cfgTuning_SW;
 
 	uint8_t _currentTest_SW = 0;
 	TestResult _currentTestResult = TestResult::TEST_PENDING;

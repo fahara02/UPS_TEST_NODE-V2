@@ -1,6 +1,5 @@
 #include "SwitchTest.h"
 
-// extern EventGroupHandle_t eventGroupTest;
 
 using namespace Node_Core;
 
@@ -21,18 +20,8 @@ void SwitchTest::init()
 		};
 		_initialized_SW = true;
 
-		UpdateSettings();
 		logger.log(LogLevel::SUCCESS, "SwitchTest initialised ");
 	}
-}
-
-void SwitchTest::UpdateSettings()
-{
-	_cfgSpec_SW = TesterSetup.specSetup();
-	_cfgTest_SW = TesterSetup.testSetup();
-	_cfgTask_SW = TesterSetup.taskSetup();
-	_cfgTaskParam_SW = TesterSetup.paramSetup();
-	_cfgHardware_SW = TesterSetup.hardwareSetup();
 }
 
 SwitchTestData& SwitchTest::data()
@@ -69,12 +58,12 @@ void SwitchTest::SwitchTestTask(void* pvParameters)
 			{
 				xQueueReceive(TestManageQueue, (void*)&taskParam, 0 == pdTRUE);
 				logger.log(LogLevel::TEST,
-						   "Switchtask VA rating is: ", switchTest._cfgTest_SW.testVARating);
+						   "Switchtask VA rating is: ", taskParam.task_TestVARating);
 				logger.log(LogLevel::TEST,
-						   "Switchtask duration is: ", switchTest._cfgTest_SW.testDuration_ms);
+						   "Switchtask duration is: ", taskParam.task_SWtestDuration_ms);
 
-				switchTest._currentTestResult = switchTest.run(
-					switchTest._cfgTest_SW.testVARating, switchTest._cfgTest_SW.testDuration_ms);
+				switchTest._currentTestResult =
+					switchTest.run(taskParam.task_TestVARating, taskParam.task_SWtestDuration_ms);
 			}
 			if(switchTest._sendTestData_SW)
 			{

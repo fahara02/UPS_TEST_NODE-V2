@@ -231,19 +231,19 @@ void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPST
 		{
 			const char* fieldName;
 			SetupTest::Field field;
-		} testFields[] = {//   {"TestStandard", SetupTest::Field::TestStandard},
-						  //   {"TestMode", SetupTest::Field::Mode},
-						  {"TestVARating", SetupTest::Field::TestVARating},
-						  {"InputVoltage_volt", SetupTest::Field::InputVoltage},
-						  {"TestDuration_ms", SetupTest::Field::TestDuration},
-						  {"MinValidSwitchTime", SetupTest::Field::MinValidSwitchTime},
-						  {"MaxValidSwitchTime", SetupTest::Field::MaxValidSwitchTime},
-						  {"MinValidBackupTime", SetupTest::Field::MinValidBackupTime},
-						  {"MaxValidBackupTime", SetupTest::Field::MaxValidBackupTime},
-						  {"ToleranceSwitchTime", SetupTest::Field::ToleranceSwitchTime},
-						  {"MaxBackupTime", SetupTest::Field::MaxBackupTime},
-						  {"ToleranceBackupTime", SetupTest::Field::ToleranceBackupTime},
-						  {"MaxRetest", SetupTest::Field::MaxRetest}};
+		} testFields[] = {
+
+			{"InputVoltage_volt", SetupTest::Field::InputVoltage},
+			{"SwitchTestDuration_ms", SetupTest::Field::SWITCH_TestDuration},
+			{"BackupTestDuration_ms", SetupTest::Field::BACKUP_TestDuration},
+			{"MinValidSwitchTime", SetupTest::Field::MinValidSwitchTime},
+			{"MaxValidSwitchTime", SetupTest::Field::MaxValidSwitchTime},
+			{"MinValidBackupTime", SetupTest::Field::MinValidBackupTime},
+			{"MaxValidBackupTime", SetupTest::Field::MaxValidBackupTime},
+			{"ToleranceSwitchTime", SetupTest::Field::ToleranceSwitchTime},
+			{"MaxBackupTime", SetupTest::Field::MaxBackupTime},
+			{"ToleranceBackupTime", SetupTest::Field::ToleranceBackupTime},
+			{"MaxRetest", SetupTest::Field::MaxRetest}};
 
 		for(const auto& field: testFields)
 		{

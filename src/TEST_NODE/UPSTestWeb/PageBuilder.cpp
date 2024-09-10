@@ -240,21 +240,19 @@ void PageBuilder::sendSpecTable(AsyncResponseStream* response, SetupSpec& spec)
 }
 void PageBuilder::sendTestTable(AsyncResponseStream* response, SetupTest& test)
 {
-	// sendTableRow(response, "Test Standard", test.TestStandard);
-	// sendInputField(response, "TestStandard", test.TestStandard);
-
-	// sendTableRow(response, "Test Mode", static_cast<int>(test.mode));
-	// sendDropdown(response, "TestMode", {"AUTO", "MANUAL"}, "AUTO");
-
-	sendTableRow(response, "Test VA Rating", static_cast<double>(test.testVARating));
-	sendInputField(response, "TestVARating", test.testVARating, UPS_MIN_VA, UPS_MAX_VA);
-
 	sendTableRow(response, "Input Voltage (V)", static_cast<double>(test.inputVoltage_volt));
 	sendInputField(response, "InputVoltage_volt", test.inputVoltage_volt, UPS_MIN_INPUT_VOLT,
 				   UPS_MAX_INPUT_VOLT);
-	sendTableRow(response, "TestDuration (ms)", static_cast<double>(test.testDuration_ms));
-	sendInputField(response, "TestDuration_ms", test.testDuration_ms, UPS_MIN_TEST_DURATION,
-				   UPS_MAX_TEST_DURATION);
+	sendTableRow(response, "Switch TestDuration (ms)",
+				 static_cast<double>(test.switch_testDuration_ms));
+	sendInputField(response, "SwitchTestDuration_ms", test.switch_testDuration_ms,
+				   UPS_MIN_TEST_DURATION, UPS_MAX_TEST_DURATION);
+
+	sendTableRow(response, "Backup TestDuration (ms)",
+				 static_cast<double>(test.switch_testDuration_ms));
+	sendInputField(response, "BackupTestDuration_ms", test.backup_testDuration_ms,
+				   UPS_MIN_BACKUP_TIME_MS, UPS_MAX_BACKUP_TIME_MS_SANITY_CHECK);
+
 	sendTableRow(response, "MinValidSwitchTime (ms)",
 				 static_cast<double>(test.min_valid_switch_time_ms));
 	sendInputField(response, "MinValidSwitchTime", test.min_valid_switch_time_ms,

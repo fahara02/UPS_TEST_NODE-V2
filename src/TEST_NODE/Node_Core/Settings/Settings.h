@@ -260,11 +260,9 @@ struct SetupSpec
 
 struct SetupTest
 {
-	const char* TestStandard = "IEC 62040-3";
-	TestMode mode = TestMode::AUTO;
-	uint16_t testVARating = 3000;
 	uint16_t inputVoltage_volt = 220;
-	unsigned long testDuration_ms = 600000UL;
+	unsigned long switch_testDuration_ms = 10000UL;
+	unsigned long backup_testDuration_ms = 600000UL;
 	unsigned long min_valid_switch_time_ms = 1UL;
 	unsigned long max_valid_switch_time_ms = 3000UL;
 	unsigned long min_valid_backup_time_ms = 1UL;
@@ -276,11 +274,9 @@ struct SetupTest
 
 	enum class Field
 	{
-		TestStandard,
-		Mode,
-		TestVARating,
 		InputVoltage,
-		TestDuration,
+		SWITCH_TestDuration,
+		BACKUP_TestDuration,
 		MinValidSwitchTime,
 		MaxValidSwitchTime,
 		MinValidBackupTime,
@@ -295,24 +291,6 @@ struct SetupTest
 	{
 		switch(field)
 		{
-			case Field::TestStandard:
-				TestStandard = reinterpret_cast<const char*>(value);
-				Serial.println("TestStandard is updated");
-				break;
-			case Field::Mode:
-				mode = static_cast<TestMode>(value);
-				Serial.println("mode is updated");
-				break;
-			case Field::TestVARating:
-				if(value >= UPS_MIN_VA && value <= UPS_MAX_VA)
-				{
-					testVARating = static_cast<uint16_t>(value);
-				}
-				else
-				{
-					return false;
-				}
-				break;
 			case Field::InputVoltage:
 				if(value >= UPS_MIN_INPUT_VOLT && value <= UPS_MAX_INPUT_VOLT)
 				{
@@ -323,8 +301,30 @@ struct SetupTest
 					return false;
 				}
 				break;
-			case Field::TestDuration:
-				testDuration_ms = value;
+			case Field::SWITCH_TestDuration:
+
+				if(value >= UPS_MIN_SWITCHING_TIME_MS_SANITY_CHECK &&
+				   value <= UPS_MAX_SWITCHING_TIME_MS_SANITY_CHECK)
+				{
+					switch_testDuration_ms = value;
+				}
+				else
+				{
+					return false;
+				}
+				break;
+
+			case Field::BACKUP_TestDuration:
+
+				if(value >= UPS_MIN_BACKUP_TIME_MS_SANITY_CHECK &&
+				   value <= UPS_MAX_BACKUP_TIME_MS_SANITY_CHECK)
+				{
+					backup_testDuration_ms = value;
+				}
+				else
+				{
+					return false;
+				}
 				break;
 			case Field::MinValidSwitchTime:
 				if(value >= UPS_MIN_SWITCHING_TIME_MS_SANITY_CHECK &&
@@ -405,51 +405,19 @@ struct SetupTest
 	mutable char last_update_str[20];
 };
 
-struct SetupTask
-{
-	int mainTest_taskCore = 0;
-	int mainsISR_taskCore = ARDUINO_RUNNING_CORE;
-	int upsISR_taskCore = ARDUINO_RUNNING_CORE;
-	int mainTest_taskIdlePriority = 1;
-	int mainsISR_taskIdlePriority = 1;
-	int upsISR_taskIdlePriority = 1;
-	uint32_t mainTest_taskStack = 4096;
-	uint32_t mainsISR_taskStack = 1024;
-	uint32_t upsISR_taskStack = 1024;
-	unsigned long lastsetting_updated = 0UL;
-	enum class Field
-	{
-		MainTestTaskCore,
-		MainsISRTaskCore,
-		UpsISRTaskCore,
-		MainTestTaskIdlePriority,
-		MainsISRTaskIdlePriority,
-		UpsISRTaskIdlePriority,
-		MainTestTaskStack,
-		MainsISRTaskStack,
-		UpsISRTaskStack,
-		LastSettingUpdated
-	};
-};
-
 struct SetupTaskParams
 {
-	bool flag_mains_power_loss = false;
-	bool flag_ups_power_gain = false;
-	bool flag_ups_power_loss = false;
 	uint16_t test_No = 0;
 	uint16_t task_TestVARating = 1000;
-	unsigned long task_testDuration_ms = 10000UL;
-	unsigned long lastsetting_updated = 0UL;
+	unsigned long task_SWtestDuration_ms = 10000UL;
+	unsigned long task_BTtestDuration_ms = 600000UL;
+
 	enum class Field
 	{
-		FlagMainsPowerLoss,
-		FlagUpsPowerGain,
-		FlagUpsPowerLoss,
 		TestNo,
 		TaskTestVARating,
-		TaskTestDuration,
-		LastSettingUpdated
+		TaskSW_TestDuration,
+		TaskBT_TestDuration,
 	};
 };
 
@@ -615,7 +583,6 @@ struct SetupUPSTest
 {
 	SetupSpec spec;
 	SetupTest testSetting;
-	SetupTask taskSetting;
 	SetupTaskParams paramsSetting;
 	SetupHardware hardwareSetting;
 	SetupNetwork commSetting;
@@ -623,12 +590,12 @@ struct SetupUPSTest
 	SetupReport reportSetting;
 	unsigned long lastsetting_updated;
 
-	SetupUPSTest(SetupSpec sp = SetupSpec(), SetupTest ts = SetupTest(), SetupTask tk = SetupTask(),
+	SetupUPSTest(SetupSpec sp = SetupSpec(), SetupTest ts = SetupTest(),
 				 SetupTaskParams ps = SetupTaskParams(), SetupHardware hw = SetupHardware(),
 				 SetupNetwork comm = SetupNetwork(), SetupModbus mb = SetupModbus(),
 				 SetupReport rp = SetupReport(), unsigned long lsu = 0) :
 		spec(sp),
-		testSetting(ts), taskSetting(tk), paramsSetting(ps), hardwareSetting(hw), commSetting(comm),
+		testSetting(ts), paramsSetting(ps), hardwareSetting(hw), commSetting(comm),
 		modbusSetting(mb), reportSetting(rp), lastsetting_updated(lsu)
 	{
 	}

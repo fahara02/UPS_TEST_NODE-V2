@@ -31,10 +31,9 @@ class TestSync
 	void reportEvent(Event e);
 
 	void parseIncomingJson(JsonVariant json);
-	// void handleUserCommand(UserCommandEvent command);
+
 	void handleUserUpdate(UserUpdateEvent update);
 	void handleSyncCommand(SyncCommand command);
-	void handleTestEvent(Event e);
 
 	void acknowledgeCMD();
 	void acknowledgeCMDReset();
