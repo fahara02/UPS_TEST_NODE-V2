@@ -28,6 +28,7 @@ constexpr int MAX_SYS_EVENTS = 8;
 
 const int MAX_RETRIES = 3;
 const int MAX_RETEST = 2;
+const int MAX_UNIQUE_TESTS = 10;
 
 enum class validTaskStackSize
 {

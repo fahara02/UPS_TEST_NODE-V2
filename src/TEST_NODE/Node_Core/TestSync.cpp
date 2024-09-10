@@ -33,6 +33,20 @@ void TestSync::init()
 	logger.log(LogLevel::INFO, "testSync initialization");
 }
 
+TestMode TestSync::getMode()
+{
+	return stateMachine.isAutoMode() ? TestMode::AUTO : TestMode::MANUAL;
+}
+
+void TestSync::updateState(State state)
+{
+	_currentState.store(state);
+}
+void TestSync::updateMode(TestMode mode)
+{
+	_deviceMode.store(mode);
+}
+
 void TestSync::createSynctask()
 {
 	xTaskCreatePinnedToCore(userCommandTask, "userCommand", userCommand_Stack, NULL,
@@ -104,6 +118,40 @@ void TestSync::stopAllTest()
 	logger.log(LogLevel::WARNING, "All test stopped");
 	vTaskDelay(pdMS_TO_TICKS(50));
 }
+bool TestSync::isTestUnique(const String& testName, const String& loadLevel)
+{
+	for(int i = 0; i < uniqueTestCount; ++i)
+	{
+		if(uniqueTests[i].first == testName && uniqueTests[i].second == loadLevel)
+		{
+			return false; // Duplicate test found
+		}
+	}
+	return true;
+}
+void TestSync::addUniqueTest(const String& testName, const String& loadLevel)
+{
+	if(uniqueTestCount < MAX_UNIQUE_TESTS)
+	{
+		uniqueTests[uniqueTestCount++] = std::make_pair(testName, loadLevel);
+	}
+	else
+	{
+		logger.log(LogLevel::WARNING, "Unique test buffer full.");
+	}
+}
+
+void TestSync::removeTest(const String& testName, const String& loadLevel)
+{
+	for(int i = 0; i < uniqueTestCount; ++i)
+	{
+		if(uniqueTests[i].first == testName && uniqueTests[i].second == loadLevel)
+		{
+			uniqueTests[i] = uniqueTests[--uniqueTestCount]; // Remove by shifting the last element
+			break;
+		}
+	}
+}
 
 void TestSync::parseIncomingJson(JsonVariant json)
 {
@@ -113,12 +161,23 @@ void TestSync::parseIncomingJson(JsonVariant json)
 
 		if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
 		{
-			logger.log(LogLevel::SUCCESS, "Queueing JSON for processing");
-			jsonQueue.push(jsonObj); // Enqueue the JSON object
+			String testName = jsonObj["testName"];
+			String loadLevel = jsonObj["loadLevel"];
 
-			if(!parsingOngoing) // Only start parsing if no other parsing is ongoing
+			if(isTestUnique(testName, loadLevel))
 			{
-				processNextJson();
+				addUniqueTest(testName, loadLevel);
+				logger.log(LogLevel::SUCCESS, "Queueing unique JSON for processing");
+				jsonQueue.push(jsonObj);
+
+				if(!parsingOngoing)
+				{
+					processNextJson();
+				}
+			}
+			else
+			{
+				logger.log(LogLevel::WARNING, "Duplicate test, skipping queue.");
 			}
 		}
 		else if(jsonObj.containsKey("startCommand") || jsonObj.containsKey("stopCommand") ||
@@ -137,21 +196,24 @@ void TestSync::parseIncomingJson(JsonVariant json)
 		logger.log(LogLevel::ERROR, "Unknown JSON format!!!");
 	}
 }
-
 void TestSync::processNextJson()
 {
 	if(!jsonQueue.empty())
 	{
 		parsingOngoing = true;
 
-		JsonObject jsonObj = jsonQueue.front(); // Get the next JSON object
-		jsonQueue.pop(); // Remove it from the queue
+		JsonObject jsonObj = jsonQueue.front();
+		jsonQueue.pop();
 
-		parseTestJson(jsonObj); // Parse the JSON
+		String testName = jsonObj["testName"];
+		String loadLevel = jsonObj["loadLevel"];
+		removeTest(testName, loadLevel);
+
+		parseTestJson(jsonObj);
 
 		parsingOngoing = false;
 
-		if(!jsonQueue.empty()) // If there are more JSON objects in the queue, process the next one
+		if(!jsonQueue.empty())
 		{
 			processNextJson();
 		}
@@ -244,12 +306,55 @@ void TestSync::checkForDeletedTests()
 	}
 }
 
+void TestSync::RequestStartTest(TestType testType, int testIndex)
+{
+	if(testIndex >= 0 && testIndex < MAX_TEST)
+	{
+		if(_testList[testIndex].testType == testType && _testList[testIndex].isActive)
+		{
+			_currentTestIndex = testIndex;
+			startTest(testType);
+			return;
+		}
+	}
+
+	logger.log(LogLevel::ERROR,
+			   "RequestStartTest failed: Test doesn't exist or index is out of bounds.");
+}
+
+void TestSync::RequestStopTest(TestType testType, int testIndex)
+{
+	if(testIndex >= 0 && testIndex < MAX_TEST)
+	{
+		if(_testList[testIndex].testType == testType && _testList[testIndex].isActive)
+		{
+			stopTest(testType);
+			return;
+		}
+	}
+
+	logger.log(LogLevel::ERROR,
+			   "RequestStopTest failed: Test doesn't exist or index is out of bounds.");
+}
+
+void TestSync::UserStopTest()
+{
+	if(_currentTestIndex >= 0 && _currentTestIndex < MAX_TEST &&
+	   _testList[_currentTestIndex].isActive)
+	{
+		TestType testType = _testList[_currentTestIndex].testType;
+		stopTest(testType);
+		logger.log(LogLevel::SUCCESS, "UserStopTest: Test stopped successfully.");
+		return;
+	}
+
+	logger.log(LogLevel::ERROR, "UserStopTest failed: No active test to stop.");
+}
+
 void TestSync::transferTest()
 {
-	// Get the TestManager instance
 	TestManager& testManager = TestManager::getInstance();
 
-	// Count the number of active tests in _testList
 	int activeTestCount = 0;
 	for(int i = 0; i < MAX_TEST; ++i)
 	{
@@ -266,7 +371,6 @@ void TestSync::transferTest()
 		return;
 	}
 
-	// Create a temporary array to hold the active tests
 	RequiredTest activeTests[activeTestCount];
 	int index = 0;
 	for(int i = 0; i < MAX_TEST; ++i)
@@ -277,7 +381,6 @@ void TestSync::transferTest()
 		}
 	}
 
-	// Transfer the active tests to the TestManager
 	testManager.addTests(activeTests, activeTestCount);
 
 	logger.log(LogLevel::SUCCESS, "Transferred all active tests to TestManager.");

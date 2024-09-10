@@ -1,19 +1,21 @@
 #ifndef TEST_SYNC_H
 #define TEST_SYNC_H
 
+#include <atomic>
+#include <queue>
+#include <set>
+#include <string>
 #include "Arduino.h"
 #include "ArduinoJson.h"
-#include "Logger.h"
-#include "TestData.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 #include <freertos/task.h>
-#include <atomic>
+
+#include "Logger.h"
+#include "TestData.h"
 #include "StateMachine.h"
 #include "NodeConstants.h"
-#include <string>
 #include "EventHelper.h"
-#include <queue>
 
 using namespace Node_Core;
 extern Logger& logger;
@@ -42,52 +44,14 @@ class TestSync
 	bool iscmdAcknowledged();
 	bool isTestEnabled();
 
-	void RequestStartTest(TestType testType, int testIndex)
-	{
-		if(testIndex >= 0 && testIndex < MAX_TEST)
-			if(_testList[testIndex].testType == testType)
-			{
-				_currentTestIndex = testIndex;
-				startTest(testType);
-			}
-		logger.log(LogLevel::ERROR, "the test dont exists");
-	}
-
-	void RequestStopTest(TestType testType, int testIndex)
-	{
-		if(testIndex >= 0 && testIndex < MAX_TEST)
-			if(_testList[testIndex].testType == testType)
-			{
-				stopTest(testType);
-			}
-		logger.log(LogLevel::ERROR, "the test dont exists");
-	}
-	void UserStopTest()
-	{
-		TestType testType;
-		if(_currentTestIndex >= 0 && _currentTestIndex < MAX_TEST)
-		{
-			testType = _testList[_currentTestIndex].testType;
-			stopTest(testType);
-			logger.log(LogLevel::SUCCESS, "USER STOP EXECUTED");
-		}
-		logger.log(LogLevel::ERROR, "USER STOP FAILED");
-	}
+	void RequestStartTest(TestType testType, int testIndex);
+	void RequestStopTest(TestType testType, int testIndex);
+	void UserStopTest();
 
 	State getState();
-	TestMode getMode()
-	{
-		return stateMachine.isAutoMode() ? TestMode::AUTO : TestMode::MANUAL;
-	}
-
-	void updateState(State state)
-	{
-		_currentState.store(state);
-	}
-	void updateMode(TestMode mode)
-	{
-		_deviceMode.store(mode);
-	}
+	TestMode getMode();
+	void updateState(State state);
+	void updateMode(TestMode mode);
 
   private:
 	TestSync();
@@ -99,7 +63,10 @@ class TestSync
 	std::atomic<State> _currentState{State::DEVICE_ON};
 	std::atomic<TestMode> _deviceMode{TestMode::MANUAL};
 
+	std::pair<String, String> uniqueTests[MAX_UNIQUE_TESTS];
 	RequiredTest _testList[MAX_TEST];
+
+	int uniqueTestCount = 0;
 	int _testCount = 0;
 	int _testID[MAX_TEST];
 	int _currentTestIndex = 0;
@@ -121,6 +88,10 @@ class TestSync
 	void parseTestJson(JsonObject jsonObj);
 	void processNextJson();
 	void checkForDeletedTests();
+
+	bool isTestUnique(const String& testName, const String& loadLevel);
+	void addUniqueTest(const String& testName, const String& loadLevel);
+	void removeTest(const String& testName, const String& loadLevel);
 
 	TaskHandle_t commandObserverTaskHandle = nullptr;
 	TaskHandle_t updateObserverTaskHandle = nullptr;
