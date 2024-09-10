@@ -295,8 +295,9 @@ void TestServer::createPeriodicTask()
 	periodicTaskParams.ws = _ws;
 
 	// Pass the pointer to the member struct
-	xTaskCreatePinnedToCore(dataHandler.periodicDataSender, "wsDataSender", testSync_Stack,
-							&periodicTaskParams, periodicDataSender_Priority, &PeriodicDataHandle,
+	xTaskCreatePinnedToCore(dataHandler.periodicDataSender, "wsDataSender",
+							periodicDataSender_Stack, &periodicTaskParams,
+							periodicDataSender_Priority, &PeriodicDataHandle,
 							periodicDataSender_CORE);
 }
 
@@ -365,8 +366,6 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 
 			if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
 			{
-				EventHelper::setBits(wsClientStatus::DATA);
-
 				if(len >= WS_BUFFER_SIZE)
 				{
 					Serial.println("Received data exceeds buffer size; discarding message.");
@@ -388,11 +387,11 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 									   static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE,
 									   pdFALSE, CLIENT_CONNECT_TIMEOUT_MS))
 				{
+					EventHelper::setBits(wsClientStatus::DATA);
 					wsMsg.client_id = client->id();
 					wsMsg.client = client;
 					if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
 					{
-						EventHelper::setBits(wsClientUpdate::GET_READING);
 						if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
 									  QUEUE_TIMEOUT_MS) == pdTRUE)
 						{

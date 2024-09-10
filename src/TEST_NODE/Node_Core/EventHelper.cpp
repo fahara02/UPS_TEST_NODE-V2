@@ -210,6 +210,7 @@ void EventHelper::setBits(wsClientStatus e)
 void EventHelper::setBits(wsClientUpdate e)
 {
 	xEventGroupSetBits(wsClientUpdateEventGroup, static_cast<EventBits_t>(e));
+	logger.log(LogLevel::SUCCESS, "set bits for webSocket UpDate:", e);
 }
 
 // Clear bits for specific event types

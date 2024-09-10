@@ -5,6 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "HPTSettings.h"
 
 namespace Node_Utility
 {
@@ -45,11 +46,11 @@ class TaskMonitor
 		monitorMutex = xSemaphoreCreateMutex(); // Create a mutex
 		xTaskCreatePinnedToCore(monitorTask, // Task function
 								"MonitorTask", // Name of the task
-								4096, // Stack size in bytes
+								monitor_Stack, // Stack size in bytes
 								this, // Parameter to pass (this instance)
-								1, // Task priority
+								monitor_Priority, // Task priority
 								&monitorTaskHandle, // Task handle
-								1 // Core to run the task on (1 for APP CPU on ESP32)
+								monitor_CORE // Core to run the task on (1 for APP CPU on ESP32)
 		);
 	}
 
@@ -61,6 +62,7 @@ class TaskMonitor
 		{
 			self->updateTaskInfo();
 			self->printTaskInfo();
+			vTaskDelay(1);
 			vTaskDelay(self->printDelay / portTICK_PERIOD_MS); // Delay based on print interval
 		}
 	}

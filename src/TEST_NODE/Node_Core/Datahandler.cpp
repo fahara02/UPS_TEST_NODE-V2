@@ -97,6 +97,7 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 	else if(cmd == wsIncomingCommands::GET_READINGS)
 	{
 		logger.log(LogLevel::INTR, "GET_READINGS command received, enabling periodic sending.");
+		EventHelper::setBits(wsClientUpdate::GET_READING);
 	}
 }
 
@@ -105,6 +106,7 @@ void DataHandler::periodicDataSender(void* pvParameter)
 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
 	DataHandler& instance = DataHandler::getInstance();
 	AsyncWebSocket* websocket = params->ws;
+	TickType_t lastWakeTime = xTaskGetTickCount();
 	while(true)
 	{
 		EventBits_t eventBits = xEventGroupWaitBits(
@@ -120,7 +122,7 @@ void DataHandler::periodicDataSender(void* pvParameter)
 			}
 		}
 
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		vTaskDelayUntil(&lastWakeTime, 1000 / portTICK_PERIOD_MS);
 	}
 	vTaskDelete(NULL);
 }

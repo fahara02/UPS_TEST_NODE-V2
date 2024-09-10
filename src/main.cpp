@@ -5,7 +5,6 @@
 #include <AsyncTCP.h>
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
-#include <MycilaTaskMonitor.h>
 #include <Preferences.h>
 #include "esp_heap_caps.h"
 #include <Wire.h>
@@ -27,7 +26,7 @@ using namespace Node_Core;
 using namespace Node_Utility;
 // Global Logger Instance
 Logger& logger = Logger::getInstance();
-TaskMonitor& monitor = TaskMonitor::getInstance();
+// TaskMonitor& monitor = TaskMonitor::getInstance();
 StateMachine& stateMachine = StateMachine::getInstance();
 TestSync& SyncTest = TestSync::getInstance();
 UPSTesterSetup& TesterSetup = UPSTesterSetup::getInstance();
@@ -130,10 +129,18 @@ void modbusRTUTask(void* pvParameters)
 	{
 		// Monitor and log the available free heap memory
 		size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_8BIT); // For standard heap (DRAM)
+
 		logger.log(LogLevel::INFO, "Free heap byets: ", freeHeap);
-
+		if(heap_caps_check_integrity_all(true))
+		{
+			logger.log(LogLevel::SUCCESS, "No fragmentation in heap");
+		}
+		else
+		{
+			logger.log(LogLevel::ERROR, "heap fragmented");
+		};
 		// mb.task();  // Uncomment when Modbus task needs to run
-
+		vTaskDelay(1);
 		vTaskDelay(pdMS_TO_TICKS(2000)); // Task delay
 	}
 
@@ -144,7 +151,8 @@ void setup()
 
 {
 	setupTime();
-	// xTaskCreate(TimeKeeperTask, "TimeKeeperTask", 4096, NULL, 1, NULL);
+	// xTaskCreatePinnedToCore(TimeKeeperTask, "TimeKeeperTask",  timer_Stack, NULL, timer_Priority,
+	// NULL,timer_CORE);
 	Serial.begin(115200);
 	// Initialize NVS
 	esp_err_t err = nvs_flash_init();
@@ -212,7 +220,8 @@ void setup()
 	Serial2.begin(9600, SERIAL_8N1);
 	mb.begin(&Serial2);
 	mb.slave(1);
-	xTaskCreate(modbusRTUTask, "ModbusRTUTask", 4096, NULL, 1, &modbusRTUTaskHandle);
+	xTaskCreatePinnedToCore(modbusRTUTask, "ModbusRTUTask", modbus_Stack, NULL, modbus_Priority,
+							&modbusRTUTaskHandle, modbus_CORE);
 	logger.log(LogLevel::INFO, "modbus slave configured");
 
 	logger.log(LogLevel::INFO, "getting manager instance");
@@ -241,18 +250,18 @@ void setup()
 		logger.log(LogLevel::SUCCESS, "Websocket is enabled");
 	}
 
-	monitor.setPrintDelay(2000);
+	// monitor.setPrintDelay(5000);
 
-	monitor.addTask("async_tcp");
-	monitor.addTask("ProcessWsData");
-	monitor.addTask("wsDataSender");
-	monitor.addTask("userCommand");
-	monitor.addTask("userUpdate");
-	monitor.addTask("testSync");
-	monitor.addTask("MainTestManager");
-	monitor.addTask("SwitchTestTask");
-	monitor.addTask("BackUpTestTask");
-	monitor.addTask("WSCleanupTask");
+	// monitor.addTask("async_tcp");
+	// monitor.addTask("ProcessWsData");
+	// monitor.addTask("wsDataSender");
+	// monitor.addTask("userCommand");
+	// monitor.addTask("userUpdate");
+	// monitor.addTask("testSync");
+	// monitor.addTask("MainTestManager");
+	// monitor.addTask("SwitchTestTask");
+	// monitor.addTask("BackUpTestTask");
+	// monitor.addTask("WSCleanupTask");
 }
 void loop()
 {

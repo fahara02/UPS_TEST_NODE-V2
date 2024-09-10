@@ -19,6 +19,9 @@ StateMachine::StateMachine() :
 	_old_state(State::DEVICE_ON), _currentState(State::DEVICE_ON), _deviceMode(TestMode::MANUAL),
 	_dataCapturedFlag(false), _retryCount(0)
 {
+	// stateActionMutex = xSemaphoreCreateMutex();
+	// notifyStateMutex = xSemaphoreCreateMutex();
+	// notifyModeMutex = xSemaphoreCreateMutex();
 }
 
 bool StateMachine::isValidState(uint32_t state)
@@ -72,9 +75,12 @@ void StateMachine::setMode(TestMode new_mode)
 }
 void StateMachine::NotifyStateChanged(State state)
 {
+	// if(xSemaphoreTake(notifyStateMutex, portMAX_DELAY) == pdTRUE)
+	// {
 	DataHandler::getInstance().updateState(state);
 	TestSync::getInstance().updateState(state);
 	TestManager::getInstance().updateState(state);
+
 	if(isAutoMode())
 	{
 		NotifyModeChanged(TestMode::AUTO);
@@ -85,13 +91,18 @@ void StateMachine::NotifyStateChanged(State state)
 	}
 
 	logger.log(LogLevel::INFO, "Notifying others for new %s state", stateToString(state));
+	// xSemaphoreGive(notifyStateMutex);
 }
 
 void StateMachine::NotifyModeChanged(TestMode mode)
 {
+	// if(xSemaphoreTake(notifyModeMutex, portMAX_DELAY) == pdTRUE)
+	// {
 	DataHandler::getInstance().updateMode(mode);
 	TestSync::getInstance().updateMode(mode);
 	TestManager::getInstance().updateMode(mode);
+	// 	xSemaphoreGive(notifyModeMutex);
+	// }
 }
 void StateMachine::handleMode(TestMode mode)
 {
@@ -99,7 +110,10 @@ void StateMachine::handleMode(TestMode mode)
 }
 
 void StateMachine::handleEvent(Event event)
+
 {
+	// if(xSemaphoreTake(stateActionMutex, portMAX_DELAY) == pdTRUE)
+	// {
 	logger.log(LogLevel::INFO, "Handling event %s", eventToString(event));
 
 	State old_state = _currentState.load(); // Ensure atomic access to current_state
@@ -173,6 +187,8 @@ void StateMachine::handleEvent(Event event)
 	// No valid transition found
 	logger.log(LogLevel::WARNING, "No transition found for event %s in state %s",
 			   eventToString(event), stateToString(_currentState.load()));
+	// 	xSemaphoreGive(stateActionMutex);
+	// }
 }
 
 void StateMachine::handleError()
