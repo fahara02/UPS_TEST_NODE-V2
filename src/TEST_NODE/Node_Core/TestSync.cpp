@@ -463,8 +463,8 @@ void TestSync::userUpdateTask(void* pvParameters)
 			logger.log(LogLevel::TEST, "Invoking State Change...");
 			instance.reportEvent(Event::NEW_TEST);
 			vTaskDelay(pdMS_TO_TICKS(200));
-			// xTaskNotify(DataHandler::getInstance().dataTaskHandler,
-			// 			static_cast<uint32_t>(UserUpdateEvent::NEW_TEST), eNoAction);
+			xTaskNotify(DataHandler::getInstance().PeriodicDataHandle,
+						static_cast<uint32_t>(UserUpdateEvent::NEW_TEST), eSetBits);
 
 			logger.log(LogLevel::TEST, "Is state changed?");
 			instance.acknowledgeCMD();

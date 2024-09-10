@@ -45,7 +45,6 @@ void DataHandler::updateClientList(int clientId, bool connected)
 
 void DataHandler::wsDataProcessor(void* pVparamter)
 {
-	uint32_t ulNotificationValue;
 	DataHandler* instance = static_cast<DataHandler*>(pVparamter);
 	WebSocketMessage wsMsg;
 	AsyncWebSocketClient* client = wsMsg.client;
@@ -115,42 +114,6 @@ void DataHandler::processWsMessage(WebSocketMessage& wsMsg)
 		logger.log(LogLevel::INTR, "GET_READINGS command received, enabling periodic sending.");
 	}
 }
-// void DataHandler::periodicDataSender(void* pvParameter)
-// {
-// 	PeriodicTaskParams* params = static_cast<PeriodicTaskParams*>(pvParameter);
-// 	DataHandler& instance = DataHandler::getInstance();
-// 	AsyncWebSocket* websocket = params->ws;
-// 	TickType_t lastWakeTime = xTaskGetTickCount();
-
-// 	while(true)
-// 	{
-// 		// Wait for an event or timeout
-// 		EventBits_t eventBits = xEventGroupWaitBits(
-// 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
-// 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
-
-// 		int lastclientId = instance._newClietId.load();
-
-// 		for(int i = 0; i < 2; i++)
-// 		{
-// 			int newClientid = lastclientId + i;
-// 			if(websocket->hasClient(newClientid))
-// 			{
-// 				instance.sendData(websocket, newClientid);
-// 			}
-// 			else
-// 			{
-// 				logger.log(LogLevel::INFO, "Client  is no longer connected. Skipping.",
-// 						   newClientid);
-// 			}
-// 		}
-
-// 		vTaskDelayUntil(&lastWakeTime, 1000 / portTICK_PERIOD_MS);
-// 	}
-
-// 	vTaskDelete(NULL);
-// }
-#include <set> // Ensure this is included if using std::set
 
 void DataHandler::periodicDataSender(void* pvParameter)
 {
@@ -158,15 +121,17 @@ void DataHandler::periodicDataSender(void* pvParameter)
 	DataHandler& instance = DataHandler::getInstance();
 	AsyncWebSocket* websocket = params->ws;
 	TickType_t lastWakeTime = xTaskGetTickCount();
+	uint32_t ulNotificationValue;
 
 	while(true)
 	{
+		// Wait for WebSocket client event (GET_READING)
 		EventBits_t eventBits = xEventGroupWaitBits(
 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
 
+		// Check for connected clients and send data
 		std::set<int> clientsToCheck = instance.connectedClients;
-
 		for(int clientId: clientsToCheck)
 		{
 			AsyncWebSocketClient* client = websocket->client(clientId);
@@ -185,6 +150,35 @@ void DataHandler::periodicDataSender(void* pvParameter)
 			}
 		}
 
+		// Check for additional task notifications
+		BaseType_t notificationReceived =
+			xTaskNotifyWait(0x00, 0xFFFFFFFF, &ulNotificationValue, 0);
+		if(notificationReceived == pdTRUE)
+		{
+			// Handle NEW_TEST event
+			if(static_cast<UserUpdateEvent>(ulNotificationValue) == UserUpdateEvent::NEW_TEST)
+			{
+				logger.log(LogLevel::SUCCESS, "Sending LED STATUS from periodic");
+				for(int clientId: clientsToCheck)
+				{
+					instance.sendData(websocket, clientId, wsOutGoingDataType::LED_STATUS);
+				}
+			}
+			// Handle another specific event if needed
+			else if(static_cast<UserUpdateEvent>(ulNotificationValue) ==
+					UserUpdateEvent::DELETE_TEST)
+			{
+				// Add logic for another event
+				// Example: instance.handleSomeOtherEvent();
+			}
+			// Handle any unrecognized or generic events
+			else
+			{
+				logger.log(LogLevel::INFO, "Unhandled notification event: %d", ulNotificationValue);
+			}
+		}
+
+		// Maintain periodic delay
 		vTaskDelayUntil(&lastWakeTime, 1000 / portTICK_PERIOD_MS);
 	}
 
@@ -203,6 +197,13 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 	}
 	else if(type == wsOutGoingDataType::LED_STATUS)
 	{
+		logger.log(LogLevel::INTR, "CURRENT  STATE FOR LED %s ", stateToString(_currentState));
+
+		if(_currentState == State::READY_TO_PROCEED)
+		{
+			_blinkGreen = true;
+		}
+
 		doc["type"] = "LED_STATUS";
 		doc["blinkBlue"] = _blinkBlue;
 		doc["blinkGreen"] = _blinkGreen;
@@ -475,19 +476,6 @@ bool DataHandler::isValidUTF8(const char* data, size_t len)
 	}
 	return true;
 }
-
-// void DataHandler::cleanUpClients(AsyncWebSocket* websocket)
-// {
-// 	for(auto& client: websocket->getClients())
-// 	{
-// 		if(client.status() != WS_CONNECTED)
-// 		{
-// 			// Clean up client resources if needed
-// 			logger.log(LogLevel::INFO, "Client %d disconnected. Cleaning up.", client.id());
-// 			websocket->client(client.id())->close();
-// 		}
-// 	}
-// }
 
 // void DataHandler::fillPeriodicDeque()
 // {

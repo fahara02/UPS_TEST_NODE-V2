@@ -54,7 +54,7 @@ TaskHandle_t inputvoltageTestTaskHandle = NULL;
 TaskHandle_t waveformTestTaskHandle = NULL;
 TaskHandle_t tunepwmTestTaskHandle = NULL;
 TaskHandle_t TestManagerTaskHandle = NULL;
-TaskHandle_t PeriodicDataHandle = NULL;
+
 
 QueueHandle_t TestManageQueue = NULL;
 QueueHandle_t SwitchTestDataQueue = NULL;

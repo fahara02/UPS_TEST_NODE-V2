@@ -140,6 +140,7 @@ class DataHandler
 	}
 
 	TaskHandle_t dataTaskHandler = NULL;
+	TaskHandle_t PeriodicDataHandle = NULL;
 	void updateNewClientId(int Id)
 	{
 		_newClietId.store(Id);
