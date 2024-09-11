@@ -617,16 +617,16 @@ void PageBuilder::sendTableStyle(AsyncResponseStream* response)
 	response->print("<style>");
 
 	// Container styling
-	response->print("#custom-settings-page { padding: 20px; background-color: #f8f9fa; }");
+	response->print("#custom-settings-page { padding: 5px; background-color: #f8f9fa; }");
 
 	// Table styling
 	response->print("#custom-settings-page table { width: 100%; border-collapse: collapse; margin: "
-					"20px 0; font-size: 1.1em; font-family: 'Arial', sans-serif; min-width: 400px; "
+					"10px 0; font-size: 1.1em; font-family: 'Arial', sans-serif; min-width: 400px; "
 					"background-color: #ffffff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); "
 					"border-radius: 8px; overflow: hidden; }");
 
 	// Table header styling
-	response->print("#custom-settings-page th, td { padding: 16px 20px; border: 1px solid #e0e0e0; "
+	response->print("#custom-settings-page th, td { padding: 16px 10px; border: 1px solid #e0e0e0; "
 					"text-align: left; }");
 	response->print("#custom-settings-page th { background-color: #007bff; color: white; "
 					"font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; }");

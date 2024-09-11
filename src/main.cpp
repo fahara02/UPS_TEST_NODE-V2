@@ -150,8 +150,8 @@ void setup()
 
 {
 	setupTime();
-	// xTaskCreatePinnedToCore(TimeKeeperTask, "TimeKeeperTask",  timer_Stack, NULL, timer_Priority,
-	// NULL,timer_CORE);
+	xTaskCreatePinnedToCore(TimeKeeperTask, "TimeKeeperTask", timer_Stack, NULL, timer_Priority,
+							NULL, timer_CORE);
 	Serial.begin(115200);
 	// Initialize NVS
 	esp_err_t err = nvs_flash_init();
