@@ -58,9 +58,61 @@ void TestManager::init()
 	createManagerTasks();
 	createTestTasks();
 
-	// pauseAllTest();
+	switchTestDataQueue =
+		xQueueCreate(5, sizeof(SwitchTestData)); // Queue to hold up to 5 test data entries
+	if(switchTestDataQueue == NULL)
+	{
+		logger.log(LogLevel::ERROR, "Failed to create switchTest data queue");
+	}
+	backupTestDataQueue =
+		xQueueCreate(5, sizeof(BackupTestData)); // Queue to hold up to 5 test data entries
+	if(backupTestDataQueue == NULL)
+	{
+		logger.log(LogLevel::ERROR, "Failed to create backupTest data queue");
+	}
 
 	_initialized = true; // Mark as initialized
+}
+
+void TestManager::updateState(State state)
+{
+	_currentState.store(state);
+}
+void TestManager::updateMode(TestMode mode)
+{
+	_deviceMode.store(mode);
+}
+
+void TestManager::onSettingsUpdate(SettingType type, const void* settings)
+{
+	if(type == SettingType::SPEC)
+	{
+		_cfgSpec = *static_cast<const SetupSpec*>(settings);
+		Serial.println("TestManager Spec settings updated !!!");
+	}
+	else if(type == SettingType::TEST)
+	{
+		_cfgTest = *static_cast<const SetupTest*>(settings);
+		Serial.println("Testmanager Test settings updated !!!");
+	}
+	else
+	{
+	}
+
+	ReconfigureTaskParams();
+}
+
+void TestManager::ReconfigureTaskParams()
+{
+	_cfgTaskParam.task_TestVARating = _cfgSpec.Rating_va;
+	_cfgTaskParam.task_SWtestDuration_ms = _cfgTest.switch_testDuration_ms;
+	_cfgTaskParam.task_BTtestDuration_ms = _cfgTest.backup_testDuration_ms;
+}
+
+void TestManager::passEvent(Event event)
+{
+	TestSync& SyncTest = TestSync::getInstance();
+	SyncTest.reportEvent(event);
 }
 
 void TestManager::addTests(RequiredTest testList[], int testNum)
@@ -82,20 +134,6 @@ void TestManager::addTests(RequiredTest testList[], int testNum)
 		logger.log(LogLevel::INFO, "Load Level:%s ", loadPercentageToString(testList[i].loadLevel));
 		_numTest++;
 	}
-}
-
-void TestManager::pauseAllTest()
-{
-	if(switchTestTaskHandle != NULL)
-	{
-		logger.log(LogLevel::WARNING, "Pausing Switch test task");
-		vTaskSuspend(switchTestTaskHandle);
-	}
-}
-void TestManager::passEvent(Event event)
-{
-	TestSync& SyncTest = TestSync::getInstance();
-	SyncTest.reportEvent(event);
 }
 
 void TestManager::setupPins()
@@ -183,83 +221,83 @@ void TestManager::createTestTasks()
 	logger.log(LogLevel::SUCCESS, "Switch Test task created");
 }
 
-void TestManager::TestManagerTask(void* pvParameters)
-{
-	logger.log(LogLevel::INFO, "Resuming Test Manager task");
+// void TestManager::TestManagerTask(void* pvParameters)
+// {
+// 	logger.log(LogLevel::INFO, "Resuming Test Manager task");
 
-	while(xEventGroupWaitBits(EventHelper::syncControlEvent,
-							  static_cast<EventBits_t>(SyncCommand::MANAGER_ACTIVE), pdFALSE,
-							  pdTRUE, portMAX_DELAY))
-	{
-		TestManager& instance = TestManager::getInstance();
+// 	while(xEventGroupWaitBits(EventHelper::syncControlEvent,
+// 							  static_cast<EventBits_t>(SyncCommand::MANAGER_ACTIVE), pdFALSE,
+// 							  pdTRUE, portMAX_DELAY))
+// 	{
+// 		TestManager& instance = TestManager::getInstance();
 
-		State managerState = instance._currentState;
+// 		State managerState = instance._currentState;
 
-		if(managerState == State::DEVICE_READY)
-		{
-			logger.log(LogLevel::INFO, "Manager state is:%s", stateToString(managerState));
-			vTaskDelay(pdMS_TO_TICKS(100));
-		}
+// 		if(managerState == State::DEVICE_READY)
+// 		{
+// 			logger.log(LogLevel::INFO, "Manager state is:%s", stateToString(managerState));
+// 			vTaskDelay(pdMS_TO_TICKS(100));
+// 		}
 
-		for(int i = 0; i < instance._numTest; ++i)
-		{
-			if(instance.isTestPendingAndNotStarted(instance._testList[i]))
-			{
-				TestType testType = instance._testList[i].testRequired.testType;
-				bool success = false;
+// 		for(int i = 0; i < instance._numTest; ++i)
+// 		{
+// 			if(instance.isTestPendingAndNotStarted(instance._testList[i]))
+// 			{
+// 				TestType testType = instance._testList[i].testRequired.testType;
+// 				bool success = false;
 
-				if(testType == TestType::SwitchTest)
-				{
-					SwitchTestData dataBuff1;
-					success = instance.handleTestState(SwitchTest::getInstance(), managerState, i,
-													   &dataBuff1);
+// 				if(testType == TestType::SwitchTest)
+// 				{
+// 					SwitchTestData dataBuff1;
+// 					success = instance.handleTestState(SwitchTest::getInstance(), managerState, i,
+// 													   &dataBuff1);
 
-					if(success && managerState == State::CURRENT_TEST_OK)
-					{
-						logger.log(LogLevel::SUCCESS, "Test Data recived");
+// 					if(success && managerState == State::CURRENT_TEST_OK)
+// 					{
+// 						logger.log(LogLevel::SUCCESS, "Test Data recived");
 
-						logger.log(LogLevel::SUCCESS,
-								   "Test Report switch time:", dataBuff1.switchTest->switchtime);
-					}
-					else if(!success && managerState == State::CURRENT_TEST_OK)
-					{
-						logger.log(LogLevel::ERROR, "Test Data not recived");
-					}
-					else
-					{
-						logger.log(LogLevel::INFO, "Manager observing test..");
-					}
-				}
-				else if(testType == TestType::BackupTest)
-				{
-					BackupTestData dataBuff2;
-					success = instance.handleTestState(BackupTest::getInstance(), managerState, i,
-													   &dataBuff2);
+// 						logger.log(LogLevel::SUCCESS,
+// 								   "Test Report switch time:", dataBuff1.switchTest->switchtime);
+// 					}
+// 					else if(!success && managerState == State::CURRENT_TEST_OK)
+// 					{
+// 						logger.log(LogLevel::ERROR, "Test Data not recived");
+// 					}
+// 					else
+// 					{
+// 						logger.log(LogLevel::INFO, "Manager observing test..");
+// 					}
+// 				}
+// 				else if(testType == TestType::BackupTest)
+// 				{
+// 					BackupTestData dataBuff2;
+// 					success = instance.handleTestState(BackupTest::getInstance(), managerState, i,
+// 													   &dataBuff2);
 
-					if(success && managerState == State::CURRENT_TEST_OK)
-					{
-						logger.log(LogLevel::SUCCESS, "Test Data recived");
+// 					if(success && managerState == State::CURRENT_TEST_OK)
+// 					{
+// 						logger.log(LogLevel::SUCCESS, "Test Data recived");
 
-						logger.log(LogLevel::SUCCESS,
-								   "Test Report backup time:", dataBuff2.backupTest->backuptime);
-					}
-					else if(!success && managerState == State::CURRENT_TEST_OK)
-					{
-						logger.log(LogLevel::ERROR, "Test Data not recived");
-					}
-					else
-					{
-						logger.log(LogLevel::INFO, "Manager observing test..");
-					}
-				}
-			}
-		}
+// 						logger.log(LogLevel::SUCCESS,
+// 								   "Test Report backup time:", dataBuff2.backupTest->backuptime);
+// 					}
+// 					else if(!success && managerState == State::CURRENT_TEST_OK)
+// 					{
+// 						logger.log(LogLevel::ERROR, "Test Data not recived");
+// 					}
+// 					else
+// 					{
+// 						logger.log(LogLevel::INFO, "Manager observing test..");
+// 					}
+// 				}
+// 			}
+// 		}
 
-		vTaskDelay(pdMS_TO_TICKS(100)); // General delay for task
-	}
+// 		vTaskDelay(pdMS_TO_TICKS(100)); // General delay for task
+// 	}
 
-	vTaskDelete(NULL); // Delete the task when finished
-}
+// 	vTaskDelete(NULL); // Delete the task when finished
+// }
 
 void TestManager::onMainsPowerLossTask(void* pvParameters)
 {
@@ -518,4 +556,128 @@ bool TestManager::handleTestState(UPSTest<T, U>& testInstance, State managerStat
 
 	vTaskDelay(pdMS_TO_TICKS(100)); // Delay to avoid rapid state changes
 	return false;
+}
+
+// void TestManager::TestManagerTask(void* pvParameters)
+// {
+// 	logger.log(LogLevel::INFO, "Resuming Test Manager task");
+
+// 	while(xEventGroupWaitBits(EventHelper::syncControlEvent,
+// 							  static_cast<EventBits_t>(SyncCommand::MANAGER_ACTIVE), pdFALSE,
+// 							  pdTRUE, portMAX_DELAY))
+// 	{
+// 		TestManager& instance = TestManager::getInstance();
+// 		State managerState = instance._currentState;
+
+// 		for(int i = 0; i < instance._numTest; ++i)
+// 		{
+// 			if(instance.isTestPendingAndNotStarted(instance._testList[i]))
+// 			{
+// 				TestType testType = instance._testList[i].testRequired.testType;
+// 				bool success = false;
+
+// 				if(testType == TestType::SwitchTest)
+// 				{
+// 					SwitchTestData dataBuff1;
+// 					logger.log(LogLevel::INTR, "current SwitchTest index:", i);
+// 					xTaskNotify(TestSync::getInstance().testObserverTaskHandle, i,
+// 								eSetValueWithOverwrite);
+// 					success = instance.handleTestState(SwitchTest::getInstance(), managerState, i,
+// 													   &dataBuff1);
+
+// 					if(success && managerState == State::CURRENT_TEST_OK)
+// 					{
+// 						logger.log(LogLevel::SUCCESS,
+// 								   "SwitchTest Data received,Sending it to observer");
+// 						xQueueSend(instance.switchTestDataQueue, &dataBuff1, pdMS_TO_TICKS(100));
+// 					}
+// 				}
+// 				else if(testType == TestType::BackupTest)
+// 				{
+// 					BackupTestData dataBuff2;
+// 					logger.log(LogLevel::INTR, "current BackupTest index:", i);
+// 					xTaskNotify(TestSync::getInstance().testObserverTaskHandle, i,
+// 								eSetValueWithOverwrite);
+// 					success = instance.handleTestState(BackupTest::getInstance(), managerState, i,
+// 													   &dataBuff2);
+
+// 					if(success && managerState == State::CURRENT_TEST_OK)
+// 					{
+// 						logger.log(LogLevel::SUCCESS,
+// 								   "BackupTest Data received,Sending it to observer");
+// 						xQueueSend(instance.backupTestDataQueue, &dataBuff2, pdMS_TO_TICKS(100));
+// 					}
+// 				}
+// 			}
+// 		}
+
+// 		vTaskDelay(pdMS_TO_TICKS(100)); // General delay for task
+// 	}
+
+// 	vTaskDelete(NULL);
+// }
+void TestManager::TestManagerTask(void* pvParameters)
+{
+	logger.log(LogLevel::INFO, "Resuming Test Manager task");
+
+	while(xEventGroupWaitBits(EventHelper::syncControlEvent,
+							  static_cast<EventBits_t>(SyncCommand::MANAGER_ACTIVE), pdFALSE,
+							  pdTRUE, portMAX_DELAY))
+	{
+		TestManager& instance = TestManager::getInstance();
+		State managerState = instance._currentState;
+		bool notifyIndex = false;
+		int currentIndex = -1;
+
+		for(int i = 0; i < instance._numTest; ++i)
+		{
+			if(instance.isTestPendingAndNotStarted(instance._testList[i]))
+			{
+				TestType testType = instance._testList[i].testRequired.testType;
+				bool success = false;
+
+				if(testType == TestType::SwitchTest)
+				{
+					SwitchTestData dataBuff1;
+					currentIndex = i;
+					notifyIndex = true; // Flag to notify once
+					success = instance.handleTestState(SwitchTest::getInstance(), managerState, i,
+													   &dataBuff1);
+
+					if(success && managerState == State::CURRENT_TEST_OK)
+					{
+						logger.log(LogLevel::SUCCESS,
+								   "SwitchTest Data received, sending it to observer");
+						xQueueSend(instance.switchTestDataQueue, &dataBuff1, pdMS_TO_TICKS(100));
+					}
+				}
+				else if(testType == TestType::BackupTest)
+				{
+					BackupTestData dataBuff2;
+					currentIndex = i;
+					notifyIndex = true; // Flag to notify once
+					success = instance.handleTestState(BackupTest::getInstance(), managerState, i,
+													   &dataBuff2);
+
+					if(success && managerState == State::CURRENT_TEST_OK)
+					{
+						logger.log(LogLevel::SUCCESS,
+								   "BackupTest Data received, sending it to observer");
+						xQueueSend(instance.backupTestDataQueue, &dataBuff2, pdMS_TO_TICKS(100));
+					}
+				}
+			}
+		}
+
+		if(notifyIndex)
+		{
+			logger.log(LogLevel::INTR, "current Test index:", currentIndex);
+			xTaskNotify(TestSync::getInstance().testObserverTaskHandle, currentIndex,
+						eSetValueWithOverwrite);
+		}
+
+		vTaskDelay(pdMS_TO_TICKS(100)); // General delay for task
+	}
+
+	vTaskDelete(NULL);
 }

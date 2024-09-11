@@ -22,53 +22,18 @@ class TestManager : public SettingsObserver
 	static TestManager& getInstance();
 
 	void init();
-	void addTests(RequiredTest testList[], int numTest);
 
-	void runTests();
-	void manageTests();
-	void terminateTest();
+	void updateState(State state);
+	void updateMode(TestMode mode);
+
+	void onSettingsUpdate(SettingType type, const void* settings) override;
+	void ReconfigureTaskParams();
 	void passEvent(Event event);
 
-	static void TestManagerTask(void* pvParameters);
-	static void onMainsPowerLossTask(void* pvParameters);
-	static void onUPSPowerGainTask(void* pvParameters);
-	static void onUPSPowerLossTask(void* pvParameters);
-	void initializeTestInstances();
+	void addTests(RequiredTest testList[], int numTest);
 
-	void updateState(State state)
-	{
-		_currentState.store(state);
-	}
-	void updateMode(TestMode mode)
-	{
-		_deviceMode.store(mode);
-	}
-
-	void onSettingsUpdate(SettingType type, const void* settings) override
-	{
-		if(type == SettingType::SPEC)
-		{
-			_cfgSpec = *static_cast<const SetupSpec*>(settings);
-			Serial.println("TestManager Spec settings updated !!!");
-		}
-		else if(type == SettingType::TEST)
-		{
-			_cfgTest = *static_cast<const SetupTest*>(settings);
-			Serial.println("Testmanager Test settings updated !!!");
-		}
-		else
-		{
-		}
-
-		ReconfigureTaskParams();
-	}
-
-	void ReconfigureTaskParams()
-	{
-		_cfgTaskParam.task_TestVARating = _cfgSpec.Rating_va;
-		_cfgTaskParam.task_SWtestDuration_ms = _cfgTest.switch_testDuration_ms;
-		_cfgTaskParam.task_BTtestDuration_ms = _cfgTest.backup_testDuration_ms;
-	}
+	QueueHandle_t switchTestDataQueue;
+	QueueHandle_t backupTestDataQueue;
 
   private:
 	TestManager();
@@ -95,12 +60,17 @@ class TestManager : public SettingsObserver
 	void createTestTasks();
 	void createManagerTasks();
 
-	void pauseAllTest();
-
 	// helper functions switchTest
 	bool isTestPendingAndNotStarted(const UPSTestRun& test);
 	void logPendingTest(const UPSTestRun& test);
 	void configureTest(LoadPercentage load);
+
+	void initializeTestInstances();
+
+	static void TestManagerTask(void* pvParameters);
+	static void onMainsPowerLossTask(void* pvParameters);
+	static void onUPSPowerGainTask(void* pvParameters);
+	static void onUPSPowerLossTask(void* pvParameters);
 
 	template<typename T, typename U>
 	bool handleTestState(UPSTest<T, U>& testInstance, State managerState, int testIndex,

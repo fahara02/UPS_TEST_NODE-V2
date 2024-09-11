@@ -52,6 +52,7 @@ class TestSync
 	TestMode getMode();
 	void updateState(State state);
 	void updateMode(TestMode mode);
+	TaskHandle_t testObserverTaskHandle = nullptr;
 
   private:
 	TestSync();
@@ -70,6 +71,9 @@ class TestSync
 	int _testCount = 0;
 	int _testID[MAX_TEST];
 	int _currentTestIndex = 0;
+
+	SwitchTestData _swData;
+	BackupTestData _btData;
 
 	std::queue<JsonObject> jsonQueue;
 
@@ -95,7 +99,6 @@ class TestSync
 
 	TaskHandle_t commandObserverTaskHandle = nullptr;
 	TaskHandle_t updateObserverTaskHandle = nullptr;
-	TaskHandle_t testObserverTaskHandle = nullptr;
 
 	TestSync(const TestSync&) = delete;
 	TestSync& operator=(const TestSync&) = delete;

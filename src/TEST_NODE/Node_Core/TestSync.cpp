@@ -49,11 +49,11 @@ void TestSync::updateMode(TestMode mode)
 
 void TestSync::createSynctask()
 {
-	xTaskCreatePinnedToCore(userCommandTask, "userCommand", userCommand_Stack, NULL,
+	xTaskCreatePinnedToCore(userCommandTask, "userCommand", userCommand_Stack, this,
 							userCommand_Priority, &commandObserverTaskHandle, userCommand_CORE);
-	xTaskCreatePinnedToCore(userUpdateTask, "userUpdate", userUpdate_Stack, NULL,
+	xTaskCreatePinnedToCore(userUpdateTask, "userUpdate", userUpdate_Stack, this,
 							userUpdate_Priority, &updateObserverTaskHandle, userUpdate_CORE);
-	xTaskCreatePinnedToCore(testSyncTask, "testSync", testSync_Stack, NULL, testSync_Priority,
+	xTaskCreatePinnedToCore(testSyncTask, "testSync", testSync_Stack, this, testSync_Priority,
 							&testObserverTaskHandle, testSync_CORE);
 
 	logger.log(LogLevel::INFO, "testSync task created initialization");
@@ -585,13 +585,36 @@ void TestSync::userUpdateTask(void* pvParameters)
 void TestSync::testSyncTask(void* pvParameters)
 {
 	TestSync& instance = TestSync::getInstance();
+	uint32_t notifiedValue;
+
 	while(xEventGroupWaitBits(EventHelper::syncControlEvent,
 							  static_cast<EventBits_t>(SyncCommand::START_OBSERVER), pdFALSE,
 							  pdFALSE, portMAX_DELAY))
 	{
-		logger.log(LogLevel::INFO, "Observing test.. ");
+		logger.log(LogLevel::INFO, "Observing test..");
 
-		vTaskDelay(pdMS_TO_TICKS(200));
+		// Use a timeout for xTaskNotifyWait, e.g., 200 ms
+		if(xTaskNotifyWait(0, 0, &notifiedValue, pdMS_TO_TICKS(200)) == pdTRUE)
+		{
+			instance._currentTestIndex = static_cast<int>(notifiedValue);
+			logger.log(LogLevel::INFO, "Updated current test index to: %d",
+					   instance._currentTestIndex);
+		}
+
+		// Continue to check the queues regardless of notification
+		if(xQueueReceive(TestManager::getInstance().switchTestDataQueue, &instance._swData,
+						 pdMS_TO_TICKS(100)) == pdPASS)
+		{
+			logger.log(LogLevel::SUCCESS, "Switch Test data received");
+		}
+		else if(xQueueReceive(TestManager::getInstance().backupTestDataQueue, &instance._btData,
+							  pdMS_TO_TICKS(100)) == pdPASS)
+		{
+			logger.log(LogLevel::SUCCESS, "Backup Test data received");
+		}
+
+		vTaskDelay(pdMS_TO_TICKS(1500)); // General delay for task execution
 	}
+
 	vTaskDelete(NULL);
 }
