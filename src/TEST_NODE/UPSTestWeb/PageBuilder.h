@@ -54,7 +54,7 @@ class PageBuilder
 	void sendHeader(AsyncResponseStream* response);
 	void sendHeadTrailer(AsyncResponseStream* response);
 	void sendPageTrailer(AsyncResponseStream* response);
-	void sendUserCommand(AsyncResponseStream* response, const char* content = "");
+	void sendUserCommand(AsyncResponseStream* response, bool showcontent, const char* content = "");
 	void sendStyle(AsyncResponseStream* response);
 	void sendScript(AsyncResponseStream* response);
 	void sendNavbar(AsyncResponseStream* response);

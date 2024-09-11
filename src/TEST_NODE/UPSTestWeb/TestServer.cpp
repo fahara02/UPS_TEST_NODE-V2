@@ -76,7 +76,7 @@ void TestServer::handleRootRequest(AsyncWebServerRequest* request)
 	this->webPage->sendHeader(response);
 	this->webPage->sendNavbar(response);
 	this->webPage->sendSidebar(response);
-	this->webPage->sendUserCommand(response);
+	this->webPage->sendUserCommand(response, true);
 	this->webPage->sendPowerMonitor(response);
 
 	this->webPage->sendPageTrailer(response);
@@ -102,7 +102,10 @@ void TestServer::handleSettingRequest(AsyncWebServerRequest* request, UPSTesterS
 	this->webPage->sendHeadTrailer(response);
 	this->webPage->sendHeader(response);
 	this->webPage->sendNavbar(response);
+	this->webPage->sendUserCommand(response, false);
+
 	this->webPage->sendSettingTable(response, _setup, caption, type, redirect_uri);
+	this->webPage->sendPowerMonitor(response);
 	this->webPage->sendPageTrailer(response);
 	request->send(response);
 }

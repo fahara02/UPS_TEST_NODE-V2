@@ -55,20 +55,103 @@ void PageBuilder::sendPageTrailer(AsyncResponseStream* response)
 	response->print(pageTrailerHtml);
 }
 
-void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
+// void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* content)
+// {
+// 	// Left side: User commands
+// 	response->print("<div class=\"container\">"); // it will be closed by power monitor group
+// 	response->print("<div class=\"user-command\">");
+// 	response->print("<h2>User Commands</h2>");
+// 	response->print("<div class=\"command-content\">");
+// 	response->print("<pre id=\"testCommand\"></pre>");
+// 	response->print("</div>");
+// 	response->print("</div>");
+
+// 	// Right side: Log output
+// 	String logs = logger.getBufferedLogs();
+// 	response->print("<div class=\"log-output\">");
+// 	response->print("<h2>Log Output</h2>");
+// 	response->print("<div class=\"log-content\">");
+// 	if(logs.length() > 0)
+// 	{
+// 		response->print("<pre style=\"color:green;\" id=\"logs\">");
+// 		response->printf("%s", logs.c_str());
+// 		response->print("</pre>");
+// 	}
+// 	else
+// 	{
+// 		response->print("<p id=\"logs\">No logs available.</p>");
+// 	}
+// 	response->print("</div>"); // Closing log-content div
+// 	response->print("</div>"); // Closing log-output div
+
+// 	// JavaScript for managing logs
+// 	response->print(R"(<script>
+//         const MAX_MESSAGE_COUNT = 20; // Define the maximum number of messages
+
+//         // Function to get the current line count of the testCommand
+//         function getLineCount() {
+//             const testCommand = document.getElementById('testCommand');
+//             if (testCommand) {
+//                 return testCommand.textContent.split('\n').length;
+//             }
+//             return 0;
+//         }
+
+//         // Function to clear the testCommand content
+//         function clearTestCommand() {
+//             const testCommand = document.getElementById('testCommand');
+//             if (testCommand) {
+//                 testCommand.textContent = ''; // Clear the log content
+//                 console.log('testCommand cleared.');
+//             }
+//         }
+
+//         // Function to refresh logs
+//         function refreshLogs() {
+//             var xhr = new XMLHttpRequest();
+//             xhr.open('GET', '/log', true);
+//             xhr.onload = function() {
+//                 if (xhr.status === 200) {
+//                     document.getElementById('logs').innerHTML = xhr.responseText;
+//                 } else {
+//                     console.error('Failed to fetch logs:', xhr.statusText);
+//                 }
+//             };
+//             xhr.send();
+//         }
+
+//         // Set interval to refresh logs every 2 seconds
+//         setInterval(refreshLogs, 2000);
+
+//         // Check the testCommand content and clear if needed
+//         function checkAndClearTestCommand() {
+//             const messageCount = getLineCount();
+//             if (messageCount >= MAX_MESSAGE_COUNT) {
+//                 clearTestCommand(); // Clear logs when limit is reached
+//             }
+//         }
+
+//         // Example of how to periodically check and clear testCommand
+//         setInterval(checkAndClearTestCommand, 1000); // Check every second
+//     </script>)");
+// }
+void PageBuilder::sendUserCommand(AsyncResponseStream* response, bool showContent,
+								  const char* content)
 {
-	// Left side: User commands
+	// Left side: User commands (conditionally hidden)
 	response->print("<div class=\"container\">"); // it will be closed by power monitor group
-	response->print("<div class=\"user-command\">");
+	response->printf("<div class=\"user-command\" style=\"display: %s;\">",
+					 showContent ? "block" : "none");
 	response->print("<h2>User Commands</h2>");
 	response->print("<div class=\"command-content\">");
 	response->print("<pre id=\"testCommand\"></pre>");
 	response->print("</div>");
 	response->print("</div>");
 
-	// Right side: Log output
+	// Right side: Log output (conditionally hidden)
 	String logs = logger.getBufferedLogs();
-	response->print("<div class=\"log-output\">");
+	response->printf("<div class=\"log-output\" style=\"display: %s;\">",
+					 showContent ? "block" : "none");
 	response->print("<h2>Log Output</h2>");
 	response->print("<div class=\"log-content\">");
 	if(logs.length() > 0)
@@ -120,8 +203,20 @@ void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* con
             xhr.send();
         }
 
-        // Set interval to refresh logs every 2 seconds
-        setInterval(refreshLogs, 2000);
+        // Check visibility of an element by its computed style
+        function isVisible(element) {
+            return element && window.getComputedStyle(element).display !== 'none';
+        }
+
+        // Set interval to refresh logs every 2 seconds only if user-command or log-output is visible
+        function startLogUpdater() {
+            const userCommandDiv = document.querySelector('.user-command');
+            const logOutputDiv = document.querySelector('.log-output');
+            
+            if (isVisible(userCommandDiv) && isVisible(logOutputDiv)) {
+                setInterval(refreshLogs, 2000); // Only update logs if the elements are visible
+            }
+        }
 
         // Check the testCommand content and clear if needed
         function checkAndClearTestCommand() {
@@ -130,6 +225,9 @@ void PageBuilder::sendUserCommand(AsyncResponseStream* response, const char* con
                 clearTestCommand(); // Clear logs when limit is reached
             }
         }
+
+        // Start log updater when the page loads
+        window.onload = startLogUpdater;
 
         // Example of how to periodically check and clear testCommand
         setInterval(checkAndClearTestCommand, 1000); // Check every second
@@ -494,23 +592,78 @@ void PageBuilder::sendColorGroup(AsyncResponseStream* response, int span,
 	response->print("</colgroup>");
 }
 
+// void PageBuilder::sendTableStyle(AsyncResponseStream* response)
+// {
+// 	response->print("<style>");
+// 	response->print("#custom-settings-page table { width: 100%; border-collapse: collapse; margin: "
+// 					"20px 0; font-size: 1em; font-family: sans-serif; min-width: 400px; }");
+// 	response->print("#custom-settings-page th, td { padding: 12px 15px; border: 1px solid #ddd; "
+// 					"text-align: left; }");
+// 	response->print("#custom-settings-page th { background-color: #f4f4f4; font-weight: bold; }");
+// 	response->print("#custom-settings-page tr:nth-child(even) { background-color: #f9f9f9; }");
+// 	response->print("#custom-settings-page tr:hover { background-color: #f1f1f1; }");
+// 	response->print("#custom-settings-page input[type='text'], #custom-settings-page "
+// 					"input[type='number'], #custom-settings-page select { width: 100%; padding: "
+// 					"8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }");
+// 	response->print("#custom-settings-page button { background-color: #4CAF50; color: white; "
+// 					"padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }");
+// 	response->print("#custom-settings-page button:hover { background-color: #45a049; }");
+// 	response->print("#custom-settings-page form { padding: 20px; background-color: #fff; "
+// 					"border-radius: 5px; box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1); }");
+// 	response->print("</style>");
+// }
 void PageBuilder::sendTableStyle(AsyncResponseStream* response)
 {
 	response->print("<style>");
+
+	// Container styling
+	response->print("#custom-settings-page { padding: 20px; background-color: #f8f9fa; }");
+
+	// Table styling
 	response->print("#custom-settings-page table { width: 100%; border-collapse: collapse; margin: "
-					"20px 0; font-size: 1em; font-family: sans-serif; min-width: 400px; }");
-	response->print("#custom-settings-page th, td { padding: 12px 15px; border: 1px solid #ddd; "
+					"20px 0; font-size: 1.1em; font-family: 'Arial', sans-serif; min-width: 400px; "
+					"background-color: #ffffff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); "
+					"border-radius: 8px; overflow: hidden; }");
+
+	// Table header styling
+	response->print("#custom-settings-page th, td { padding: 16px 20px; border: 1px solid #e0e0e0; "
 					"text-align: left; }");
-	response->print("#custom-settings-page th { background-color: #f4f4f4; font-weight: bold; }");
+	response->print("#custom-settings-page th { background-color: #007bff; color: white; "
+					"font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; }");
+
+	// Row striping
 	response->print("#custom-settings-page tr:nth-child(even) { background-color: #f9f9f9; }");
-	response->print("#custom-settings-page tr:hover { background-color: #f1f1f1; }");
-	response->print("#custom-settings-page input[type='text'], #custom-settings-page "
-					"input[type='number'], #custom-settings-page select { width: 100%; padding: "
-					"8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }");
-	response->print("#custom-settings-page button { background-color: #4CAF50; color: white; "
-					"padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }");
-	response->print("#custom-settings-page button:hover { background-color: #45a049; }");
-	response->print("#custom-settings-page form { padding: 20px; background-color: #fff; "
-					"border-radius: 5px; box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1); }");
+
+	// Hover effect
+	response->print("#custom-settings-page tr:hover { background-color: #f1f3f5; transition: "
+					"background-color 0.3s ease; }");
+
+	// Input and select styling
+	response->print(
+		"#custom-settings-page input[type='text'], #custom-settings-page input[type='number'], "
+		"#custom-settings-page select { width: 100%; padding: 12px 16px; border: 1px solid "
+		"#ced4da; border-radius: 4px; box-sizing: border-box; "
+		"font-size: 1em; color: #495057; background-color: #fff; box-shadow: inset 0 1px 2px "
+		"rgba(0, 0, 0, 0.075); }");
+
+	// Button styling
+	response->print(
+		"#custom-settings-page button { background-color: #28a745; color: white; padding: 12px "
+		"20px; font-size: 1em; font-weight: bold; text-transform: uppercase; letter-spacing: "
+		"0.05em; border: none; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 5px rgba(0, "
+		"0, 0, 0.15); transition: background-color 0.3s ease, box-shadow 0.3s ease; }");
+	response->print("#custom-settings-page button:hover { background-color: #218838; box-shadow: 0 "
+					"4px 8px rgba(0, 0, 0, 0.2); }");
+
+	// Form container styling
+	response->print("#custom-settings-page form { padding: 20px; background-color: #ffffff; "
+					"border-radius: 8px; "
+					"box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }");
+
+	// Update message styling
+	response->print("#custom-settings-page .update-message { padding: 16px; background-color: "
+					"#f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 1.05em; "
+					"color: #495057; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }");
+
 	response->print("</style>");
 }
