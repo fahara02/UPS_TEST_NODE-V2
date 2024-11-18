@@ -61,6 +61,6 @@ static BaseType_t SwitchTest_CORE = 1;
 static BaseType_t BackUpTest_CORE = 1;
 
 static BaseType_t monitor_CORE = 1;
-static BaseType_t modbus_CORE = 0;
+static BaseType_t modbus_CORE = tskNO_AFFINITY;
 static BaseType_t timer_CORE = 0;
 #endif

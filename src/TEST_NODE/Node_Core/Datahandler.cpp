@@ -1,8 +1,11 @@
 #include "DataHandler.h"
 #include "HPTSettings.h"
+#include "PZEM_Modbus.hpp"
 
 using namespace Node_Core;
+using namespace Node_Utility;
 extern Logger& logger;
+extern Node_Utility::ModbusManager& MBManager;
 extern TaskHandle_t PeriodicDataHandle;
 namespace Node_Core
 {
@@ -405,25 +408,16 @@ StaticJsonDocument<WS_BUFFER_SIZE> DataHandler::prepData(wsOutGoingDataType type
 	StaticJsonDocument<WS_BUFFER_SIZE> doc;
 	if(type == wsOutGoingDataType::POWER_READINGS)
 	{
-		// Generate random values for different metrics
-		int randomCurrentInput = random(20, 100);
-		int randomCurrentOutput = random(20, 100);
-		int randomVoltageInput = random(200, 240);
-		int randomVoltageOutput = random(200, 240);
-		float randomPowerFactorInput = random(80, 100) / 100.0;
-		float randomPowerFactorOutput = random(80, 100) / 100.0;
-		int randomWattageInput = random(1000, 5000);
-		int randomWattageOutput = random(1000, 5000);
-
 		// Populate the JSON document with these random values
-		doc["inputCurrent"] = randomCurrentInput;
-		doc["outputCurrent"] = randomCurrentOutput;
-		doc["inputVoltage"] = randomVoltageInput;
-		doc["outputVoltage"] = randomVoltageOutput;
-		doc["inputPowerFactor"] = randomPowerFactorInput;
-		doc["outputPowerFactor"] = randomPowerFactorOutput;
-		doc["inputWattage"] = randomWattageInput;
-		doc["outputWattage"] = randomWattageOutput;
+		doc["inputCurrent"] = MBManager.getInputPower().current;
+		doc["outputCurrent"] = MBManager.getoutputPower().current;
+		doc["inputVoltage"] = MBManager.getInputPower().voltage;
+		doc["outputVoltage"] = MBManager.getoutputPower().voltage;
+		;
+		doc["inputPowerFactor"] = MBManager.getInputPower().pf;
+		doc["outputPowerFactor"] = MBManager.getoutputPower().pf;
+		doc["inputWattage"] = MBManager.getInputPower().power;
+		doc["outputWattage"] = MBManager.getoutputPower().power;
 	}
 	else
 	{

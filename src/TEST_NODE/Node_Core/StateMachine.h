@@ -82,9 +82,7 @@ class StateMachine
 
 	OnStateChangedCallback _stateChangeCallback;
 	OnModeChangedCallback _modeChangeCallback;
-	// SemaphoreHandle_t stateActionMutex;
-	// SemaphoreHandle_t notifyStateMutex;
-	// SemaphoreHandle_t notifyModeMutex;
+
 	bool isValidState(uint32_t state);
 
 	void setMode(TestMode new_mode);

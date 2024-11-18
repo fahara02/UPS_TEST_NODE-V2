@@ -2,7 +2,7 @@
 #include "Adafruit_MAX31855.h"
 #include "SPI.h"
 #include <WiFi.h>
-#include<WifiClient.h>
+#include <WifiClient.h>
 #include <AsyncTCP.h>
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
@@ -13,7 +13,7 @@
 #include "freertos/task.h"
 #include "freertos/timers.h"
 #include "Logger.h"
-#include "ModbusManager.h"
+
 #include "UPSTestNode.h"
 #include "EventHelper.h"
 #include <nvs_flash.h>
@@ -50,7 +50,7 @@ SemaphoreHandle_t upsGain = NULL;
 TaskHandle_t ISR_MAINS_POWER_LOSS = NULL;
 TaskHandle_t ISR_UPS_POWER_GAIN = NULL;
 TaskHandle_t ISR_UPS_POWER_LOSS = NULL;
-TaskHandle_t modbusRTUTaskHandle = NULL;
+
 TaskHandle_t switchTestTaskHandle = NULL;
 TaskHandle_t backupTestTaskHandle = NULL;
 TaskHandle_t efficiencyTestTaskHandle = NULL;
@@ -78,6 +78,9 @@ AsyncWebSocket ws("/ws");
 
 WiFiManager wm;
 WiFiClient theClient;
+auto MClient = std::make_unique<ModbusClientTCP>(theClient);
+Node_Utility::ModbusManager& MBManager =
+	Node_Utility::ModbusManager::getInstance(std::move(MClient));
 
 #define ESP_LITTLEFS_TAG = "LFS"
 
@@ -219,26 +222,16 @@ void setup()
 	SyncTest.init();
 	logger.log(LogLevel::INFO, "initiating modbus");
 
-    auto MClient = std::make_unique<ModbusClientTCP>(theClient);
-    Node_Utility::ModbusManager& manager = Node_Utility::ModbusManager::getInstance(std::move(MClient));
+	// Issue a request
 
+	Node_Utility::ModbusManager::PollingTarget target1 = {
+		TargetType::INPUT_POWER, 761, IPAddress(192, 168, 0, 160), 1, READ_HOLD_REGISTER, 0, 40};
+	Node_Utility::ModbusManager::PollingTarget target2 = {
+		TargetType::OUTPUT_POWER, 123, IPAddress(192, 168, 0, 160), 2, READ_HOLD_REGISTER, 0, 40};
 
-    // Issue a request
+	MBManager.autopoll(true, target1, target2);
 
-Node_Utility::ModbusManager::PollingTarget target1 = {0, IPAddress(192, 168, 0, 160), 1, READ_HOLD_REGISTER, 0, 40};
-    Node_Utility::ModbusManager::PollingTarget target2 = {0, IPAddress(192, 168, 0, 160), 2, READ_INPUT_REGISTER, 0, 40};
-
-    manager.autopoll(true, target1, target2);
-
-	Serial2.begin(9600, SERIAL_8N1);
-
-	xTaskCreatePinnedToCore(modbusRTUTask, "ModbusRTUTask", modbus_Stack, NULL, modbus_Priority,
-							&modbusRTUTaskHandle, modbus_CORE);
-	logger.log(LogLevel::INFO, "modbus slave configured");
-
-
-
-
+	logger.log(LogLevel::INFO, "modbus client configured");
 
 	logger.log(LogLevel::INFO, "getting manager instance");
 	TestManager& Manager = TestManager::getInstance();

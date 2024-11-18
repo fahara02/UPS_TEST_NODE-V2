@@ -19,9 +19,6 @@ StateMachine::StateMachine() :
 	_old_state(State::DEVICE_ON), _currentState(State::DEVICE_ON), _deviceMode(TestMode::MANUAL),
 	_dataCapturedFlag(false), _retryCount(0)
 {
-	// stateActionMutex = xSemaphoreCreateMutex();
-	// notifyStateMutex = xSemaphoreCreateMutex();
-	// notifyModeMutex = xSemaphoreCreateMutex();
 }
 
 bool StateMachine::isValidState(uint32_t state)
