@@ -2,6 +2,7 @@
 #include "Adafruit_MAX31855.h"
 #include "SPI.h"
 #include <WiFi.h>
+#include<WifiClient.h>
 #include <AsyncTCP.h>
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
@@ -21,6 +22,9 @@
 #include "UPSTime.h"
 #include "DataHandler.h"
 #include "TaskMonitor.h"
+#include "PZEM_Modbus.hpp"
+#include <memory>
+#include "ModbusClientTCP.h"
 
 using namespace Node_Core;
 using namespace Node_Utility;
@@ -73,7 +77,7 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 WiFiManager wm;
-ModbusRTU mb;
+WiFiClient theClient;
 
 #define ESP_LITTLEFS_TAG = "LFS"
 
@@ -214,14 +218,27 @@ void setup()
 	logger.log(LogLevel::INFO, "initiating test sync");
 	SyncTest.init();
 	logger.log(LogLevel::INFO, "initiating modbus");
-	modbusRTU_Init();
+
+    auto MClient = std::make_unique<ModbusClientTCP>(theClient);
+    Node_Utility::ModbusManager& manager = Node_Utility::ModbusManager::getInstance(std::move(MClient));
+
+
+    // Issue a request
+
+Node_Utility::ModbusManager::PollingTarget target1 = {0, IPAddress(192, 168, 0, 160), 1, READ_HOLD_REGISTER, 0, 40};
+    Node_Utility::ModbusManager::PollingTarget target2 = {0, IPAddress(192, 168, 0, 160), 2, READ_INPUT_REGISTER, 0, 40};
+
+    manager.autopoll(true, target1, target2);
 
 	Serial2.begin(9600, SERIAL_8N1);
-	mb.begin(&Serial2);
-	mb.slave(1);
+
 	xTaskCreatePinnedToCore(modbusRTUTask, "ModbusRTUTask", modbus_Stack, NULL, modbus_Priority,
 							&modbusRTUTaskHandle, modbus_CORE);
 	logger.log(LogLevel::INFO, "modbus slave configured");
+
+
+
+
 
 	logger.log(LogLevel::INFO, "getting manager instance");
 	TestManager& Manager = TestManager::getInstance();
