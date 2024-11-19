@@ -153,17 +153,16 @@ void TestSync::removeTest(const String& testName, const String& loadLevel)
 		}
 	}
 }
-
 void TestSync::parseIncomingJson(JsonVariant json)
 {
 	if(json.is<JsonObject>())
 	{
 		JsonObject jsonObj = json.as<JsonObject>();
 
-		if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
+		if(jsonObj["testName"].is<String>() && jsonObj["loadLevel"].is<String>())
 		{
-			String testName = jsonObj["testName"];
-			String loadLevel = jsonObj["loadLevel"];
+			String testName = jsonObj["testName"].as<String>();
+			String loadLevel = jsonObj["loadLevel"].as<String>();
 
 			if(isTestUnique(testName, loadLevel))
 			{
@@ -181,9 +180,9 @@ void TestSync::parseIncomingJson(JsonVariant json)
 				logger.log(LogLevel::WARNING, "Duplicate test, skipping queue.");
 			}
 		}
-		else if(jsonObj.containsKey("startCommand") || jsonObj.containsKey("stopCommand") ||
-				jsonObj.containsKey("autoCommand") || jsonObj.containsKey("manualCommand") ||
-				jsonObj.containsKey("pauseCommand") || jsonObj.containsKey("resumeCommand"))
+		else if(jsonObj["startCommand"].is<bool>() || jsonObj["stopCommand"].is<bool>() ||
+				jsonObj["autoCommand"].is<bool>() || jsonObj["manualCommand"].is<bool>() ||
+				jsonObj["pauseCommand"].is<bool>() || jsonObj["resumeCommand"].is<bool>())
 		{
 			// parseUserCommandJson(jsonObj);
 		}
@@ -197,6 +196,50 @@ void TestSync::parseIncomingJson(JsonVariant json)
 		logger.log(LogLevel::ERROR, "Unknown JSON format!!!");
 	}
 }
+
+// void TestSync::parseIncomingJson(JsonVariant json)
+// {
+// 	if(json.is<JsonObject>())
+// 	{
+// 		JsonObject jsonObj = json.as<JsonObject>();
+
+// 		if(jsonObj.containsKey("testName") && jsonObj.containsKey("loadLevel"))
+// 		{
+// 			String testName = jsonObj["testName"];
+// 			String loadLevel = jsonObj["loadLevel"];
+
+// 			if(isTestUnique(testName, loadLevel))
+// 			{
+// 				addUniqueTest(testName, loadLevel);
+// 				logger.log(LogLevel::SUCCESS, "Queueing unique JSON for processing");
+// 				jsonQueue.push(jsonObj);
+
+// 				if(!parsingOngoing)
+// 				{
+// 					processNextJson();
+// 				}
+// 			}
+// 			else
+// 			{
+// 				logger.log(LogLevel::WARNING, "Duplicate test, skipping queue.");
+// 			}
+// 		}
+// 		else if(jsonObj.containsKey("startCommand") || jsonObj.containsKey("stopCommand") ||
+// 				jsonObj.containsKey("autoCommand") || jsonObj.containsKey("manualCommand") ||
+// 				jsonObj.containsKey("pauseCommand") || jsonObj.containsKey("resumeCommand"))
+// 		{
+// 			// parseUserCommandJson(jsonObj);
+// 		}
+// 		else
+// 		{
+// 			logger.log(LogLevel::ERROR, "Required fields missing");
+// 		}
+// 	}
+// 	else
+// 	{
+// 		logger.log(LogLevel::ERROR, "Unknown JSON format!!!");
+// 	}
+// }
 void TestSync::processNextJson()
 {
 	if(!jsonQueue.empty())
