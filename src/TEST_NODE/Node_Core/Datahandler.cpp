@@ -50,7 +50,7 @@ void DataHandler::wsDataProcessor(void* pVparamter)
 {
 	DataHandler* instance = static_cast<DataHandler*>(pVparamter);
 	WebSocketMessage wsMsg;
-	AsyncWebSocketClient* client = wsMsg.client;
+	
 
 	while(true)
 	{
@@ -129,12 +129,13 @@ void DataHandler::periodicDataSender(void* pvParameter)
 	while(true)
 	{
 		// Wait for WebSocket client event (GET_READING)
-		EventBits_t eventBits = xEventGroupWaitBits(
+		int result= xEventGroupWaitBits(
 			EventHelper::wsClientEventGroup, static_cast<EventBits_t>(wsClientUpdate::GET_READING),
 			pdFALSE, pdFALSE, READ_TIMEOUT_MS);
-
-		// Check for connected clients and send data
-		std::set<int> clientsToCheck = instance.connectedClients;
+        
+        std::set<int> clientsToCheck = instance.connectedClients;
+		if((result & static_cast<EventBits_t>(wsClientUpdate::GET_READING))!=0){	
+		
 		for(int clientId: clientsToCheck)
 		{
 			AsyncWebSocketClient* client = websocket->client(clientId);
@@ -151,7 +152,9 @@ void DataHandler::periodicDataSender(void* pvParameter)
 				logger.log(LogLevel::ERROR, "Client object for ID %d is nullptr", clientId);
 				instance.updateClientList(clientId, false);
 			}
-		}
+		}}
+		// Check for connected clients and send data
+	
 
 		// Check for additional task notifications
 		BaseType_t notificationReceived =
@@ -190,8 +193,8 @@ void DataHandler::periodicDataSender(void* pvParameter)
 
 void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDataType type)
 {
-	EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
-	StaticJsonDocument<WS_BUFFER_SIZE> doc;
+	
+	JsonDocument doc;
 
 	// Prepare JSON data
 	if(type == wsOutGoingDataType::POWER_READINGS)
@@ -263,9 +266,9 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 
 void DataHandler::sendData(AsyncWebSocketClient* client, wsOutGoingDataType type)
 {
-	EventBits_t wsBits = xEventGroupGetBits(EventHelper::wsClientEventGroup);
+	
 
-	StaticJsonDocument<WS_BUFFER_SIZE> doc;
+	JsonDocument doc;
 
 	if(type == wsOutGoingDataType::POWER_READINGS)
 	{
@@ -403,9 +406,9 @@ void DataHandler::handleUserCommand(UserCommandEvent command)
 	xEventGroupSetBits(EventHelper::userCommandEventGroup, commandBits);
 }
 
-StaticJsonDocument<WS_BUFFER_SIZE> DataHandler::prepData(wsOutGoingDataType type)
+JsonDocument DataHandler::prepData(wsOutGoingDataType type)
 {
-	StaticJsonDocument<WS_BUFFER_SIZE> doc;
+	JsonDocument  doc;
 	if(type == wsOutGoingDataType::POWER_READINGS)
 	{
 		// Populate the JSON document with these random values

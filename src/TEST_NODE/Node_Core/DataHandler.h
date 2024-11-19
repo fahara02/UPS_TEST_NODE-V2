@@ -9,86 +9,22 @@
 
 #include <array>
 #include <set>
+#include "wsDefines.hpp"
 
-enum class wsIncomingCommands
-{
-	TEST_START,
-	TEST_STOP,
-	TEST_PAUSE,
-	AUTO_MODE,
-	MANUAL_MODE,
-	LOAD_ON,
-	LOAD_OFF,
-	MAINS_ON,
-	MAINS_OFF,
-	GET_READINGS,
 
-	INVALID_COMMAND // Handle invalid cases
-};
 
-enum class wsOutgoingCommands
-{
-	BLINK_SETUP,
-	BLINK_READY,
-	BLINK_RUNNING,
-	INVALID_COMMAND // Handle invalid cases
-};
-enum class wsPowerDataType
-{
-	INPUT_POWER,
-	INPUT_VOLT,
-	INPUT_CURRENT,
-	INPUT_PF,
-	OUTPUT_POWER,
-	OUTPUT_VOLT,
-	OUTPUT_CURRENT,
-	OUTPUT_PF,
-	INVALID_DATA
-};
-
-enum class wsOutGoingDataType
-{
-	POWER_READINGS,
-	LED_STATUS,
-	BUTTONS_STATUS,
-	INVALID_DATA
-};
-
-static const char* outgoingLedTable[] = {
-	"blinkBlue", // BLINK_SETUP
-	"blinkGreen", // BLINK_READY
-	"blinkRed" // BLINK_RUNNING
-};
+// static const char* outgoingLedTable[] = {
+// 	"blinkBlue", // BLINK_SETUP
+// 	"blinkGreen", // BLINK_READY
+// 	"blinkRed" // BLINK_RUNNING
+// };
 
 struct PeriodicTaskParams
 {
 	AsyncWebSocket* ws;
 };
 
-static const char* wsPowerDataTypeToString(wsPowerDataType type)
-{
-	switch(type)
-	{
-		case wsPowerDataType::INPUT_POWER:
-			return "InputPower";
-		case wsPowerDataType::INPUT_VOLT:
-			return "InputVoltage";
-		case wsPowerDataType::INPUT_CURRENT:
-			return "InputCurrent";
-		case wsPowerDataType::INPUT_PF:
-			return "InputPowerFactor";
-		case wsPowerDataType::OUTPUT_POWER:
-			return "OutputPower";
-		case wsPowerDataType::OUTPUT_VOLT:
-			return "OutputVoltage";
-		case wsPowerDataType::OUTPUT_CURRENT:
-			return "OutputCurrent";
-		case wsPowerDataType::OUTPUT_PF:
-			return "OutputPowerFactor";
-		default:
-			return "Invalid Data";
-	}
-}
+
 
 namespace Node_Core
 {
@@ -158,7 +94,7 @@ class DataHandler
 	std::atomic<int> _newClietId{0};
 	std::set<int> connectedClients;
 	ProcessingResult _result;
-	StaticJsonDocument<WS_BUFFER_SIZE> _blankDoc;
+	JsonDocument _blankDoc;
 
 	std::atomic<State> _currentState{State::DEVICE_ON};
 	std::atomic<TestMode> _deviceMode{TestMode::MANUAL};
@@ -178,7 +114,7 @@ class DataHandler
 	SemaphoreHandle_t clientListMutex;
 
 	wsIncomingCommands getWebSocketCommand(const char* incomingCommand);
-	StaticJsonDocument<WS_BUFFER_SIZE> prepData(wsOutGoingDataType type);
+	JsonDocument prepData(wsOutGoingDataType type);
 	void cleanUpClients(AsyncWebSocket* websocket);
 	bool isValidUTF8(const char* data, size_t len);
 

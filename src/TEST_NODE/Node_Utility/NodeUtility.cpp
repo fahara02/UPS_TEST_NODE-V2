@@ -83,3 +83,28 @@ const char* ToString::State(Node_Core::PZEMState state)
 
 	return stateStr;
 }
+
+const char* ToString::wsPowerDataType(Node_Core::wsPowerDataType type)
+{
+	switch(type)
+	{
+		case Node_Core::wsPowerDataType::INPUT_POWER:
+			return "InputPower";
+		case Node_Core::wsPowerDataType::INPUT_VOLT:
+			return "InputVoltage";
+		case Node_Core::wsPowerDataType::INPUT_CURRENT:
+			return "InputCurrent";
+		case Node_Core::wsPowerDataType::INPUT_PF:
+			return "InputPowerFactor";
+		case Node_Core::wsPowerDataType::OUTPUT_POWER:
+			return "OutputPower";
+		case Node_Core::wsPowerDataType::OUTPUT_VOLT:
+			return "OutputVoltage";
+		case Node_Core::wsPowerDataType::OUTPUT_CURRENT:
+			return "OutputCurrent";
+		case Node_Core::wsPowerDataType::OUTPUT_PF:
+			return "OutputPowerFactor";
+		default:
+			return "Invalid Data";
+	}
+}

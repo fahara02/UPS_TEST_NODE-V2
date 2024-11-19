@@ -295,101 +295,7 @@ void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPST
 	}
 }
 
-// void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPSTesterSetup&
-// _setup, 											SettingType type)
-// {
-// 	String responseMessage;
-// 	bool success = false;
 
-// 	if(type == SettingType::SPEC)
-// 	{
-// 		SetupSpec& spec = _setup.specSetup();
-
-// 		// Array of pairs for SetupSpec fields
-// 		const struct
-// 		{
-// 			const char* fieldName;
-// 			SetupSpec::Field field;
-// 		} specFields[] = {{"Rating_va", SetupSpec::Field::RatingVa},
-// 						  {"RatedVoltage_volt", SetupSpec::Field::RatedVoltage},
-// 						  {"RatedCurrent_amp", SetupSpec::Field::RatedCurrent},
-// 						  {"MinInputVoltage_volt", SetupSpec::Field::MinInputVoltage},
-// 						  {"MaxInputVoltage_volt", SetupSpec::Field::MaxInputVoltage},
-// 						  {"AvgSwitchTime_ms", SetupSpec::Field::AvgSwitchTime},
-// 						  {"AvgBackupTime_ms", SetupSpec::Field::AvgBackupTime}};
-
-// 		for(const auto& field: specFields)
-// 		{
-// 			if(request->hasParam(field.fieldName, true))
-// 			{
-// 				String paramValue = request->getParam(field.fieldName, true)->value();
-// 				success = spec.setField(field.field, paramValue.toDouble());
-// 				if(success)
-// 				{
-// 					responseMessage +=
-// 						"Spec Settings " + String(field.fieldName) + " updated successfully.<br>";
-// 				}
-// 				else
-// 				{
-// 					responseMessage +=
-// 						"Error: " + String(field.fieldName) + " set field rejected the param.<br>";
-// 				}
-// 			}
-// 		}
-// 	}
-// 	else if(type == SettingType::TEST)
-// 	{
-// 		SetupTest& test = _setup.testSetup();
-
-// 		// Array of pairs for SetupTest fields
-// 		const struct
-// 		{
-// 			const char* fieldName;
-// 			SetupTest::Field field;
-// 		} testFields[] = {{"TestStandard", SetupTest::Field::TestStandard},
-// 						  {"TestMode", SetupTest::Field::Mode},
-// 						  {"TestVARating", SetupTest::Field::TestVARating},
-// 						  {"InputVoltage_volt", SetupTest::Field::InputVoltage},
-// 						  {"TestDuration_ms", SetupTest::Field::TestDuration},
-// 						  {"MinValidSwitchTime", SetupTest::Field::MinValidSwitchTime},
-// 						  {"MaxValidSwitchTime", SetupTest::Field::MaxValidSwitchTime},
-// 						  {"MinValidBackupTime", SetupTest::Field::MinValidBackupTime},
-// 						  {"MaxValidBackupTime", SetupTest::Field::MaxValidBackupTime},
-// 						  {"ToleranceSwitchTime", SetupTest::Field::ToleranceSwitchTime},
-// 						  {"MaxBackupTime", SetupTest::Field::MaxBackupTime},
-// 						  {"ToleranceBackupTime", SetupTest::Field::ToleranceBackupTime},
-// 						  {"MaxRetest", SetupTest::Field::MaxRetest}};
-
-// 		for(const auto& field: testFields)
-// 		{
-// 			if(request->hasParam(field.fieldName, true))
-// 			{
-// 				String paramValue = request->getParam(field.fieldName, true)->value();
-// 				success = test.setField(field.field, paramValue.toDouble());
-// 				if(success)
-// 				{
-// 					responseMessage +=
-// 						"Test Settings " + String(field.fieldName) + " updated successfully.<br>";
-// 				}
-// 				else
-// 				{
-// 					responseMessage +=
-// 						"Error: " + String(field.fieldName) + " set field rejected the param.<br>";
-// 				}
-// 			}
-// 		}
-// 	}
-
-// 	// Send response based on the outcome
-// 	if(responseMessage.isEmpty())
-// 	{
-// 		request->send(400, "text/html", "No valid settings updated.");
-// 	}
-// 	else
-// 	{
-// 		request->send(200, "text/html", responseMessage);
-// 	}
-// }
 
 void TestServer::initWebSocket()
 {
@@ -493,7 +399,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 				{
 					Serial.println("Received data exceeds buffer size; discarding message.");
 					// Construct and send error message for oversized data
-					StaticJsonDocument<256> errorMsg;
+					JsonDocument  errorMsg;
 					errorMsg["error"] = "Message too large";
 					String errorStr;
 					serializeJson(errorMsg, errorStr);
@@ -528,7 +434,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 									  QUEUE_TIMEOUT_MS) == pdTRUE)
 						{
 							Serial.printf("Message from client: %s\n", wsMsg.data);
-							StaticJsonDocument<256> ackMsg;
+							JsonDocument  ackMsg;
 							ackMsg["SUCCESS"] = "Received Get Readings Command";
 							String ackStr;
 							serializeJson(ackMsg, ackStr);
@@ -552,7 +458,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 				{
 					Serial.println("Client not connected in time.");
 					// Construct JSON error message for connection timeout
-					StaticJsonDocument<256> errorMsg;
+					JsonDocument errorMsg;
 					errorMsg["error"] = "Connection timeout";
 					String errorStr;
 					serializeJson(errorMsg, errorStr);
@@ -563,7 +469,7 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 			{
 				Serial.println("Incomplete or invalid WebSocket frame.");
 
-				StaticJsonDocument<256> errorMsg;
+				JsonDocument  errorMsg;
 				errorMsg["error"] = "Invalid WebSocket frame";
 				errorMsg["details"] = "The WebSocket frame is incomplete or invalid.";
 				String errorStr;
