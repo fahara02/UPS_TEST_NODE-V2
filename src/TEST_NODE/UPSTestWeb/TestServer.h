@@ -19,7 +19,6 @@
 #include <deque>
 #include "DataHandler.h"
 
-
 class TestServer
 {
   public:
@@ -31,7 +30,7 @@ class TestServer
 	{
 		initWebSocket();
 		createServerTask();
-		createPeriodicTask();
+		createWsDataHandlerTask();
 	}
 	~TestServer()
 	{
@@ -60,7 +59,7 @@ class TestServer
 	void initWebSocket();
 
 	void servePages(UPSTesterSetup& _setup, TestSync& _sync);
-	void createPeriodicTask();
+	void createWsDataHandlerTask();
 
   private:
 	AsyncWebServer* _server;
@@ -70,7 +69,7 @@ class TestServer
 	Node_Utility::FileHandler _fileHandler;
 	UPSTesterSetup& _setup;
 	TestSync& _sync;
-	PeriodicTaskParams periodicTaskParams;
+	WsDataHandlerTaskParams wsHandlerTaskParams;
 
 	// HTTP_GET
 	void handleRootRequest(AsyncWebServerRequest* request);

@@ -118,13 +118,13 @@ class ModbusManager
 	// Data and error handlers
 	void handleData(ModbusMessage response, uint32_t token)
 	{
-		Serial.printf("\nResponse: serverID=%d, FC=%d, Token=%08X, length=%d:\n",
-					  response.getServerID(), response.getFunctionCode(), token, response.size());
-		for(auto& byte: response)
-		{
-			Serial.printf("%02X ", byte);
-		}
-		Serial.println("\n");
+		// Serial.printf("\nResponse: serverID=%d, FC=%d, Token=%08X, length=%d:\n",
+		// 			  response.getServerID(), response.getFunctionCode(), token, response.size());
+		// for(auto& byte: response)
+		// {
+		// 	Serial.printf("%02X ", byte);
+		// }
+		// Serial.println("\n");
 
 		// Find the matching target by token
 		auto targetIt = std::find_if(_targets.begin(), _targets.end(), [&](const PollingTarget& t) {
@@ -180,15 +180,15 @@ class ModbusManager
 			}
 		}
 
-		// Print the updated JobCard values
-		Serial.printf("Updated %s Power Device  of model %s and id %d : Voltage=%.2f V, "
-					  "Current=%.3f A, Power=%.2f W, "
-					  "Energy=%.2f kWh, Frequency=%.2f Hz, Power Factor=%.3f, Alarms=%.0f\n",
-					  (target.type == TargetType::INPUT_POWER ? "Input" : "Output"),
-					  Node_Utility::ToString::model(jobCard->info.model), jobCard->info.id,
-					  jobCard->pm.voltage, jobCard->pm.current, jobCard->pm.power,
-					  jobCard->pm.energy, jobCard->pm.frequency, jobCard->pm.pf,
-					  jobCard->pm.alarms);
+		// // Print the updated JobCard values
+		// Serial.printf("Updated %s Power Device  of model %s and id %d : Voltage=%.2f V, "
+		// 			  "Current=%.3f A, Power=%.2f W, "
+		// 			  "Energy=%.2f kWh, Frequency=%.2f Hz, Power Factor=%.3f, Alarms=%.0f\n",
+		// 			  (target.type == TargetType::INPUT_POWER ? "Input" : "Output"),
+		// 			  Node_Utility::ToString::model(jobCard->info.model), jobCard->info.id,
+		// 			  jobCard->pm.voltage, jobCard->pm.current, jobCard->pm.power,
+		// 			  jobCard->pm.energy, jobCard->pm.frequency, jobCard->pm.pf,
+		// 			  jobCard->pm.alarms);
 	}
 
 	void handleError(Error error, uint32_t token)

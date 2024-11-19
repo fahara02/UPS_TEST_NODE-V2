@@ -432,7 +432,6 @@ void TestSync::transferTest()
 
 void TestSync::handleUserUpdate(UserUpdateEvent update)
 {
-	
 	switch(update)
 	{
 		case UserUpdateEvent::NEW_TEST:
@@ -596,12 +595,11 @@ void TestSync::userUpdateTask(void* pvParameters)
 		{
 			instance.enableCurrentTest();
 
-			
 			logger.log(LogLevel::WARNING, "Adding Test to manager");
 			instance.transferTest();
 			instance.reportEvent(Event::NEW_TEST);
 			vTaskDelay(pdMS_TO_TICKS(200));
-			xTaskNotify(DataHandler::getInstance().PeriodicDataHandle,
+			xTaskNotify(DataHandler::getInstance().dataTaskHandler,
 						static_cast<uint32_t>(UserUpdateEvent::NEW_TEST), eSetBits);
 
 			logger.log(LogLevel::TEST, "Is state changed?");

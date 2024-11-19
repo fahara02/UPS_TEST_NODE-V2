@@ -6,7 +6,7 @@
 // ALL CRITICAL TASK STACK SIZE
 static const uint32_t AsyncTCP_Stack = 19456;
 static const uint32_t wsDataProcessor_Stack = 8192;
-static const uint32_t periodicDataSender_Stack = 8192;
+static const uint32_t wsDataHandler_Stack = 8192;
 static const uint32_t WSCleanup_Stack = 4096;
 
 static const uint32_t userCommand_Stack = 8192;
@@ -26,7 +26,7 @@ static const uint32_t timer_Stack = 4096;
 // ALL task Priority
 static const UBaseType_t AsyncTCP_Priority = 10;
 static const UBaseType_t wsDataProcessor_Priority = 6;
-static const UBaseType_t periodicDataSender_Priority = 2;
+static const UBaseType_t wsDataHandler_Priority = 2;
 static const UBaseType_t WSCleanup_Priority = 5;
 
 static const UBaseType_t userCommand_Priority = 4;
@@ -46,7 +46,7 @@ static const UBaseType_t timer_Priority = 1;
 // ALL task Core
 static const BaseType_t AsyncTCP_CORE = 1;
 static const BaseType_t wsDataProcessor_CORE = tskNO_AFFINITY;
-static const BaseType_t periodicDataSender_CORE = tskNO_AFFINITY;
+static const BaseType_t wsDataHandler_CORE = tskNO_AFFINITY;
 static const BaseType_t WSCleanup_CORE = 0;
 
 static const BaseType_t userCommand_CORE = 0;

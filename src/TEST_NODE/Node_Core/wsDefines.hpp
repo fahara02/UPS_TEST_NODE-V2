@@ -1,7 +1,8 @@
 #ifndef WS_DEFINES_HPP
 #define WS_DEFINES_HPP
 
-namespace Node_Core{
+namespace Node_Core
+{
 enum class wsIncomingCommands
 {
 	TEST_START,
@@ -45,7 +46,15 @@ enum class wsOutGoingDataType
 	BUTTONS_STATUS,
 	INVALID_DATA
 };
+enum class ProcessingResult
+{
+	SUCCESS,
+	FAILED,
+	ONGOING,
+	PENDING,
+	INVALID_DATA
+};
 
-}
+} // namespace Node_Core
 
 #endif

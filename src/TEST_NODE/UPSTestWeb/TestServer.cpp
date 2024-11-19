@@ -295,8 +295,6 @@ void TestServer::handleUpdateSettingRequest(AsyncWebServerRequest* request, UPST
 	}
 }
 
-
-
 void TestServer::initWebSocket()
 {
 	_ws->onEvent([this](AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
@@ -313,17 +311,16 @@ void TestServer::createServerTask()
 							WSCleanup_Priority, NULL, WSCleanup_CORE);
 }
 
-void TestServer::createPeriodicTask()
+void TestServer::createWsDataHandlerTask()
 {
 	// Initialize the member struct with necessary values
 	DataHandler& dataHandler = DataHandler::getInstance();
-	periodicTaskParams.ws = _ws;
+	wsHandlerTaskParams.ws = _ws;
 
 	// Pass the pointer to the member struct
-	xTaskCreatePinnedToCore(
-		dataHandler.periodicDataSender, "wsDataSender", periodicDataSender_Stack,
-		&periodicTaskParams, periodicDataSender_Priority,
-		&DataHandler::getInstance().PeriodicDataHandle, periodicDataSender_CORE);
+	xTaskCreatePinnedToCore(dataHandler.wsDataHandler, "wsDataHandler", wsDataHandler_Stack,
+							&wsHandlerTaskParams, wsDataHandler_Priority,
+							&DataHandler::getInstance().dataTaskHandler, wsDataHandler_CORE);
 }
 
 void TestServer::wsClientCleanup(void* pvParameters)
@@ -355,7 +352,6 @@ void TestServer::sendPing(AsyncWebSocketClient* client)
 		Serial.println("Ping skipped: Client not connected");
 	}
 }
-
 void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type,
 						   void* arg, uint8_t* data, size_t len)
 {
@@ -364,10 +360,10 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 		case WS_EVT_CONNECT:
 			Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
 						  client->remoteIP().toString().c_str());
-
 			EventHelper::clearBits(wsClientStatus::DISCONNECTED);
 			EventHelper::setBits(wsClientStatus::CONNECTED);
 			DataHandler::getInstance().updateClientList(client->id(), true);
+
 			if(!pingTimer.active())
 			{
 				pingTimer.attach(10, sendPing, client);
@@ -377,11 +373,11 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 
 		case WS_EVT_DISCONNECT:
 			Serial.printf("WebSocket client #%u disconnected\n", client->id());
-			// server->client(client->id())->close();
 			DataHandler::getInstance().updateClientList(client->id(), false);
 			EventHelper::clearBits(wsClientStatus::CONNECTED);
 			EventHelper::setBits(wsClientStatus::DISCONNECTED);
 			EventHelper::clearBits(wsClientUpdate::GET_READING);
+
 			if(pingTimer.active())
 			{
 				pingTimer.detach();
@@ -391,100 +387,200 @@ void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 
 		case WS_EVT_DATA:
 		{
-			AwsFrameInfo* info = (AwsFrameInfo*)arg;
+			AwsFrameInfo* info = static_cast<AwsFrameInfo*>(arg);
 
 			if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
 			{
 				if(len >= WS_BUFFER_SIZE)
 				{
-					Serial.println("Received data exceeds buffer size; discarding message.");
-					// Construct and send error message for oversized data
-					JsonDocument  errorMsg;
-					errorMsg["error"] = "Message too large";
-					String errorStr;
-					serializeJson(errorMsg, errorStr);
-					client->text(errorStr);
+					Serial.println("Message too large; discarding.");
+					client->text(R"({"error":"Message too large"})");
 					return;
 				}
 
-				WebSocketMessage wsMsg;
+				WebSocketMessage wsMsg = {};
 				memcpy(wsMsg.data, data, len);
 				wsMsg.len = len;
 				wsMsg.info = *info;
-
-				if(client == nullptr)
-				{
-					Serial.println("Client object is nullptr.");
-					return;
-				}
+				wsMsg.client_id = client->id();
+				wsMsg.client = client;
 
 				if(xEventGroupWaitBits(EventHelper::wsClientEventGroup,
 									   static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE,
 									   pdFALSE, CLIENT_CONNECT_TIMEOUT_MS))
-
 				{
 					EventHelper::setBits(wsClientStatus::DATA);
-					wsMsg.client_id = client->id();
-					wsMsg.client = client;
+
 					if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
 					{
-						EventHelper::setBits(wsClientUpdate::GET_READING);
-
 						if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
 									  QUEUE_TIMEOUT_MS) == pdTRUE)
 						{
-							Serial.printf("Message from client: %s\n", wsMsg.data);
-							JsonDocument  ackMsg;
-							ackMsg["SUCCESS"] = "Received Get Readings Command";
-							String ackStr;
-							serializeJson(ackMsg, ackStr);
-							client->text(ackStr);
+							EventHelper::setBits(wsClientUpdate::GET_READING);
+							client->text(R"({"SUCCESS":"Received Get Readings Command"})");
 						}
 						else
 						{
-							Serial.println("Failed to enqueue WebSocket message within timeout.");
+							Serial.println("Queue full. Message dropped.");
 						}
 					}
-					else
+					else if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
+									   QUEUE_TIMEOUT_MS) != pdTRUE)
 					{
-						if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
-									  QUEUE_TIMEOUT_MS) != pdPASS)
-						{
-							Serial.println("Failed to enqueue WebSocket message within timeout.");
-						}
+						Serial.println("Failed to enqueue message.");
 					}
 				}
 				else
 				{
-					Serial.println("Client not connected in time.");
-					// Construct JSON error message for connection timeout
-					JsonDocument errorMsg;
-					errorMsg["error"] = "Connection timeout";
-					String errorStr;
-					serializeJson(errorMsg, errorStr);
-					client->text(errorStr);
+					client->text(R"({"error":"Connection timeout"})");
 				}
 			}
 			else
 			{
-				Serial.println("Incomplete or invalid WebSocket frame.");
-
-				JsonDocument  errorMsg;
-				errorMsg["error"] = "Invalid WebSocket frame";
-				errorMsg["details"] = "The WebSocket frame is incomplete or invalid.";
-				String errorStr;
-				serializeJson(errorMsg, errorStr);
-				client->text(errorStr);
+				client->text(R"({"error":"Invalid WebSocket frame"})");
 			}
 			break;
 		}
 
 		case WS_EVT_PONG:
-			Serial.println("PONG received");
+			Serial.println("PONG received.");
 			break;
 
 		case WS_EVT_ERROR:
-			Serial.println("WebSocket error occurred");
+			Serial.println("WebSocket error occurred.");
 			break;
 	}
 }
+
+// void TestServer::onWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType
+// type, 						   void* arg, uint8_t* data, size_t len)
+// {
+// 	switch(type)
+// 	{
+// 		case WS_EVT_CONNECT:
+// 			Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
+// 						  client->remoteIP().toString().c_str());
+
+// 			EventHelper::clearBits(wsClientStatus::DISCONNECTED);
+// 			EventHelper::setBits(wsClientStatus::CONNECTED);
+// 			DataHandler::getInstance().updateClientList(client->id(), true);
+// 			if(!pingTimer.active())
+// 			{
+// 				pingTimer.attach(10, sendPing, client);
+// 				Serial.println("Ping timer attached.");
+// 			}
+// 			break;
+
+// 		case WS_EVT_DISCONNECT:
+// 			Serial.printf("WebSocket client #%u disconnected\n", client->id());
+// 			// server->client(client->id())->close();
+// 			DataHandler::getInstance().updateClientList(client->id(), false);
+// 			EventHelper::clearBits(wsClientStatus::CONNECTED);
+// 			EventHelper::setBits(wsClientStatus::DISCONNECTED);
+// 			EventHelper::clearBits(wsClientUpdate::GET_READING);
+// 			if(pingTimer.active())
+// 			{
+// 				pingTimer.detach();
+// 				Serial.println("Ping timer detached.");
+// 			}
+// 			break;
+
+// 		case WS_EVT_DATA:
+// 		{
+// 			AwsFrameInfo* info = (AwsFrameInfo*)arg;
+
+// 			if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
+// 			{
+// 				if(len >= WS_BUFFER_SIZE)
+// 				{
+// 					Serial.println("Received data exceeds buffer size; discarding message.");
+// 					// Construct and send error message for oversized data
+// 					JsonDocument  errorMsg;
+// 					errorMsg["error"] = "Message too large";
+// 					String errorStr;
+// 					serializeJson(errorMsg, errorStr);
+// 					client->text(errorStr);
+// 					return;
+// 				}
+
+// 				WebSocketMessage wsMsg;
+// 				memcpy(wsMsg.data, data, len);
+// 				wsMsg.len = len;
+// 				wsMsg.info = *info;
+
+// 				if(client == nullptr)
+// 				{
+// 					Serial.println("Client object is nullptr.");
+// 					return;
+// 				}
+
+// 				if(xEventGroupWaitBits(EventHelper::wsClientEventGroup,
+// 									   static_cast<EventBits_t>(wsClientStatus::CONNECTED), pdFALSE,
+// 									   pdFALSE, CLIENT_CONNECT_TIMEOUT_MS))
+
+// 				{
+// 					EventHelper::setBits(wsClientStatus::DATA);
+// 					wsMsg.client_id = client->id();
+// 					wsMsg.client = client;
+// 					if(strcmp(reinterpret_cast<char*>(wsMsg.data), "getReadings") == 0)
+// 					{
+// 						EventHelper::setBits(wsClientUpdate::GET_READING);
+
+// 						if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
+// 									  QUEUE_TIMEOUT_MS) == pdTRUE)
+// 						{
+// 							Serial.printf("Message from client: %s\n", wsMsg.data);
+// 							JsonDocument  ackMsg;
+// 							ackMsg["SUCCESS"] = "Received Get Readings Command";
+// 							String ackStr;
+// 							serializeJson(ackMsg, ackStr);
+// 							client->text(ackStr);
+// 						}
+// 						else
+// 						{
+// 							Serial.println("Failed to enqueue WebSocket message within timeout.");
+// 						}
+// 					}
+// 					else
+// 					{
+// 						if(xQueueSend(DataHandler::getInstance().WebsocketDataQueue, &wsMsg,
+// 									  QUEUE_TIMEOUT_MS) != pdPASS)
+// 						{
+// 							Serial.println("Failed to enqueue WebSocket message within timeout.");
+// 						}
+// 					}
+// 				}
+// 				else
+// 				{
+// 					Serial.println("Client not connected in time.");
+// 					// Construct JSON error message for connection timeout
+// 					JsonDocument errorMsg;
+// 					errorMsg["error"] = "Connection timeout";
+// 					String errorStr;
+// 					serializeJson(errorMsg, errorStr);
+// 					client->text(errorStr);
+// 				}
+// 			}
+// 			else
+// 			{
+// 				Serial.println("Incomplete or invalid WebSocket frame.");
+
+// 				JsonDocument  errorMsg;
+// 				errorMsg["error"] = "Invalid WebSocket frame";
+// 				errorMsg["details"] = "The WebSocket frame is incomplete or invalid.";
+// 				String errorStr;
+// 				serializeJson(errorMsg, errorStr);
+// 				client->text(errorStr);
+// 			}
+// 			break;
+// 		}
+
+// 		case WS_EVT_PONG:
+// 			Serial.println("PONG received");
+// 			break;
+
+// 		case WS_EVT_ERROR:
+// 			Serial.println("WebSocket error occurred");
+// 			break;
+// 	}
+// }
