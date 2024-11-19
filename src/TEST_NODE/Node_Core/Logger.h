@@ -363,7 +363,7 @@ class Logger
 	}
 	void addToBuffer(const String& logEntry)
 	{
-		Logger& instance = Logger::getInstance();
+		
 		if(_loggingLock && xSemaphoreTake(_loggingLock, portMAX_DELAY) == pdTRUE)
 		{
 			String strippedLog = Logger::getInstance().stripColorCodes(

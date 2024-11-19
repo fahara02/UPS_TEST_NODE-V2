@@ -2,6 +2,7 @@
 #include "TestManager.h"
 #include "DataHandler.h"
 #include "HPTSettings.h"
+#include "NodeUtility.hpp"
 
 TestSync& TestSync::getInstance()
 {
@@ -388,7 +389,7 @@ void TestSync::transferTest()
 
 void TestSync::handleUserUpdate(UserUpdateEvent update)
 {
-	TestSync& SyncTest = TestSync::getInstance();
+	
 	switch(update)
 	{
 		case UserUpdateEvent::NEW_TEST:
@@ -454,7 +455,7 @@ void TestSync::userCommandTask(void* pvParameters)
 									  static_cast<EventBits_t>(UserCommandEvent::RESUME);
 
 	State syncState = StateMachine::getInstance().getCurrentState();
-	logger.log(LogLevel::INFO, "Sync Class state is:%s", stateToString(syncState));
+	logger.log(LogLevel::INFO, "Sync Class state is:%s", Node_Utility::ToString::state(syncState));
 
 	while(xEventGroupWaitBits(EventHelper::userCommandEventGroup, CMD_BITS_MASK, pdFALSE, pdFALSE,
 							  portMAX_DELAY))
@@ -552,7 +553,7 @@ void TestSync::userUpdateTask(void* pvParameters)
 		{
 			instance.enableCurrentTest();
 
-			TestManager& manager = TestManager::getInstance();
+			
 			logger.log(LogLevel::WARNING, "Adding Test to manager");
 			instance.transferTest();
 			instance.reportEvent(Event::NEW_TEST);

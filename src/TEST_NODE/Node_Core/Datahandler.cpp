@@ -1,6 +1,7 @@
 #include "DataHandler.h"
 #include "HPTSettings.h"
 #include "PZEM_Modbus.hpp"
+#include"NodeUtility.hpp"
 
 using namespace Node_Core;
 using namespace Node_Utility;
@@ -203,7 +204,7 @@ void DataHandler::sendData(AsyncWebSocket* websocket, int clientId, wsOutGoingDa
 	}
 	else if(type == wsOutGoingDataType::LED_STATUS)
 	{
-		logger.log(LogLevel::INTR, "CURRENT  STATE FOR LED %s ", stateToString(_currentState));
+		logger.log(LogLevel::INTR, "CURRENT  STATE FOR LED %s ",Node_Utility::ToString::state(_currentState));
 
 		if(_currentState == State::READY_TO_PROCEED)
 		{
@@ -277,7 +278,7 @@ void DataHandler::sendData(AsyncWebSocketClient* client, wsOutGoingDataType type
 	else if(type == wsOutGoingDataType::LED_STATUS)
 	{ // start with all blink false
 
-		logger.log(LogLevel::INTR, "FOR LED STATUS STATE:%s ", stateToString(_currentState));
+		logger.log(LogLevel::INTR, "FOR LED STATUS STATE:%s ",Node_Utility::ToString::state(_currentState));
 		if(_currentState == State::READY_TO_PROCEED)
 		{
 			_blinkBlue = true;

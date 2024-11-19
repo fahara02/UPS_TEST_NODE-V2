@@ -7,6 +7,7 @@
 #include "pgmspace.h"
 #include "DataHandler.h"
 #include "TestManager.h"
+#include "NodeUtility.hpp"
 
 using namespace Node_Core;
 extern Logger& logger;
@@ -87,7 +88,7 @@ void StateMachine::NotifyStateChanged(State state)
 		NotifyModeChanged(TestMode::MANUAL);
 	}
 
-	logger.log(LogLevel::INFO, "Notifying others for new %s state", stateToString(state));
+	logger.log(LogLevel::INFO, "Notifying others for new %s state", Node_Utility::ToString::state(state));
 	// xSemaphoreGive(notifyStateMutex);
 }
 
@@ -111,7 +112,7 @@ void StateMachine::handleEvent(Event event)
 {
 	// if(xSemaphoreTake(stateActionMutex, portMAX_DELAY) == pdTRUE)
 	// {
-	logger.log(LogLevel::INFO, "Handling event %s", eventToString(event));
+	logger.log(LogLevel::INFO, "Handling event %s", Node_Utility::ToString::event(event));
 
 	State old_state = _currentState.load(); // Ensure atomic access to current_state
 
@@ -130,7 +131,7 @@ void StateMachine::handleEvent(Event event)
 		State new_state = State::SYSTEM_PAUSED;
 		setState(new_state);
 
-		logger.log(LogLevel::WARNING, "State now in: %s", stateToString(new_state));
+		logger.log(LogLevel::WARNING, "State now in: %s",Node_Utility::ToString::state(new_state));
 		return;
 	}
 
@@ -165,8 +166,8 @@ void StateMachine::handleEvent(Event event)
 					_dataCapturedFlag.store(false);
 				}
 
-				logger.log(LogLevel::INFO, "State changed from %s to %s", stateToString(old_state),
-						   stateToString(transition.next_state));
+				logger.log(LogLevel::INFO, "State changed from %s to %s", Node_Utility::ToString::state(old_state),
+						  Node_Utility::ToString::state(transition.next_state));
 
 				transition.action(); // Execute the associated action
 
@@ -183,7 +184,7 @@ void StateMachine::handleEvent(Event event)
 
 	// No valid transition found
 	logger.log(LogLevel::WARNING, "No transition found for event %s in state %s",
-			   eventToString(event), stateToString(_currentState.load()));
+			   Node_Utility::ToString::event(event), Node_Utility::ToString::state(_currentState.load()));
 	// 	xSemaphoreGive(stateActionMutex);
 	// }
 }
