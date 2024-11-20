@@ -26,7 +26,7 @@ static const uint32_t timer_Stack = 4096;
 // ALL task Priority
 static const UBaseType_t AsyncTCP_Priority = 10;
 static const UBaseType_t wsDataProcessor_Priority = 6;
-static const UBaseType_t wsDataHandler_Priority = 2;
+static const UBaseType_t wsDataHandler_Priority = 6;
 static const UBaseType_t WSCleanup_Priority = 5;
 
 static const UBaseType_t userCommand_Priority = 4;

@@ -1,0 +1,36 @@
+syntax = "proto3";
+package pg;
+enum PowerMeasureType{
+    UPS_INPUT=0;
+    UPS_OUTPUT=1;
+    MAINS=2;
+}
+
+enum TestResult
+{
+	TEST_FAILED = 0;
+	TEST_PENDING = 1;
+	TEST_SUCCESSFUL =2 ;
+}
+enum TestType
+{
+	SwitchTest = 0;
+	BackupTest = 1 ;
+	EfficiencyTest = 2;
+	InputVoltageTest = 3;
+	WaveformTest = 4;
+	
+};
+message PowerMeasure{
+    PowerMeasureType type=1;
+    float voltage = 2;
+    float current = 3;
+    float power = 4;
+    float pf = 5;
+
+}
+
+
+message UPS_SPEC{
+
+}
