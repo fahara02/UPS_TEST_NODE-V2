@@ -21,6 +21,7 @@ enum TestType
 	WaveformTest = 4;
 	
 };
+
 message PowerMeasure{
     PowerMeasureType type=1;
     float voltage = 2;

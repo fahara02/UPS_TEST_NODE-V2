@@ -1,0 +1,18 @@
+
+syntax = "proto3";
+package pg;
+
+
+
+
+enum TestType{
+    LIGHT_LOAD_AND_FUNCTION_TEST=0;
+    NO_LOAD_TEST=1;
+    FULL_LOAD_TEST=2;
+    AC_INPUT_FAILURE=3;
+    AC_INPUT_RETURN=4;
+    INPUT_POWER_FACTOR=5;
+    EFFICIENCY_NORMAL_MODE=6;
+    EFFICIENCY_STORAGE_MODE=7;
+    
+    };
