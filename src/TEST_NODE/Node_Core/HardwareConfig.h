@@ -15,8 +15,8 @@
 
 #define UPS_POWER_CUT_PIN 32
 #define LOAD_ON_PIN 33
-#define LOAD25P_ON_PIN 25
-#define LOAD50P_ON_PIN 26
+#define LOAD25P_ON_PIN 23
+#define LOAD50P_ON_PIN 22
 #define LOAD75P_ON_PIN 27
 #define LOAD_FULL_ON_PIN 14
 #define TEST_END_INT_PIN 12
