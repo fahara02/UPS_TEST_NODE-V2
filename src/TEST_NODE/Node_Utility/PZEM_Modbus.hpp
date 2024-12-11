@@ -151,13 +151,16 @@ class ModbusManager
 	// Data and error handlers
 	void handleData(ModbusMessage response, uint32_t token)
 	{
-		Serial.printf("\nResponse: serverID=%d, FC=%d, Token=%08X, length=%d:\n",
+		// Debug logging for full response details
+		Serial.printf("Response: ServerID=%d, FC=%d, Token=%08X, Length=%d\n",
 					  response.getServerID(), response.getFunctionCode(), token, response.size());
+
+		// Hex dump of response (optional, can be commented out in production)
 		for(auto& byte: response)
 		{
 			Serial.printf("%02X ", byte);
 		}
-		Serial.println("\n");
+		Serial.println();
 
 		// Find the matching target by token
 		auto targetIt = std::find_if(_targets.begin(), _targets.end(), [&](const Target& t) {
@@ -166,81 +169,114 @@ class ModbusManager
 
 		if(targetIt == _targets.end())
 		{
-			Serial.println("Unknown target token, ignoring response.");
+			Serial.printf("Unknown target token %08X, ignoring response.\n", token);
 			return;
 		}
 		Target& target = *targetIt;
 
-		// Handle based on target type
-		if(target.type == TargetType::INPUT_POWER)
+		// Process based on target type with improved error handling
+		switch(target.type)
 		{
-			if(!validatePowerData(response, &inputPowerDeviceCard))
+			case TargetType::INPUT_POWER:
 			{
-				Serial.println("Failed to parse Modbus message for INPUT_POWER.");
-				return;
+				if(!validateAndProcessPowerData(response, &inputPowerDeviceCard))
+				{
+					Serial.println("Failed to process INPUT_POWER data.");
+				}
+				break;
 			}
-			inputPowerMeasure = inputPowerDeviceCard.pm;
+
+			case TargetType::OUTPUT_POWER:
+			{
+				if(!validateAndProcessPowerData(response, &outputPowerDeviceCard))
+				{
+					Serial.println("Failed to process OUTPUT_POWER data.");
+				}
+				break;
+			}
+
+			case TargetType::SWITCH_CONTROL:
+			{
+				processCoilSwitchResponse(response, target);
+				break;
+			}
+
+			default:
+			{
+				Serial.printf("Unhandled target type: %d\n", static_cast<int>(target.type));
+				break;
+			}
 		}
-		else if(target.type == TargetType::OUTPUT_POWER)
+	}
+
+	// Helper method to validate and process power data
+	bool validateAndProcessPowerData(ModbusMessage& response, JobCard* jobCard)
+	{
+		if(!validatePowerData(response, jobCard))
 		{
-			if(!validatePowerData(response, &outputPowerDeviceCard))
-			{
-				Serial.println("Failed to parse Modbus message for OUTPUT_POWER.");
-				return;
-			}
-			outputPowerMeasure = outputPowerDeviceCard.pm;
+			return false;
 		}
-		else if(target.type == TargetType::SWITCH_CONTROL)
+
+		// Update power measure based on processed data
+		if(jobCard == &inputPowerDeviceCard)
 		{
-			if(response.getFunctionCode() == 0x05) // Write Coil
-			{
-				// Check response size
-				if(response.size() < 6)
-				{
-					Serial.println("Invalid Write Coil response size.");
-					return;
-				}
+			inputPowerMeasure = jobCard->pm;
+		}
+		else if(jobCard == &outputPowerDeviceCard)
+		{
+			outputPowerMeasure = jobCard->pm;
+		}
 
-				// Extract the coil address and status
-				uint16_t coilAddress = (response[2] << 8) | response[3];
-				uint16_t coilValue = (response[4] << 8) | response[5];
+		return true;
+	}
 
-				// Log the result
-				Serial.printf("Switch control response: Coil Address=0x%04X, Value=0x%04X\n",
-							  coilAddress, coilValue);
+	// Enhanced method to process coil switch responses
+	void processCoilSwitchResponse(ModbusMessage& response, Target& target)
+	{
+		// Check for valid Write Coil function code
+		if(response.getFunctionCode() != 0x05) // Write Single Coil
+		{
+			Serial.printf("Unexpected function code %02X for SWITCH_CONTROL\n",
+						  response.getFunctionCode());
+			return;
+		}
 
-				// Update switch control status in job card
-				if(coilAddress == UPS_IN_COIL_ADDR)
-				{
-					_coils[0].CoilValue = (coilValue != 0);
-				}
-				else if(coilAddress == LOAD_BANK_1_COIL_ADDR)
-				{
-					_coils[1].CoilValue = (coilValue != 0);
-				}
-				else if(coilAddress == LOAD_BANK_2_COIL_ADDR)
-				{
-					_coils[2].CoilValue = (coilValue != 0);
-				}
-				else if(coilAddress == LOAD_BANK_3_COIL_ADDR)
-				{
-					_coils[3].CoilValue = (coilValue != 0);
-				}
-				else
-				{
-					Serial.println("Unknown coil address.");
-				}
-			}
-			else
-			{
-				Serial.println("Unsupported function code for SWITCH_CONTROL.");
-			}
+		// Validate response size for Write Single Coil
+		if(response.size() < 6)
+		{
+			Serial.println("Invalid Write Coil response size.");
+			return;
+		}
+
+		// Extract coil address and value
+		uint16_t coilAddress = (response[2] << 8) | response[3];
+		uint16_t coilValue = (response[4] << 8) | response[5];
+
+		// Log the switch control result
+		Serial.printf("Coil Switch Response: Address=0x%04X, Value=0x%04X\n", coilAddress,
+					  coilValue);
+
+		// Update coil status
+		bool isCoilOn = (coilValue != 0);
+
+		// Find and update the corresponding coil
+		auto coilIt = std::find_if(_coils.begin(), _coils.end(), [&](const TesterCoil& coil) {
+			return coil.CoilAddress == coilAddress;
+		});
+
+		if(coilIt != _coils.end())
+		{
+			coilIt->CoilValue = isCoilOn;
+			Serial.printf("Updated %s to %s\n", getCoilTypeName(coilIt->type).c_str(),
+						  isCoilOn ? "ON" : "OFF");
 		}
 		else
 		{
-			Serial.println("Unhandled target type.");
+			Serial.printf("Unknown coil address: 0x%04X\n", coilAddress);
 		}
 	}
+
+	// Helper method to get coil type name for logging
 
 	void handleError(Error error, uint32_t token)
 	{
@@ -433,7 +469,22 @@ class ModbusManager
 		jobCard->pm.isValid = true;
 		return true;
 	}
-
+	std::string getCoilTypeName(CoilType type)
+	{
+		switch(type)
+		{
+			case CoilType::UPS_IN:
+				return "UPS_IN";
+			case CoilType::LOAD_BANK_1:
+				return "LOAD_BANK_1";
+			case CoilType::LOAD_BANK_2:
+				return "LOAD_BANK_2";
+			case CoilType::LOAD_BANK_3:
+				return "LOAD_BANK_3";
+			default:
+				return "UNKNOWN";
+		}
+	}
 	// Prevent copying
 	ModbusManager(const ModbusManager&) = delete;
 	ModbusManager& operator=(const ModbusManager&) = delete;
