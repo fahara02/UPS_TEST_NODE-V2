@@ -70,6 +70,7 @@ class ModbusManager
 	Node_Core::JobCard outputPowerDeviceCard = JobCard();
 	Node_Core::powerMeasure inputPowerMeasure = powerMeasure();
 	Node_Core::powerMeasure outputPowerMeasure = powerMeasure();
+	bool updateSingleCoil = true;
 
 	// Private constructor for singleton pattern
 	ModbusManager(std::unique_ptr<ModbusClientTCP> MClient, uint32_t tm = 4000,
@@ -208,75 +209,6 @@ class ModbusManager
 			}
 		}
 	}
-
-	// Helper method to validate and process power data
-	bool validateAndProcessPowerData(ModbusMessage& response, JobCard* jobCard)
-	{
-		if(!validatePowerData(response, jobCard))
-		{
-			return false;
-		}
-
-		// Update power measure based on processed data
-		if(jobCard == &inputPowerDeviceCard)
-		{
-			inputPowerMeasure = jobCard->pm;
-		}
-		else if(jobCard == &outputPowerDeviceCard)
-		{
-			outputPowerMeasure = jobCard->pm;
-		}
-
-		return true;
-	}
-
-	// Enhanced method to process coil switch responses
-	void processCoilSwitchResponse(ModbusMessage& response, Target& target)
-	{
-		// Check for valid Write Coil function code
-		if(response.getFunctionCode() != 0x05) // Write Single Coil
-		{
-			Serial.printf("Unexpected function code %02X for SWITCH_CONTROL\n",
-						  response.getFunctionCode());
-			return;
-		}
-
-		// Validate response size for Write Single Coil
-		if(response.size() < 6)
-		{
-			Serial.println("Invalid Write Coil response size.");
-			return;
-		}
-
-		// Extract coil address and value
-		uint16_t coilAddress = (response[2] << 8) | response[3];
-		uint16_t coilValue = (response[4] << 8) | response[5];
-
-		// Log the switch control result
-		Serial.printf("Coil Switch Response: Address=0x%04X, Value=0x%04X\n", coilAddress,
-					  coilValue);
-
-		// Update coil status
-		bool isCoilOn = (coilValue != 0);
-
-		// Find and update the corresponding coil
-		auto coilIt = std::find_if(_coils.begin(), _coils.end(), [&](const TesterCoil& coil) {
-			return coil.CoilAddress == coilAddress;
-		});
-
-		if(coilIt != _coils.end())
-		{
-			coilIt->CoilValue = isCoilOn;
-			Serial.printf("Updated %s to %s\n", getCoilTypeName(coilIt->type).c_str(),
-						  isCoilOn ? "ON" : "OFF");
-		}
-		else
-		{
-			Serial.printf("Unknown coil address: 0x%04X\n", coilAddress);
-		}
-	}
-
-	// Helper method to get coil type name for logging
 
 	void handleError(Error error, uint32_t token)
 	{
@@ -468,6 +400,114 @@ class ModbusManager
 
 		jobCard->pm.isValid = true;
 		return true;
+	}
+	// Helper method to validate and process power data
+	bool validateAndProcessPowerData(ModbusMessage& response, JobCard* jobCard)
+	{
+		if(!validatePowerData(response, jobCard))
+		{
+			return false;
+		}
+
+		// Update power measure based on processed data
+		if(jobCard == &inputPowerDeviceCard)
+		{
+			inputPowerMeasure = jobCard->pm;
+		}
+		else if(jobCard == &outputPowerDeviceCard)
+		{
+			outputPowerMeasure = jobCard->pm;
+		}
+
+		return true;
+	}
+
+	// method to process coil switch responses for single and multiple coils
+	void processCoilSwitchResponse(ModbusMessage& response, Target& target)
+	{
+		uint16_t startCoilAddress = 0, numberOfCoils = 0;
+
+		// Determine coil update type and validate the response
+		if(!validateExtractCoilData(response, startCoilAddress, numberOfCoils))
+			return;
+
+		// Update coils based on the extracted address and value(s)
+		updateCoils(response, startCoilAddress, numberOfCoils);
+	}
+	bool validateExtractCoilData(ModbusMessage& response, uint16_t& startCoilAddress,
+								 uint16_t& numberOfCoils)
+	{
+		// Set coil update type based on function code
+		if(response.getFunctionCode() == 0x05) // Write Single Coil
+		{
+			updateSingleCoil = true;
+			if(response.size() < 6)
+			{
+				Serial.println("Invalid Write Single Coil response size.");
+				return false;
+			}
+			startCoilAddress = (response[2] << 8) | response[3];
+			numberOfCoils = 1; // Single coil
+		}
+		else if(response.getFunctionCode() == 0x0F) // Write Multiple Coils
+		{
+			updateSingleCoil = false;
+			if(response.size() < 6)
+			{
+				Serial.println("Invalid Write Multiple Coils response size.");
+				return false;
+			}
+			startCoilAddress = (response[2] << 8) | response[3];
+			numberOfCoils = (response[4] << 8) | response[5];
+		}
+		else
+		{
+			Serial.printf("Unexpected function code %02X for SWITCH_CONTROL\n",
+						  response.getFunctionCode());
+			return false;
+		}
+		return true;
+	}
+
+	// Update the status of coils in the response
+	void updateCoils(ModbusMessage& response, uint16_t startCoilAddress, uint16_t numberOfCoils)
+	{
+		// Iterate through the coils and update their status
+		for(uint16_t i = 0; i < numberOfCoils; ++i)
+		{
+			uint16_t coilAddress = startCoilAddress + i;
+			bool isCoilOn = getCoilValue(response, i);
+
+			// Find and update the corresponding coil
+			auto coilIt = std::find_if(_coils.begin(), _coils.end(), [&](const TesterCoil& coil) {
+				return coil.CoilAddress == coilAddress;
+			});
+
+			if(coilIt != _coils.end())
+			{
+				coilIt->CoilValue = isCoilOn;
+				Serial.printf("Updated %s (Address=0x%04X) to %s\n",
+							  getCoilTypeName(coilIt->type).c_str(), coilAddress,
+							  isCoilOn ? "ON" : "OFF");
+			}
+			else
+			{
+				Serial.printf("Unknown coil address: 0x%04X\n", coilAddress);
+			}
+		}
+	}
+
+	// Extract the coil value for a specific index in the response
+	bool getCoilValue(ModbusMessage& response, uint16_t index)
+	{
+		if(updateSingleCoil)
+		{
+			return (response[4] << 8 | response[5]) != 0;
+		}
+		else
+		{
+			return (response[6 + (index / 8)] & (1 << (index % 8))) != 0; // Write Multiple Coils
+		}
 	}
 	std::string getCoilTypeName(CoilType type)
 	{
