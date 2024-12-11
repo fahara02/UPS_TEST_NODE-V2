@@ -308,7 +308,7 @@ class ModbusManager
 			Serial.printf("Duplicate target ignored: Token=%08X\n", target.token);
 		}
 	}
-	bool validatePowerData(ModbusMessage& response, JobCard* jobCard)
+	bool validateExtractPowerData(ModbusMessage& response, JobCard* jobCard)
 	{
 		if(response.size() < 20)
 		{
@@ -318,9 +318,9 @@ class ModbusManager
 		const uint16_t* message = reinterpret_cast<const uint16_t*>(response.data() + 3);
 		size_t messageLength = (response.size() - 3) / 2;
 
-		return parseModbusMessage(message, messageLength, jobCard);
+		return parseJobCardData(message, messageLength, jobCard);
 	}
-	bool parseModbusMessage(const uint16_t* data, size_t length, JobCard* jobCard)
+	bool parseJobCardData(const uint16_t* data, size_t length, JobCard* jobCard)
 	{
 		size_t index = 0;
 
@@ -404,7 +404,7 @@ class ModbusManager
 	// Helper method to validate and process power data
 	bool validateAndProcessPowerData(ModbusMessage& response, JobCard* jobCard)
 	{
-		if(!validatePowerData(response, jobCard))
+		if(!validateExtractPowerData(response, jobCard))
 		{
 			return false;
 		}
@@ -459,6 +459,11 @@ class ModbusManager
 			}
 			startCoilAddress = (response[2] << 8) | response[3];
 			numberOfCoils = (response[4] << 8) | response[5];
+			if(numberOfCoils > MAX_COILS)
+			{
+				Serial.println("maximum coil limit exceeded.");
+				return false;
+			}
 		}
 		else
 		{
