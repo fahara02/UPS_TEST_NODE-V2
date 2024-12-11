@@ -23,7 +23,7 @@ enum class TargetType
 	SWITCH_CONTROL,
 	ANY
 };
-enum class SwitchType
+enum class CoilType
 {
 	UPS_IN = 0,
 	LOAD_BANK_1 = 1,
@@ -44,7 +44,13 @@ class ModbusManager
 		uint16_t start_address = UPS_IN_COIL_ADDR;
 		uint16_t length = 1;
 	};
-
+	struct TesterCoil
+	{
+		CoilType type;
+		uint16_t CoilAddress;
+		bool CoilValue;
+	};
+	static constexpr uint16_t MAX_COILS = 4;
 	static constexpr uint16_t UPS_IN_COIL_ADDR = 1000;
 	static constexpr uint16_t LOAD_BANK_1_COIL_ADDR = 1001;
 	static constexpr uint16_t LOAD_BANK_2_COIL_ADDR = 1002;
@@ -55,6 +61,7 @@ class ModbusManager
 	uint32_t _timeout;
 	uint32_t _interval;
 	std::vector<Target> _targets;
+	std::array<TesterCoil, MAX_COILS> _coils;
 	uint32_t _currentToken;
 	TaskHandle_t modbusTaskHandle = NULL;
 	uint8_t inputPowerDevice_SlaveId = 0;
@@ -70,16 +77,25 @@ class ModbusManager
 		MBClient(std::move(MClient)),
 		_timeout(tm), _interval(inter), _currentToken(0)
 	{
+		ModbusManager::getInstance().init();
+		MBClient->begin(); // Start ModbusTCP background task
+	}
+	void init()
+	{
+		MBClient->setTimeout(_timeout, _interval);
 		MBClient->onDataHandler([this](ModbusMessage response, uint32_t token) {
 			this->handleData(response, token);
 		});
 		MBClient->onErrorHandler([this](Error error, uint32_t token) {
 			this->handleError(error, token);
 		});
-		MBClient->setTimeout(_timeout, _interval);
-		MBClient->begin(); // Start ModbusTCP background task
+		_coils = {
+			TesterCoil{CoilType::UPS_IN, UPS_IN_COIL_ADDR, false},
+			TesterCoil{CoilType::LOAD_BANK_1, LOAD_BANK_1_COIL_ADDR, false},
+			TesterCoil{CoilType::LOAD_BANK_2, LOAD_BANK_2_COIL_ADDR, false},
+			TesterCoil{CoilType::LOAD_BANK_3, LOAD_BANK_3_COIL_ADDR, false},
+		};
 	}
-
 	// Generate a unique token
 	uint32_t generateUniqueToken()
 	{
@@ -155,46 +171,74 @@ class ModbusManager
 		}
 		Target& target = *targetIt;
 
-		// Determine the JobCard to update
-		JobCard* jobCard = nullptr;
+		// Handle based on target type
 		if(target.type == TargetType::INPUT_POWER)
 		{
-			jobCard = &inputPowerDeviceCard;
+			if(!validatePowerData(response, &inputPowerDeviceCard))
+			{
+				Serial.println("Failed to parse Modbus message for INPUT_POWER.");
+				return;
+			}
+			inputPowerMeasure = inputPowerDeviceCard.pm;
 		}
 		else if(target.type == TargetType::OUTPUT_POWER)
 		{
-			jobCard = &outputPowerDeviceCard;
+			if(!validatePowerData(response, &outputPowerDeviceCard))
+			{
+				Serial.println("Failed to parse Modbus message for OUTPUT_POWER.");
+				return;
+			}
+			outputPowerMeasure = outputPowerDeviceCard.pm;
+		}
+		else if(target.type == TargetType::SWITCH_CONTROL)
+		{
+			if(response.getFunctionCode() == 0x05) // Write Coil
+			{
+				// Check response size
+				if(response.size() < 6)
+				{
+					Serial.println("Invalid Write Coil response size.");
+					return;
+				}
+
+				// Extract the coil address and status
+				uint16_t coilAddress = (response[2] << 8) | response[3];
+				uint16_t coilValue = (response[4] << 8) | response[5];
+
+				// Log the result
+				Serial.printf("Switch control response: Coil Address=0x%04X, Value=0x%04X\n",
+							  coilAddress, coilValue);
+
+				// Update switch control status in job card
+				if(coilAddress == UPS_IN_COIL_ADDR)
+				{
+					_coils[0].CoilValue = (coilValue != 0);
+				}
+				else if(coilAddress == LOAD_BANK_1_COIL_ADDR)
+				{
+					_coils[1].CoilValue = (coilValue != 0);
+				}
+				else if(coilAddress == LOAD_BANK_2_COIL_ADDR)
+				{
+					_coils[2].CoilValue = (coilValue != 0);
+				}
+				else if(coilAddress == LOAD_BANK_3_COIL_ADDR)
+				{
+					_coils[3].CoilValue = (coilValue != 0);
+				}
+				else
+				{
+					Serial.println("Unknown coil address.");
+				}
+			}
+			else
+			{
+				Serial.println("Unsupported function code for SWITCH_CONTROL.");
+			}
 		}
 		else
 		{
 			Serial.println("Unhandled target type.");
-			return;
-		}
-
-		// Ensure the response size is valid
-		if(response.size() < 20)
-		{
-			Serial.println("Response size is insufficient for parsing.");
-			return;
-		}
-		const uint16_t* message = reinterpret_cast<const uint16_t*>(response.data() + 3);
-		size_t messageLength = (response.size() - 3) / 2;
-		// Parse the Modbus message
-		if(!parseModbusMessage(message, messageLength, jobCard))
-		{
-			Serial.println("Failed to parse Modbus message.");
-			return;
-		}
-		else
-		{
-			if(target.type == TargetType::INPUT_POWER)
-			{
-				inputPowerMeasure = inputPowerDeviceCard.pm;
-			}
-			else if(target.type == TargetType::OUTPUT_POWER)
-			{
-				outputPowerMeasure = outputPowerDeviceCard.pm;
-			}
 		}
 	}
 
@@ -231,7 +275,7 @@ class ModbusManager
 	{
 		return outputPowerMeasure;
 	}
-	Modbus::Error activate_switch(Target target, SwitchType type)
+	Modbus::Error TriggerCoil(Target target, CoilType type)
 	{
 		if(target.type != TargetType::SWITCH_CONTROL)
 		{
@@ -240,22 +284,23 @@ class ModbusManager
 
 		// Ensure unique token for each request
 		target.token = generateUniqueToken();
+		ModbusManager::getInstance().addTarget(target);
 		MBClient->setTarget(target.target_ip, 502, _timeout, _interval);
 
 		uint16_t coilAddress = 0;
 
 		switch(type)
 		{
-			case SwitchType::UPS_IN:
+			case CoilType::UPS_IN:
 				coilAddress = UPS_IN_COIL_ADDR;
 				break;
-			case SwitchType::LOAD_BANK_1:
+			case CoilType::LOAD_BANK_1:
 				coilAddress = LOAD_BANK_1_COIL_ADDR;
 				break;
-			case SwitchType::LOAD_BANK_2:
+			case CoilType::LOAD_BANK_2:
 				coilAddress = LOAD_BANK_2_COIL_ADDR;
 				break;
-			case SwitchType::LOAD_BANK_3:
+			case CoilType::LOAD_BANK_3:
 				coilAddress = LOAD_BANK_3_COIL_ADDR;
 				break;
 			default:
@@ -295,7 +340,18 @@ class ModbusManager
 			Serial.printf("Duplicate target ignored: Token=%08X\n", target.token);
 		}
 	}
+	bool validatePowerData(ModbusMessage& response, JobCard* jobCard)
+	{
+		if(response.size() < 20)
+		{
+			Serial.println("Response size is insufficient for parsing.");
+			return false;
+		}
+		const uint16_t* message = reinterpret_cast<const uint16_t*>(response.data() + 3);
+		size_t messageLength = (response.size() - 3) / 2;
 
+		return parseModbusMessage(message, messageLength, jobCard);
+	}
 	bool parseModbusMessage(const uint16_t* data, size_t length, JobCard* jobCard)
 	{
 		size_t index = 0;
