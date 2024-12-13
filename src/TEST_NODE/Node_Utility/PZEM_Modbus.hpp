@@ -13,6 +13,9 @@
 	#include "PZEM_Measure.hpp"
 	#include "NodeUtility.hpp"
 	#include "string.h"
+	#include <cstring>
+	#include <cstdint>
+	#include <type_traits>
 	#include <WiFiClient.h>
 
 namespace Node_Utility
@@ -32,7 +35,11 @@ enum class CoilType
 	LOAD_BANK_3 = 3,
 	OUTPUT_FAILURE = 4
 };
-
+enum class CoilState
+{
+	OFF = 0,
+	ON = 1
+};
 class ModbusManager
 {
   public:
@@ -58,7 +65,7 @@ class ModbusManager
 	static constexpr uint16_t LOAD_BANK_1_COIL_ADDR = 1;
 	static constexpr uint16_t LOAD_BANK_2_COIL_ADDR = 2;
 	static constexpr uint16_t LOAD_BANK_3_COIL_ADDR = 3;
-	static constexpr uint16_t OUTPUT_FAILURE_COIL_ADDR = 3;
+	static constexpr uint16_t OUTPUT_FAILURE_COIL_ADDR = 4;
 
   private:
 	WiFiClient theClient;
@@ -67,23 +74,31 @@ class ModbusManager
 	uint32_t _interval;
 	std::vector<Target> _targets;
 	std::array<TesterCoil, MAX_COILS> _coils;
-	uint32_t _currentToken;
+
 	TaskHandle_t modbusTaskHandle = NULL;
-	uint8_t inputPowerDevice_SlaveId = 0;
-	uint8_t outputPowerDevice_SlaveId = 0;
+	IPAddress pzemServerIP = IPAddress(192, 168, 0, 160);
+	uint8_t coilserver_id = 0;
+	uint8_t ipd_id = 0;
+	uint8_t opd_id = 0;
+	uint32_t _currentToken;
 	Node_Core::JobCard inputPowerDeviceCard = JobCard();
 	Node_Core::JobCard outputPowerDeviceCard = JobCard();
 	Node_Core::powerMeasure inputPowerMeasure = powerMeasure();
 	Node_Core::powerMeasure outputPowerMeasure = powerMeasure();
+	bool pollingTaskCreated = false;
 	bool updateSingleCoil = true;
+	bool enablePolling = true;
 
 	// Private constructor for singleton pattern
-	ModbusManager(uint32_t tm = 4000, uint32_t inter = 2000) :
+	ModbusManager(uint32_t tm = 4000, uint32_t inter = 2000,
+				  IPAddress serverIP = IPAddress(192, 168, 0, 160), u8_t coilServerId = 1,
+				  uint8_t inputPowerId = 1, uint8_t outputPowerId = 2) :
 		MBClient(std::make_unique<ModbusClientTCP>(theClient)), _timeout(tm), _interval(inter),
-		_currentToken(0)
+		pzemServerIP(serverIP), coilserver_id(coilServerId), ipd_id(inputPowerId),
+		opd_id(outputPowerId), _currentToken(0)
 	{
 		init();
-		configASSERT(startPollingTask());
+		configASSERT(createPollingTask());
 		MBClient->begin(); // Start ModbusTCP background task
 	}
 	void init()
@@ -109,44 +124,62 @@ class ModbusManager
 	}
 
 	// Internal method to start the polling task
-	bool startPollingTask()
+	bool createPollingTask()
 	{
-		return (xTaskCreatePinnedToCore(
-			[](void* pvParameters) {
-				static_cast<ModbusManager*>(pvParameters)->pollingTask();
-			},
-			"ModbusPollingTask",
-			modbus_Stack, // Stack size
-			this, // Task parameter
-			modbus_Priority, // Priority
-			&modbusTaskHandle, // Task handle
-			modbus_CORE));
-	}
+		if(!pollingTaskCreated)
+		{
+			if(xTaskCreatePinnedToCore(
+				   [](void* pvParameters) {
+					   static_cast<ModbusManager*>(pvParameters)->pollingTask();
+				   },
+				   "ModbusPollingTask",
+				   modbus_Stack, // Stack size
+				   this, // Task parameter
+				   modbus_Priority, // Priority
+				   &modbusTaskHandle, // Task handle
+				   modbus_CORE))
+			{
+				pollingTaskCreated = true;
+			}
+		}
 
+		return pollingTaskCreated;
+	}
+	void startPollingTask()
+	{
+		enablePolling = true;
+	}
+	void stopPollingTask()
+	{
+		enablePolling = false;
+	}
 	// Polling task implementation
 	void pollingTask()
 	{
 		while(true)
 		{
-			for(const auto& target: _targets)
+			if(enablePolling)
 			{
-				if(target.type == TargetType::INPUT_POWER ||
-				   target.type == TargetType::OUTPUT_POWER)
+				for(const auto& target: _targets)
 				{
-					MBClient->setTarget(target.target_ip, 502, _timeout, _interval);
-
-					Modbus::Error modbusError =
-						MBClient->addRequest(target.token, target.slave_id, target.function_code,
-											 target.start_address, target.length);
-
-					if(modbusError != Modbus::SUCCESS)
+					if(target.type == TargetType::INPUT_POWER ||
+					   target.type == TargetType::OUTPUT_POWER)
 					{
-						ModbusError e(modbusError);
-						Serial.printf("Error creating request for token %08X: %02X - %s\n",
-									  target.token, (int)e, (const char*)e);
-					}
+						MBClient->setTarget(target.target_ip, 502, _timeout, _interval);
 
-					vTaskDelay(pdMS_TO_TICKS(500)); // Delay between requests
+						Modbus::Error modbusError = MBClient->addRequest(
+							target.token, target.slave_id, target.function_code,
+							target.start_address, target.length);
+
+						if(modbusError != Modbus::SUCCESS)
+						{
+							ModbusError e(modbusError);
+							Serial.printf("Error creating request for token %08X: %02X - %s\n",
+										  target.token, (int)e, (const char*)e);
+						}
+
+						vTaskDelay(pdMS_TO_TICKS(500)); // Delay between requests
+					}
 				}
 			}
 
@@ -238,6 +271,10 @@ class ModbusManager
 		{
 			startPollingTask();
 		}
+		else
+		{
+			stopPollingTask();
+		}
 	}
 	powerMeasure& getInputPower()
 	{
@@ -248,18 +285,8 @@ class ModbusManager
 		return outputPowerMeasure;
 	}
 
-	Modbus::Error TriggerCoil(Target target, CoilType type)
+	Modbus::Error TriggerCoil(CoilType type, CoilState state)
 	{
-		if(target.type != TargetType::SWITCH_CONTROL)
-		{
-			return Modbus::Error::FC_MISMATCH; // Ensure the target is for switch control
-		}
-
-		// Ensure unique token for each request
-		target.token = generateUniqueToken();
-		ModbusManager::getInstance().addTarget(target);
-		MBClient->setTarget(target.target_ip, 502, _timeout, _interval);
-
 		uint16_t coilAddress = 0;
 
 		switch(type)
@@ -279,18 +306,13 @@ class ModbusManager
 			default:
 				return Modbus::Error::ILLEGAL_DATA_VALUE; // Handle invalid type
 		}
-
-		// Send the Modbus request
-		Modbus::Error err = MBClient->addRequest(target.token, target.slave_id,
-												 FunctionCode::WRITE_COIL, coilAddress, 1);
-
-		if(err != Modbus::SUCCESS)
+		bool value = 0;
+		if(state == CoilState::ON)
 		{
-			ModbusError e(err);
-			Serial.printf("Failed to activate switch: %02X - %s\n", (int)e, (const char*)e);
+			bool value = 1;
 		}
 
-		return err;
+		return setCoil(coilserver_id, coilAddress, value);
 	}
 
   private:
@@ -313,55 +335,33 @@ class ModbusManager
 			Serial.printf("Duplicate target ignored: Token=%08X\n", target.token);
 		}
 	}
-	void setCoil(IPAddress ip, uint8_t serverID, uint16_t address)
+	Modbus::Error setCoil(uint8_t serverID, uint16_t address, bool value)
 	{
 		Target target = {
 			TargetType::SWITCH_CONTROL, // Target type
-			_currentToken, // Unique token for request tracking
-			ip, // Target IP
+			generateUniqueToken(), // Unique token for request tracking
+			pzemServerIP, // Target IP
 			serverID, // Slave ID
 			Modbus::FunctionCode::WRITE_COIL, // FC 0x05
 			address, // Start address of the coil
 			1, // Length of the coil (1 coil for FC 0x05)
-			0xFF00 // Value for ON (0xFF00)
+			static_cast<uint16_t>(value ? 0xFF00 : 0x0000) // 0xFF00 for ON, 0x0000 for OFF
 		};
-
+		addTarget(target);
+		MBClient->setTarget(target.target_ip, 502, _timeout, _interval);
 		// Create the Modbus message
 		ModbusMessage request;
-		request.setMessage(target.slave_id, target.function_code, target.start_address,
-						   target.value);
+		Modbus::Error modbusError = request.setMessage(target.slave_id, target.function_code,
+													   target.start_address, target.value);
+		if(modbusError != SUCCESS)
+		{
+			return modbusError;
+		}
 
 		// Send the request using MBClient.addRequest
-		MBClient.addRequest(request, target.token);
+		modbusError = MBClient->addRequest(request, target.token);
 
-		// Increment the token to ensure unique identifiers for subsequent requests
-		_currentToken++;
-	}
-
-	void resetCoil(IPAddress ip, uint8_t serverID, uint16_t address)
-	{
-		// Create a Target object (hidden logic)
-		Target target = {
-			TargetType::SWITCH_CONTROL, // Target type
-			_currentToken, // Unique token for request tracking
-			ip, // Target IP
-			serverID, // Slave ID
-			Modbus::FunctionCode::WRITE_COIL, // FC 0x05
-			address, // Start address of the coil
-			1, // Length of the coil (1 coil for FC 0x05)
-			0x0000 // Value for OFF (0x0000)
-		};
-
-		// Create the Modbus message
-		ModbusMessage request;
-		request.setMessage(target.slave_id, target.function_code, target.start_address,
-						   target.value);
-
-		// Send the request using MBClient.addRequest
-		MBClient.addRequest(request, target.token);
-
-		// Increment the token to ensure unique identifiers for subsequent requests
-		_currentToken++;
+		return modbusError;
 	}
 
 	// Helper method to validate and process power data
@@ -396,85 +396,111 @@ class ModbusManager
 
 		return parseJobCardData(message, messageLength, jobCard);
 	}
+	uint16_t toHostEndian16(uint16_t value)
+	{
+		return (value >> 8) | (value << 8);
+	}
+
+	// Helper template to trigger static_assert for unsupported types
+	template<typename T>
+	struct UnsupportedTypeForReadData
+	{
+		static constexpr bool value = false;
+	};
+
+	// Generic template function to read data
+	template<typename T>
+	T readData(const uint16_t* data, size_t& index)
+	{
+		static_assert(std::is_enum<T>::value || std::is_integral<T>::value ||
+						  std::is_floating_point<T>::value || UnsupportedTypeForReadData<T>::value,
+					  "Unsupported type for readData");
+
+		auto toHostEndian16 = [](uint16_t value) {
+			return static_cast<uint16_t>((value >> 8) | (value << 8));
+		};
+
+		if(std::is_enum<T>::value)
+		{
+			return static_cast<T>(toHostEndian16(data[index++]));
+		}
+		else if(std::is_integral<T>::value && sizeof(T) == sizeof(int64_t))
+		{
+			uint32_t high = (toHostEndian16(data[index]) << 16) | toHostEndian16(data[index + 1]);
+			uint32_t low =
+				(toHostEndian16(data[index + 2]) << 16) | toHostEndian16(data[index + 3]);
+			index += 4;
+			return static_cast<T>((static_cast<int64_t>(high) << 32) | low);
+		}
+		else if(std::is_floating_point<T>::value)
+		{
+			uint32_t intBits =
+				(toHostEndian16(data[index]) << 16) | toHostEndian16(data[index + 1]);
+			index += 2;
+			return *reinterpret_cast<T*>(&intBits);
+		}
+		else if(std::is_integral<T>::value)
+		{
+			return static_cast<T>(toHostEndian16(data[index++]));
+		}
+
+		// static_assert(UnsupportedTypeForReadData<T>::value, "Unsupported type for readData");
+	}
+
 	bool parseJobCardData(const uint16_t* data, size_t length, JobCard* jobCard)
 	{
-		size_t index = 0;
-
-		// Ensure minimum length
 		if(length < 28)
 		{
 			Serial.println("Insufficient data for parsing.");
 			return false;
 		}
 
-		// Endian conversion helpers
-		auto toHostEndian16 = [](uint16_t value) -> uint16_t {
-			return (value >> 8) | (value << 8);
-		};
-
-		auto toHostEndian32 = [](uint32_t value) -> uint32_t {
-			return ((value & 0xFF000000) >> 24) | ((value & 0x00FF0000) >> 8) |
-				   ((value & 0x0000FF00) << 8) | ((value & 0x000000FF) << 24);
-		};
-
-		auto parseFloat16 = [&](size_t i) -> float {
-			uint32_t intBits = (toHostEndian16(data[i]) << 16) | toHostEndian16(data[i + 1]);
-			return *reinterpret_cast<float*>(&intBits);
-		};
+		size_t index = 0;
 
 		// Parse NamePlate information
-		jobCard->info.model = static_cast<PZEMModel>(toHostEndian16(data[index++]));
-		jobCard->info.id = static_cast<uint8_t>(toHostEndian16(data[index++])); // Parse ID
-		jobCard->info.slaveAddress = static_cast<uint8_t>(toHostEndian16(data[index++]));
-		jobCard->info.lineNo = static_cast<uint8_t>(toHostEndian16(data[index++]));
-		jobCard->info.phase = static_cast<Phase>(toHostEndian16(data[index++]));
+		jobCard->info.model = readData<PZEMModel>(data, index);
+		jobCard->info.id = readData<uint8_t>(data, index);
+		jobCard->info.slaveAddress = readData<uint8_t>(data, index);
+		jobCard->info.lineNo = readData<uint8_t>(data, index);
+		jobCard->info.phase = readData<Phase>(data, index);
 
 		// Parse meter name (ASCII-encoded in 16-bit registers)
-		std::string meterName;
-		for(size_t i = 0; i < 9 && index < length; i += 2)
+		std::array<char, 9> meterName = {0};
+		for(size_t i = 0; i < 9 && index < length; ++i)
 		{
-			char char1 = static_cast<char>(toHostEndian16(data[index]) >> 8); // High byte
-			char char2 = static_cast<char>(toHostEndian16(data[index]) & 0xFF); // Low byte
-			if(char1 != '\0')
-				meterName += char1;
-			if(char2 != '\0')
-				meterName += char2;
-			index++;
+			uint16_t word = readData<uint16_t>(data, index);
+			char highByte = static_cast<char>(word >> 8);
+			char lowByte = static_cast<char>(word & 0xFF);
+			if(i < meterName.size())
+			{
+				meterName[i++] = highByte;
+			}
+			if(i < meterName.size())
+			{
+				meterName[i++] = lowByte;
+			}
 		}
+		jobCard->info.meterName = meterName;
 
 		// Parse power measurements
-		jobCard->pm.voltage = parseFloat16(index);
-		index += 2;
-		jobCard->pm.current = parseFloat16(index);
-		index += 2;
-		jobCard->pm.power = parseFloat16(index);
-		index += 2;
-		jobCard->pm.energy = parseFloat16(index);
-		index += 2;
-		jobCard->pm.frequency = parseFloat16(index);
-		index += 2;
-		jobCard->pm.pf = parseFloat16(index);
-		index += 2;
+		auto& pm = jobCard->pm;
+		pm.voltage = readData<float>(data, index);
+		pm.current = readData<float>(data, index);
+		pm.power = readData<float>(data, index);
+		pm.energy = readData<float>(data, index);
+		pm.frequency = readData<float>(data, index);
+		pm.pf = readData<float>(data, index);
 
-		// Parse 64-bit timestamps
-		auto parseInt64 = [&](size_t i) -> int64_t {
-			uint32_t high = (toHostEndian16(data[i]) << 16) | toHostEndian16(data[i + 1]);
-			uint32_t low = (toHostEndian16(data[i + 2]) << 16) | toHostEndian16(data[i + 3]);
-			return (static_cast<int64_t>(high) << 32) | low;
-		};
-
-		jobCard->poll_us = parseInt64(index);
-		index += 4;
-		jobCard->lastUpdate_us = parseInt64(index);
-		index += 4;
-		jobCard->dataAge_ms = parseInt64(index);
-		index += 4;
+		// Parse timestamps
+		jobCard->poll_us = readData<int64_t>(data, index);
+		jobCard->lastUpdate_us = readData<int64_t>(data, index);
+		jobCard->dataAge_ms = readData<int64_t>(data, index);
 
 		// Parse remaining fields
-		jobCard->dataStale = toHostEndian16(data[index++]) != 0;
-		jobCard->deviceState = static_cast<PZEMState>(toHostEndian16(data[index++]));
+		jobCard->dataStale = readData<uint16_t>(data, index) != 0;
+		jobCard->deviceState = readData<PZEMState>(data, index);
 
-		jobCard->pm.isValid = true;
+		pm.isValid = true;
 		return true;
 	}
 
@@ -606,3 +632,85 @@ class ModbusManager
 // 			  jobCard->pm.voltage, jobCard->pm.current, jobCard->pm.power,
 // 			  jobCard->pm.energy, jobCard->pm.frequency, jobCard->pm.pf,
 // 			  jobCard->pm.alarms);
+
+// bool parseJobCardData(const uint16_t* data, size_t length, JobCard* jobCard)
+// {
+// 	size_t index = 0;
+
+// 	// Ensure minimum length
+// 	if(length < 28)
+// 	{
+// 		Serial.println("Insufficient data for parsing.");
+// 		return false;
+// 	}
+
+// 	// Endian conversion helpers
+// 	auto toHostEndian16 = [](uint16_t value) -> uint16_t {
+// 		return (value >> 8) | (value << 8);
+// 	};
+
+// 	auto toHostEndian32 = [](uint32_t value) -> uint32_t {
+// 		return ((value & 0xFF000000) >> 24) | ((value & 0x00FF0000) >> 8) |
+// 			   ((value & 0x0000FF00) << 8) | ((value & 0x000000FF) << 24);
+// 	};
+
+// 	auto parseFloat16 = [&](size_t i) -> float {
+// 		uint32_t intBits = (toHostEndian16(data[i]) << 16) | toHostEndian16(data[i + 1]);
+// 		return *reinterpret_cast<float*>(&intBits);
+// 	};
+
+// 	// Parse NamePlate information
+// 	jobCard->info.model = static_cast<PZEMModel>(toHostEndian16(data[index++]));
+// 	jobCard->info.id = static_cast<uint8_t>(toHostEndian16(data[index++])); // Parse ID
+// 	jobCard->info.slaveAddress = static_cast<uint8_t>(toHostEndian16(data[index++]));
+// 	jobCard->info.lineNo = static_cast<uint8_t>(toHostEndian16(data[index++]));
+// 	jobCard->info.phase = static_cast<Phase>(toHostEndian16(data[index++]));
+
+// 	// Parse meter name (ASCII-encoded in 16-bit registers)
+// 	std::string meterName;
+// 	for(size_t i = 0; i < 9 && index < length; i += 2)
+// 	{
+// 		char char1 = static_cast<char>(toHostEndian16(data[index]) >> 8); // High byte
+// 		char char2 = static_cast<char>(toHostEndian16(data[index]) & 0xFF); // Low byte
+// 		if(char1 != '\0')
+// 			meterName += char1;
+// 		if(char2 != '\0')
+// 			meterName += char2;
+// 		index++;
+// 	}
+
+// 	// Parse power measurements
+// 	jobCard->pm.voltage = parseFloat16(index);
+// 	index += 2;
+// 	jobCard->pm.current = parseFloat16(index);
+// 	index += 2;
+// 	jobCard->pm.power = parseFloat16(index);
+// 	index += 2;
+// 	jobCard->pm.energy = parseFloat16(index);
+// 	index += 2;
+// 	jobCard->pm.frequency = parseFloat16(index);
+// 	index += 2;
+// 	jobCard->pm.pf = parseFloat16(index);
+// 	index += 2;
+
+// 	// Parse 64-bit timestamps
+// 	auto parseInt64 = [&](size_t i) -> int64_t {
+// 		uint32_t high = (toHostEndian16(data[i]) << 16) | toHostEndian16(data[i + 1]);
+// 		uint32_t low = (toHostEndian16(data[i + 2]) << 16) | toHostEndian16(data[i + 3]);
+// 		return (static_cast<int64_t>(high) << 32) | low;
+// 	};
+
+// 	jobCard->poll_us = parseInt64(index);
+// 	index += 4;
+// 	jobCard->lastUpdate_us = parseInt64(index);
+// 	index += 4;
+// 	jobCard->dataAge_ms = parseInt64(index);
+// 	index += 4;
+
+// 	// Parse remaining fields
+// 	jobCard->dataStale = toHostEndian16(data[index++]) != 0;
+// 	jobCard->deviceState = static_cast<PZEMState>(toHostEndian16(data[index++]));
+
+// 	jobCard->pm.isValid = true;
+// 	return true;
+// }
