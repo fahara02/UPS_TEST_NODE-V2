@@ -307,11 +307,7 @@ class ModbusManager
 			default:
 				return Modbus::Error::ILLEGAL_DATA_VALUE; // Handle invalid type
 		}
-		bool value = 0;
-		if(state == CoilState::ON)
-		{
-			value = 1;
-		}
+		bool value = (state == CoilState::ON) ? 1 : 0;
 
 		return setCoil(coilserver_id, coilAddress, value);
 	}
