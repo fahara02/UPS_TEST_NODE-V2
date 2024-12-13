@@ -81,19 +81,6 @@ WiFiManager wm;
 // auto MClient = std::make_unique<ModbusClientTCP>(theClient);
 Node_Utility::ModbusManager& MBManager = Node_Utility::ModbusManager::getInstance();
 
-Node_Utility::ModbusManager::Target ups_in_trigger = {
-	TargetType::SWITCH_CONTROL,		 0, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
-	ModbusManager::UPS_IN_COIL_ADDR, 1};
-Node_Utility::ModbusManager::Target load_bank_1_trigger = {
-	TargetType::SWITCH_CONTROL,			  1, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
-	ModbusManager::LOAD_BANK_1_COIL_ADDR, 1};
-Node_Utility::ModbusManager::Target load_bank_2_trigger = {
-	TargetType::SWITCH_CONTROL,			  2, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
-	ModbusManager::LOAD_BANK_2_COIL_ADDR, 1};
-Node_Utility::ModbusManager::Target load_bank_3_trigger = {
-	TargetType::SWITCH_CONTROL,			  3, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
-	ModbusManager::LOAD_BANK_3_COIL_ADDR, 1};
-
 #define ESP_LITTLEFS_TAG = "LFS"
 
 void IRAM_ATTR keyISR1(void* pvParameters)
@@ -237,9 +224,9 @@ void setup()
 	// Issue a request
 
 	Node_Utility::ModbusManager::Target target1 = {
-		TargetType::INPUT_POWER, 761, IPAddress(192, 168, 0, 160), 1, READ_HOLD_REGISTER, 0, 40};
+		TargetType::INPUT_POWER, IPAddress(192, 168, 0, 160), 1, READ_HOLD_REGISTER, 761, 0, 40};
 	Node_Utility::ModbusManager::Target target2 = {
-		TargetType::OUTPUT_POWER, 123, IPAddress(192, 168, 0, 160), 2, READ_HOLD_REGISTER, 0, 40};
+		TargetType::OUTPUT_POWER, IPAddress(192, 168, 0, 160), 2, READ_HOLD_REGISTER, 123, 0, 40};
 
 	MBManager.autopoll(true, target1, target2);
 

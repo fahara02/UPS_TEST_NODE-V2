@@ -34,7 +34,7 @@ enum class CoilType
 	LOAD_BANK_1 = 1,
 	LOAD_BANK_2 = 2,
 	LOAD_BANK_3 = 3,
-	OUTPUT_FAILURE = 4
+	TEST_UPDATE = 4
 };
 enum class CoilState
 {
@@ -47,13 +47,14 @@ class ModbusManager
 	struct Target
 	{
 		TargetType type = TargetType::ANY;
-		uint32_t token;
 		IPAddress target_ip = IPAddress(192, 168, 0, 160);
 		uint8_t slave_id = 1;
 		Modbus::FunctionCode function_code = FunctionCode::ANY_FUNCTION_CODE;
 		uint16_t start_address = UPS_IN_COIL_ADDR;
+		uint32_t token;
 		uint16_t length = 1;
 		uint16_t value = 1;
+		uint16_t last_written_value = 0xFFFF;
 	};
 	struct TesterCoil
 	{
@@ -62,11 +63,12 @@ class ModbusManager
 		bool CoilValue;
 	};
 	static constexpr uint16_t MAX_COILS = 5;
+	static constexpr uint16_t MAX_RETRIES = 4;
 	static constexpr uint16_t UPS_IN_COIL_ADDR = 0;
 	static constexpr uint16_t LOAD_BANK_1_COIL_ADDR = 1;
 	static constexpr uint16_t LOAD_BANK_2_COIL_ADDR = 2;
 	static constexpr uint16_t LOAD_BANK_3_COIL_ADDR = 3;
-	static constexpr uint16_t OUTPUT_FAILURE_COIL_ADDR = 4;
+	static constexpr uint16_t TEST_UPDATE_COIL_ADDR = 4;
 
   private:
 	WiFiClient theClient;
@@ -94,9 +96,9 @@ class ModbusManager
 	ModbusManager(uint32_t tm = 4000, uint32_t inter = 2000,
 				  IPAddress serverIP = IPAddress(192, 168, 0, 160), u8_t coilServerId = 1,
 				  uint8_t inputPowerId = 1, uint8_t outputPowerId = 2) :
-		MBClient(std::make_unique<ModbusClientTCP>(theClient)), _timeout(tm), _interval(inter),
-		pzemServerIP(serverIP), coilserver_id(coilServerId), ipd_id(inputPowerId),
-		opd_id(outputPowerId), _currentToken(0)
+		MBClient(std::make_unique<ModbusClientTCP>(theClient)),
+		_timeout(tm), _interval(inter), pzemServerIP(serverIP), coilserver_id(coilServerId),
+		ipd_id(inputPowerId), opd_id(outputPowerId), _currentToken(0)
 	{
 		init();
 		configASSERT(createPollingTask());
@@ -116,7 +118,10 @@ class ModbusManager
 			TesterCoil{CoilType::LOAD_BANK_1, LOAD_BANK_1_COIL_ADDR, false},
 			TesterCoil{CoilType::LOAD_BANK_2, LOAD_BANK_2_COIL_ADDR, false},
 			TesterCoil{CoilType::LOAD_BANK_3, LOAD_BANK_3_COIL_ADDR, false},
+			TesterCoil{CoilType::TEST_UPDATE, TEST_UPDATE_COIL_ADDR, false},
 		};
+
+		createSwitchControls();
 	}
 	// Generate a unique token
 	uint32_t generateUniqueToken()
@@ -308,7 +313,7 @@ class ModbusManager
 			default:
 				return Modbus::Error::ILLEGAL_DATA_VALUE; // Handle invalid type
 		}
-		bool value = (state == CoilState::ON) ? 1 : 0;
+		bool value = (state == CoilState::ON) ? true : false;
 
 		return setCoil(coilserver_id, coilAddress, value);
 	}
@@ -333,33 +338,134 @@ class ModbusManager
 			Serial.printf("Duplicate target ignored: Token=%08X\n", target.token);
 		}
 	}
+	//
+	void createSwitchControls()
+	{
+		// All coil targets
+		Target ups_in_trigger = {
+			TargetType::SWITCH_CONTROL, // type
+			pzemServerIP, // target_ip
+			coilserver_id, // slave_id
+			Modbus::FunctionCode::WRITE_COIL, // function_code
+			ModbusManager::UPS_IN_COIL_ADDR, // start_address
+			generateUniqueToken(), // token
+			1, // length
+			1, // value
+			0xFFFF // last_written_value
+		};
+
+		Target load_bank_1_trigger = {
+			TargetType::SWITCH_CONTROL, // type
+			pzemServerIP, // target_ip
+			coilserver_id, // slave_id
+			Modbus::FunctionCode::WRITE_COIL, // function_code
+			ModbusManager::LOAD_BANK_1_COIL_ADDR, // start_address
+			generateUniqueToken(), // token
+			1, // length
+			1, // value
+			0xFFFF // last_written_value
+		};
+
+		Target load_bank_2_trigger = {
+			TargetType::SWITCH_CONTROL, // type
+			pzemServerIP, // target_ip
+			3, // slave_id
+			Modbus::FunctionCode::WRITE_COIL, // function_code
+			ModbusManager::LOAD_BANK_2_COIL_ADDR, // start_address
+			generateUniqueToken(), // token
+			1, // length
+			1, // value
+			0xFFFF // last_written_value
+		};
+
+		Target load_bank_3_trigger = {
+			TargetType::SWITCH_CONTROL, // type
+			pzemServerIP, // target_ip
+			3, // slave_id
+			Modbus::FunctionCode::WRITE_COIL, // function_code
+			ModbusManager::LOAD_BANK_3_COIL_ADDR, // start_address
+			generateUniqueToken(), // token
+			1, // length
+			1, // value
+			0xFFFF // last_written_value
+		};
+
+		Target test_update_trigger = {
+			TargetType::SWITCH_CONTROL, // type
+			pzemServerIP, // target_ip
+			3, // slave_id
+			Modbus::FunctionCode::WRITE_COIL, // function_code
+			ModbusManager::TEST_UPDATE_COIL_ADDR, // start_address
+			generateUniqueToken(), // token
+			1, // length
+			1, // value
+			0xFFFF // last_written_value
+		};
+		addTarget(ups_in_trigger);
+		addTarget(load_bank_1_trigger);
+		addTarget(load_bank_2_trigger);
+		addTarget(load_bank_3_trigger);
+		addTarget(test_update_trigger);
+	}
+
 	Modbus::Error setCoil(uint8_t serverID, uint16_t address, bool value)
 	{
-		Target target = {
-			TargetType::SWITCH_CONTROL, // Target type
-			generateUniqueToken(), // Unique token for request tracking
-			pzemServerIP, // Target IP
-			serverID, // Slave ID
-			Modbus::FunctionCode::WRITE_COIL, // FC 0x05
-			address, // Start address of the coil
-			1, // Length of the coil (1 coil for FC 0x05)
-			static_cast<uint16_t>(value ? 0xFF00 : 0x0000) // 0xFF00 for ON, 0x0000 for OFF
-		};
-		addTarget(target);
-		// MBClient->setTarget(target.target_ip, 502, _timeout, _interval);
-		// Create the Modbus message
-		ModbusMessage request;
-		Modbus::Error modbusError = request.setMessage(target.slave_id, target.function_code,
-													   target.start_address, target.value);
-		if(modbusError != SUCCESS)
+		uint16_t new_value = static_cast<uint16_t>(value ? 0xFF00 : 0x0000);
+
+		// Check if the value is already set to avoid unnecessary Modbus writes
+		for(auto& target: _targets)
 		{
-			return modbusError;
+			if(target.start_address == address && target.slave_id == serverID)
+			{
+				if(target.last_written_value == new_value)
+				{
+					// No need to write, the value hasn't changed
+					return Modbus::SUCCESS;
+				}
+				target.last_written_value = new_value; // Update last written value
+				break;
+			}
 		}
 
-		// Send the request using MBClient.addRequest
-		modbusError = MBClient->addRequest(request, target.token);
+		Target target_write = {TargetType::SWITCH_CONTROL,
+							   pzemServerIP,
+							   serverID,
+							   Modbus::FunctionCode::WRITE_COIL,
+							   address,
+							   generateUniqueToken(),
+							   1,
+							   new_value};
 
-		return modbusError;
+		Modbus::Error modbusError = Modbus::Error::UNDEFINED_ERROR;
+
+		// Retry logic for Modbus request
+		for(int attempt = 0; attempt < MAX_RETRIES; ++attempt)
+		{
+			// Create a new Modbus message for each attempt
+			ModbusMessage write_request;
+			modbusError =
+				write_request.setMessage(target_write.slave_id, target_write.function_code,
+										 target_write.start_address, target_write.value);
+
+			if(modbusError != Modbus::SUCCESS)
+			{
+				// Log this error if necessary
+				continue; // Retry the message creation
+			}
+
+			// Send the request using MBClient->addRequest
+			modbusError = MBClient->addRequest(write_request, target_write.token);
+
+			if(modbusError == Modbus::SUCCESS)
+			{
+				return Modbus::SUCCESS; // Successful request, no further retries needed
+			}
+
+			// Small delay before retry (adjust if needed)
+			vTaskDelay(pdMS_TO_TICKS(100));
+		}
+
+		return modbusError; // Return the last error after all retries failed
 	}
 
 	// Helper method to validate and process power data
@@ -606,8 +712,8 @@ class ModbusManager
 				return "LOAD_BANK_2";
 			case CoilType::LOAD_BANK_3:
 				return "LOAD_BANK_3";
-			case CoilType::OUTPUT_FAILURE:
-				return "OUTPUT_FAILURE";
+			case CoilType::TEST_UPDATE:
+				return "TEST_UPDATE";
 			default:
 				return "UNKNOWN";
 		}
