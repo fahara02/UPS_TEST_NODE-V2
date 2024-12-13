@@ -61,7 +61,7 @@ class ModbusManager
 		uint16_t CoilAddress;
 		bool CoilValue;
 	};
-	static constexpr uint16_t MAX_COILS = 4;
+	static constexpr uint16_t MAX_COILS = 5;
 	static constexpr uint16_t UPS_IN_COIL_ADDR = 0;
 	static constexpr uint16_t LOAD_BANK_1_COIL_ADDR = 1;
 	static constexpr uint16_t LOAD_BANK_2_COIL_ADDR = 2;
@@ -164,7 +164,8 @@ class ModbusManager
 				for(const auto& target: _targets)
 				{
 					if(target.type == TargetType::INPUT_POWER ||
-					   target.type == TargetType::OUTPUT_POWER)
+					   target.type == TargetType::OUTPUT_POWER ||
+					   target.type == TargetType::COIL_READ)
 					{
 						MBClient->setTarget(target.target_ip, 502, _timeout, _interval);
 
