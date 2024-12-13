@@ -504,12 +504,34 @@ class ModbusManager
 	{
 		Target target_read = {TargetType::COIL_READ,		   pzemServerIP, serverID,
 							  Modbus::FunctionCode::READ_COIL, address,		 generateUniqueToken()};
+		addTarget(target_read);
 		Modbus::Error modbusError = Modbus::Error::UNDEFINED_ERROR;
-		ModbusMessage read_request;
-		modbusError = read_request.setMessage(target_read.slave_id, target_read.function_code,
-											  target_read.start_address, target_read.value);
-		modbusError = MBClient->addRequest(read_request, target_read.token);
 
+		// Retry logic for Modbus request
+		for(int attempt = 0; attempt < MAX_RETRIES; ++attempt)
+		{
+			// Create a new Modbus message for each attempt
+			ModbusMessage read_request;
+			modbusError = read_request.setMessage(target_read.slave_id, target_read.function_code,
+												  target_read.start_address, target_read.value);
+
+			if(modbusError != Modbus::SUCCESS)
+			{
+				// Log this error if necessary
+				continue; // Retry the message creation
+			}
+
+			// Send the request using MBClient->addRequest
+			modbusError = MBClient->addRequest(read_request, target_read.token);
+
+			if(modbusError == Modbus::SUCCESS)
+			{
+				return Modbus::SUCCESS; // Successful request, no further retries needed
+			}
+
+			// Small delay before retry (adjust if needed)
+			vTaskDelay(pdMS_TO_TICKS(100));
+		}
 		return modbusError;
 	}
 
