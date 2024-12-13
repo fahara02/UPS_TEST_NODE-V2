@@ -62,8 +62,15 @@ class ModbusManager
 		uint16_t CoilAddress;
 		bool CoilValue;
 	};
+	struct WatchdogRequest
+	{
+		CoilType type;
+		CoilState expectedState;
+		uint32_t timeout;
+	};
 	static constexpr uint16_t MAX_COILS = 5;
 	static constexpr uint16_t MAX_RETRIES = 4;
+	static constexpr size_t WATCHDOG_QUEUE_SIZE = 10; // Adjust as need
 	static constexpr uint16_t UPS_IN_COIL_ADDR = 0;
 	static constexpr uint16_t LOAD_BANK_1_COIL_ADDR = 1;
 	static constexpr uint16_t LOAD_BANK_2_COIL_ADDR = 2;
@@ -78,7 +85,9 @@ class ModbusManager
 	std::vector<Target> _targets;
 	std::array<TesterCoil, MAX_COILS> _coils;
 
-	TaskHandle_t modbusTaskHandle = NULL;
+	TaskHandle_t pollingTaskHandle = NULL;
+	TaskHandle_t watchDogTaskHandle = NULL;
+	QueueHandle_t coilWatchdogQueue = NULL;
 	IPAddress pzemServerIP = IPAddress(192, 168, 0, 160);
 	uint8_t coilserver_id = 0;
 	uint8_t ipd_id = 0;
@@ -88,7 +97,7 @@ class ModbusManager
 	Node_Core::JobCard outputPowerDeviceCard = JobCard();
 	Node_Core::powerMeasure inputPowerMeasure = powerMeasure();
 	Node_Core::powerMeasure outputPowerMeasure = powerMeasure();
-	bool pollingTaskCreated = false;
+	bool allTaskCreated = false;
 	bool updateSingleCoil = true;
 	bool enablePolling = true;
 
@@ -101,7 +110,10 @@ class ModbusManager
 		ipd_id(inputPowerId), opd_id(outputPowerId), _currentToken(0)
 	{
 		init();
-		configASSERT(createPollingTask());
+		configASSERT(createAllTask());
+		// Create the queue
+		coilWatchdogQueue = xQueueCreate(WATCHDOG_QUEUE_SIZE, sizeof(WatchdogRequest));
+		configASSERT(coilWatchdogQueue);
 		MBClient->begin(); // Start ModbusTCP background task
 	}
 	void init()
@@ -130,9 +142,9 @@ class ModbusManager
 	}
 
 	// Internal method to start the polling task
-	bool createPollingTask()
+	bool createAllTask()
 	{
-		if(!pollingTaskCreated)
+		if(!allTaskCreated)
 		{
 			if(xTaskCreatePinnedToCore(
 				   [](void* pvParameters) {
@@ -142,15 +154,29 @@ class ModbusManager
 				   modbus_Stack, // Stack size
 				   this, // Task parameter
 				   modbus_Priority, // Priority
-				   &modbusTaskHandle, // Task handle
+				   &pollingTaskHandle, // Task handle
 				   modbus_CORE))
 			{
-				pollingTaskCreated = true;
+				if(xTaskCreatePinnedToCore(
+					   [](void* param) {
+						   static_cast<ModbusManager*>(param)->coilWatchdogTask();
+					   },
+					   "CoilWatchdogTask",
+					   modbus_Stack, // Stack size
+					   this, // Parameter
+					   modbus_Priority, // Priority
+					   &watchDogTaskHandle, // Task handle
+					   modbus_CORE // Core ID
+					   ))
+				{
+					allTaskCreated = true;
+				}
 			}
 		}
 
-		return pollingTaskCreated;
+		return allTaskCreated;
 	}
+
 	void startPollingTask()
 	{
 		enablePolling = true;
@@ -191,6 +217,64 @@ class ModbusManager
 			}
 
 			vTaskDelay(pdMS_TO_TICKS(1000)); // Delay before the next polling cycle
+		}
+	}
+	void coilWatchdogTask()
+	{
+		WatchdogRequest request;
+
+		while(true)
+		{
+			// Wait for a new request
+			if(xQueueReceive(coilWatchdogQueue, &request, portMAX_DELAY) == pdTRUE)
+			{
+				uint16_t retries = 0;
+				bool matchFound = false;
+
+				while(retries <= MAX_RETRIES)
+				{
+					// Check the current state of the coil
+					auto coilIt =
+						std::find_if(_coils.begin(), _coils.end(), [&](const TesterCoil& coil) {
+							return coil.type == request.type;
+						});
+
+					if(coilIt != _coils.end())
+					{
+						// Check if the coil's state matches the expected state
+						bool expectedValue = (request.expectedState == CoilState::ON);
+						if(coilIt->CoilValue == expectedValue)
+						{
+							Serial.printf("Watchdog: Coil %s successfully updated to %s\n",
+										  getCoilTypeName(request.type).c_str(),
+										  expectedValue ? "ON" : "OFF");
+							matchFound = true;
+							break; // Exit retries loop after success
+						}
+					}
+
+					// If not matched, invoke `readCoil`
+					Modbus::Error error = readCoil(coilserver_id, coilIt->CoilAddress);
+					if(error != Modbus::SUCCESS)
+					{
+						Serial.printf("Watchdog: Failed to read coil %s: Error %02X\n",
+									  getCoilTypeName(request.type).c_str(),
+									  static_cast<int>(error));
+					}
+
+					// Increment retries and delay
+					retries++;
+					vTaskDelay(pdMS_TO_TICKS(500)); // Adjust delay as needed
+				}
+
+				if(!matchFound)
+				{
+					Serial.printf("Watchdog: Timeout or retries exhausted for coil %s\n",
+								  getCoilTypeName(request.type).c_str());
+				}
+
+				// Reset state and wait for the next request
+			}
 		}
 	}
 
@@ -306,30 +390,41 @@ class ModbusManager
 		return outputPowerMeasure;
 	}
 
-	Modbus::Error TriggerCoil(CoilType type, CoilState state)
+	void TriggerCoil(CoilType type, CoilState state)
 	{
-		uint16_t coilAddress = 0;
+		// Find the coil object
+		auto coilIt = std::find_if(_coils.begin(), _coils.end(), [&](const TesterCoil& coil) {
+			return coil.type == type;
+		});
 
-		switch(type)
+		if(coilIt == _coils.end())
 		{
-			case CoilType::UPS_IN:
-				coilAddress = UPS_IN_COIL_ADDR;
-				break;
-			case CoilType::LOAD_BANK_1:
-				coilAddress = LOAD_BANK_1_COIL_ADDR;
-				break;
-			case CoilType::LOAD_BANK_2:
-				coilAddress = LOAD_BANK_2_COIL_ADDR;
-				break;
-			case CoilType::LOAD_BANK_3:
-				coilAddress = LOAD_BANK_3_COIL_ADDR;
-				break;
-			default:
-				return Modbus::Error::ILLEGAL_DATA_VALUE; // Handle invalid type
+			Serial.printf("Invalid Coil Type: %d\n", static_cast<int>(type));
+			return;
 		}
-		bool value = (state == CoilState::ON) ? true : false;
 
-		return setCoil(coilserver_id, coilAddress, value);
+		// Set the coil value
+		uint8_t serverID = coilserver_id;
+		uint16_t address = coilIt->CoilAddress;
+		bool value = (state == CoilState::ON);
+
+		Modbus::Error error = setCoil(serverID, address, value);
+
+		if(error != Modbus::SUCCESS)
+		{
+			Serial.printf("Failed to set coil %s: Error %02X\n", getCoilTypeName(type).c_str(),
+						  static_cast<int>(error));
+			return;
+		}
+
+		// Prepare the watchdog request
+		WatchdogRequest request = {type, state, 5000}; // 5-second timeout
+
+		// Send the request to the queue
+		if(xQueueSend(coilWatchdogQueue, &request, pdMS_TO_TICKS(100)) != pdTRUE)
+		{
+			Serial.println("Failed to enqueue watchdog request.");
+		}
 	}
 
   private:
