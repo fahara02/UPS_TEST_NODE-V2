@@ -269,20 +269,34 @@ class ModbusManager
 		return instance;
 	}
 
-	// Add autopolling targets
-	template<typename... Args>
-	void autopoll(bool startPolling, Args... targetsToAdd)
+	// Base case (end of recursion)
+	void processTarget(bool startPolling)
 	{
-		(addTarget(targetsToAdd), ...); // Add all targets
-		if(startPolling)
-		{
-			startPollingTask();
-		}
-		else
-		{
-			stopPollingTask();
-		}
 	}
+
+	// Recursive case
+	template<typename First, typename... Rest>
+	void processTarget(bool startPolling, First&& first, Rest&&... rest)
+	{
+		if(startPolling)
+			addTarget(std::forward<First>(first));
+		else
+			removeTarget(std::forward<First>(first));
+
+		processTarget(startPolling, std::forward<Rest>(rest)...); // Recurse for remaining targets
+	}
+
+	template<typename... Args>
+	void autopoll(bool startPolling, Args&&... targetsToAdd)
+	{
+		processTarget(startPolling, std::forward<Args>(targetsToAdd)...);
+
+		if(startPolling)
+			startPollingTask();
+		else
+			stopPollingTask();
+	}
+
 	powerMeasure& getInputPower()
 	{
 		return inputPowerMeasure;
@@ -338,6 +352,25 @@ class ModbusManager
 			Serial.printf("Duplicate target ignored: Token=%08X\n", target.token);
 		}
 	}
+	void removeTarget(const Target& target)
+	{
+		// Find the target using the same criteria as addTarget
+		auto it = std::find_if(_targets.begin(), _targets.end(), [&](const Target& t) {
+			return t.type == target.type && t.token == target.token;
+		});
+
+		if(it != _targets.end())
+		{
+			_targets.erase(it);
+			Serial.printf("Target removed: Token=%08X, Type=%d, IP=%s\n", target.token,
+						  static_cast<int>(target.type), target.target_ip.toString().c_str());
+		}
+		else
+		{
+			Serial.printf("Target not found for removal: Token=%08X\n", target.token);
+		}
+	}
+
 	//
 	void createSwitchControls()
 	{
@@ -466,6 +499,18 @@ class ModbusManager
 		}
 
 		return modbusError; // Return the last error after all retries failed
+	}
+	Modbus::Error readCoil(uint8_t serverID, uint16_t address)
+	{
+		Target target_read = {TargetType::COIL_READ,		   pzemServerIP, serverID,
+							  Modbus::FunctionCode::READ_COIL, address,		 generateUniqueToken()};
+		Modbus::Error modbusError = Modbus::Error::UNDEFINED_ERROR;
+		ModbusMessage read_request;
+		modbusError = read_request.setMessage(target_read.slave_id, target_read.function_code,
+											  target_read.start_address, target_read.value);
+		modbusError = MBClient->addRequest(read_request, target_read.token);
+
+		return modbusError;
 	}
 
 	// Helper method to validate and process power data
