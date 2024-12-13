@@ -77,22 +77,21 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 WiFiManager wm;
-WiFiClient theClient;
-auto MClient = std::make_unique<ModbusClientTCP>(theClient);
-Node_Utility::ModbusManager& MBManager =
-	Node_Utility::ModbusManager::getInstance(std::move(MClient));
+// WiFiClient theClient;
+// auto MClient = std::make_unique<ModbusClientTCP>(theClient);
+Node_Utility::ModbusManager& MBManager = Node_Utility::ModbusManager::getInstance();
 
 Node_Utility::ModbusManager::Target ups_in_trigger = {
-	TargetType::SWITCH_CONTROL,		 1000, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
+	TargetType::SWITCH_CONTROL,		 0, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
 	ModbusManager::UPS_IN_COIL_ADDR, 1};
 Node_Utility::ModbusManager::Target load_bank_1_trigger = {
-	TargetType::SWITCH_CONTROL,			  1000, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
+	TargetType::SWITCH_CONTROL,			  1, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
 	ModbusManager::LOAD_BANK_1_COIL_ADDR, 1};
 Node_Utility::ModbusManager::Target load_bank_2_trigger = {
-	TargetType::SWITCH_CONTROL,			  1000, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
+	TargetType::SWITCH_CONTROL,			  2, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
 	ModbusManager::LOAD_BANK_2_COIL_ADDR, 1};
 Node_Utility::ModbusManager::Target load_bank_3_trigger = {
-	TargetType::SWITCH_CONTROL,			  1000, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
+	TargetType::SWITCH_CONTROL,			  3, IPAddress(192, 168, 0, 160), 3, WRITE_COIL,
 	ModbusManager::LOAD_BANK_3_COIL_ADDR, 1};
 
 #define ESP_LITTLEFS_TAG = "LFS"

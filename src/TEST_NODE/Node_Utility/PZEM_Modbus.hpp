@@ -13,6 +13,7 @@
 	#include "PZEM_Measure.hpp"
 	#include "NodeUtility.hpp"
 	#include "string.h"
+	#include <WiFiClient.h>
 
 namespace Node_Utility
 {
@@ -28,7 +29,8 @@ enum class CoilType
 	UPS_IN = 0,
 	LOAD_BANK_1 = 1,
 	LOAD_BANK_2 = 2,
-	LOAD_BANK_3 = 3
+	LOAD_BANK_3 = 3,
+	OUTPUT_FAILURE = 4
 };
 
 class ModbusManager
@@ -43,6 +45,7 @@ class ModbusManager
 		Modbus::FunctionCode function_code = FunctionCode::ANY_FUNCTION_CODE;
 		uint16_t start_address = UPS_IN_COIL_ADDR;
 		uint16_t length = 1;
+		uint16_t value = 1;
 	};
 	struct TesterCoil
 	{
@@ -51,12 +54,14 @@ class ModbusManager
 		bool CoilValue;
 	};
 	static constexpr uint16_t MAX_COILS = 4;
-	static constexpr uint16_t UPS_IN_COIL_ADDR = 1000;
-	static constexpr uint16_t LOAD_BANK_1_COIL_ADDR = 1001;
-	static constexpr uint16_t LOAD_BANK_2_COIL_ADDR = 1002;
-	static constexpr uint16_t LOAD_BANK_3_COIL_ADDR = 1003;
+	static constexpr uint16_t UPS_IN_COIL_ADDR = 0;
+	static constexpr uint16_t LOAD_BANK_1_COIL_ADDR = 1;
+	static constexpr uint16_t LOAD_BANK_2_COIL_ADDR = 2;
+	static constexpr uint16_t LOAD_BANK_3_COIL_ADDR = 3;
+	static constexpr uint16_t OUTPUT_FAILURE_COIL_ADDR = 3;
 
   private:
+	WiFiClient theClient;
 	std::unique_ptr<ModbusClientTCP> MBClient;
 	uint32_t _timeout;
 	uint32_t _interval;
@@ -73,12 +78,12 @@ class ModbusManager
 	bool updateSingleCoil = true;
 
 	// Private constructor for singleton pattern
-	ModbusManager(std::unique_ptr<ModbusClientTCP> MClient, uint32_t tm = 4000,
-				  uint32_t inter = 2000) :
-		MBClient(std::move(MClient)),
-		_timeout(tm), _interval(inter), _currentToken(0)
+	ModbusManager(uint32_t tm = 4000, uint32_t inter = 2000) :
+		MBClient(std::make_unique<ModbusClientTCP>(theClient)), _timeout(tm), _interval(inter),
+		_currentToken(0)
 	{
-		ModbusManager::getInstance().init();
+		init();
+		configASSERT(startPollingTask());
 		MBClient->begin(); // Start ModbusTCP background task
 	}
 	void init()
@@ -104,9 +109,9 @@ class ModbusManager
 	}
 
 	// Internal method to start the polling task
-	void startPollingTask()
+	bool startPollingTask()
 	{
-		xTaskCreatePinnedToCore(
+		return (xTaskCreatePinnedToCore(
 			[](void* pvParameters) {
 				static_cast<ModbusManager*>(pvParameters)->pollingTask();
 			},
@@ -115,7 +120,7 @@ class ModbusManager
 			this, // Task parameter
 			modbus_Priority, // Priority
 			&modbusTaskHandle, // Task handle
-			modbus_CORE);
+			modbus_CORE));
 	}
 
 	// Polling task implementation
@@ -218,10 +223,9 @@ class ModbusManager
 
   public:
 	// Singleton access
-	static ModbusManager& getInstance(std::unique_ptr<ModbusClientTCP> MClient = nullptr,
-									  uint32_t tm = 2000, uint32_t inter = 200)
+	static ModbusManager& getInstance(uint32_t tm = 4000, uint32_t inter = 2000)
 	{
-		static ModbusManager instance(std::move(MClient), tm, inter);
+		static ModbusManager instance(tm, inter);
 		return instance;
 	}
 
@@ -243,6 +247,7 @@ class ModbusManager
 	{
 		return outputPowerMeasure;
 	}
+
 	Modbus::Error TriggerCoil(Target target, CoilType type)
 	{
 		if(target.type != TargetType::SWITCH_CONTROL)
@@ -307,6 +312,77 @@ class ModbusManager
 		{
 			Serial.printf("Duplicate target ignored: Token=%08X\n", target.token);
 		}
+	}
+	void setCoil(IPAddress ip, uint8_t serverID, uint16_t address)
+	{
+		Target target = {
+			TargetType::SWITCH_CONTROL, // Target type
+			_currentToken, // Unique token for request tracking
+			ip, // Target IP
+			serverID, // Slave ID
+			Modbus::FunctionCode::WRITE_COIL, // FC 0x05
+			address, // Start address of the coil
+			1, // Length of the coil (1 coil for FC 0x05)
+			0xFF00 // Value for ON (0xFF00)
+		};
+
+		// Create the Modbus message
+		ModbusMessage request;
+		request.setMessage(target.slave_id, target.function_code, target.start_address,
+						   target.value);
+
+		// Send the request using MBClient.addRequest
+		MBClient.addRequest(request, target.token);
+
+		// Increment the token to ensure unique identifiers for subsequent requests
+		_currentToken++;
+	}
+
+	void resetCoil(IPAddress ip, uint8_t serverID, uint16_t address)
+	{
+		// Create a Target object (hidden logic)
+		Target target = {
+			TargetType::SWITCH_CONTROL, // Target type
+			_currentToken, // Unique token for request tracking
+			ip, // Target IP
+			serverID, // Slave ID
+			Modbus::FunctionCode::WRITE_COIL, // FC 0x05
+			address, // Start address of the coil
+			1, // Length of the coil (1 coil for FC 0x05)
+			0x0000 // Value for OFF (0x0000)
+		};
+
+		// Create the Modbus message
+		ModbusMessage request;
+		request.setMessage(target.slave_id, target.function_code, target.start_address,
+						   target.value);
+
+		// Send the request using MBClient.addRequest
+		MBClient.addRequest(request, target.token);
+
+		// Increment the token to ensure unique identifiers for subsequent requests
+		_currentToken++;
+	}
+
+	// Helper method to validate and process power data
+	bool validateAndProcessPowerData(ModbusMessage& response, JobCard* jobCard)
+	{
+		if(!validateExtractPowerData(response, jobCard))
+		{
+			return false;
+		}
+
+		// Update power measure based on processed data
+		if(jobCard == &inputPowerDeviceCard)
+		{
+			inputPowerMeasure = jobCard->pm;
+		}
+		else if(jobCard == &outputPowerDeviceCard)
+		{
+			outputPowerMeasure = jobCard->pm;
+		}
+
+		return true;
 	}
 	bool validateExtractPowerData(ModbusMessage& response, JobCard* jobCard)
 	{
@@ -399,26 +475,6 @@ class ModbusManager
 		jobCard->deviceState = static_cast<PZEMState>(toHostEndian16(data[index++]));
 
 		jobCard->pm.isValid = true;
-		return true;
-	}
-	// Helper method to validate and process power data
-	bool validateAndProcessPowerData(ModbusMessage& response, JobCard* jobCard)
-	{
-		if(!validateExtractPowerData(response, jobCard))
-		{
-			return false;
-		}
-
-		// Update power measure based on processed data
-		if(jobCard == &inputPowerDeviceCard)
-		{
-			inputPowerMeasure = jobCard->pm;
-		}
-		else if(jobCard == &outputPowerDeviceCard)
-		{
-			outputPowerMeasure = jobCard->pm;
-		}
-
 		return true;
 	}
 
@@ -526,6 +582,8 @@ class ModbusManager
 				return "LOAD_BANK_2";
 			case CoilType::LOAD_BANK_3:
 				return "LOAD_BANK_3";
+			case CoilType::OUTPUT_FAILURE:
+				return "OUTPUT_FAILURE";
 			default:
 				return "UNKNOWN";
 		}
