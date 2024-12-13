@@ -25,6 +25,7 @@ enum class TargetType
 	INPUT_POWER,
 	OUTPUT_POWER,
 	SWITCH_CONTROL,
+	COIL_READ,
 	ANY
 };
 enum class CoilType
@@ -309,7 +310,7 @@ class ModbusManager
 		bool value = 0;
 		if(state == CoilState::ON)
 		{
-			bool value = 1;
+			value = 1;
 		}
 
 		return setCoil(coilserver_id, coilAddress, value);
@@ -348,7 +349,7 @@ class ModbusManager
 			static_cast<uint16_t>(value ? 0xFF00 : 0x0000) // 0xFF00 for ON, 0x0000 for OFF
 		};
 		addTarget(target);
-		MBClient->setTarget(target.target_ip, 502, _timeout, _interval);
+		// MBClient->setTarget(target.target_ip, 502, _timeout, _interval);
 		// Create the Modbus message
 		ModbusMessage request;
 		Modbus::Error modbusError = request.setMessage(target.slave_id, target.function_code,
