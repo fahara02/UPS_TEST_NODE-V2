@@ -80,6 +80,30 @@ struct JobCard
 	{
 	}
 };
+enum class MeasureType
+{
+	INPUT_POWER,
+	OUTPUT_POWER,
+	ANY,
+};
+struct OutBox
+{
+	uint16_t device_id;
+	MeasureType type;
+
+	float voltage;
+	float current;
+	float power;
+	float energy;
+	float frequency;
+	float powerfactor;
+	bool isValid;
+	OutBox() :
+		device_id(0), type(MeasureType::ANY), voltage(0), current(0), power(0), energy(0),
+		frequency(0), powerfactor(-1), isValid(false)
+	{
+	}
+};
 
 } // namespace Node_Core
 

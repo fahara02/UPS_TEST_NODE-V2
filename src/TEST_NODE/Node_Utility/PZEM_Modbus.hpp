@@ -47,7 +47,7 @@ class ModbusManager
 	struct Target
 	{
 		TargetType type = TargetType::ANY;
-		IPAddress target_ip = IPAddress(192, 168, 0, 160);
+		IPAddress target_ip = IPAddress(192, 168, 0, 172);
 		uint8_t slave_id = 1;
 		Modbus::FunctionCode function_code = FunctionCode::ANY_FUNCTION_CODE;
 		uint16_t start_address = UPS_IN_COIL_ADDR;
@@ -93,17 +93,16 @@ class ModbusManager
 	uint8_t ipd_id = 0;
 	uint8_t opd_id = 0;
 	uint32_t _currentToken;
-	Node_Core::JobCard inputPowerDeviceCard = JobCard();
-	Node_Core::JobCard outputPowerDeviceCard = JobCard();
-	Node_Core::powerMeasure inputPowerMeasure = powerMeasure();
-	Node_Core::powerMeasure outputPowerMeasure = powerMeasure();
+	Node_Core::OutBox inputPower = OutBox();
+	Node_Core::OutBox outputPower = OutBox();
+
 	bool allTaskCreated = false;
 	bool updateSingleCoil = true;
 	bool enablePolling = true;
 
 	// Private constructor for singleton pattern
 	ModbusManager(uint32_t tm = 4000, uint32_t inter = 2000,
-				  IPAddress serverIP = IPAddress(192, 168, 0, 160), u8_t coilServerId = 1,
+				  IPAddress serverIP = IPAddress(192, 168, 0, 172), u8_t coilServerId = 1,
 				  uint8_t inputPowerId = 1, uint8_t outputPowerId = 2) :
 		MBClient(std::make_unique<ModbusClientTCP>(theClient)),
 		_timeout(tm), _interval(inter), pzemServerIP(serverIP), coilserver_id(coilServerId),
@@ -309,7 +308,7 @@ class ModbusManager
 		{
 			case TargetType::INPUT_POWER:
 			{
-				if(!validateAndProcessPowerData(response, &inputPowerDeviceCard))
+				if(!validateAndProcessPowerData(response, &inputPower))
 				{
 					Serial.println("Failed to process INPUT_POWER data.");
 				}
@@ -318,7 +317,7 @@ class ModbusManager
 
 			case TargetType::OUTPUT_POWER:
 			{
-				if(!validateAndProcessPowerData(response, &outputPowerDeviceCard))
+				if(!validateAndProcessPowerData(response, &outputPower))
 				{
 					Serial.println("Failed to process OUTPUT_POWER data.");
 				}
@@ -381,13 +380,13 @@ class ModbusManager
 			stopPollingTask();
 	}
 
-	powerMeasure& getInputPower()
+	OutBox& getInputPower()
 	{
-		return inputPowerMeasure;
+		return inputPower;
 	}
-	powerMeasure& getoutputPower()
+	OutBox& getoutputPower()
 	{
-		return outputPowerMeasure;
+		return outputPower;
 	}
 
 	void TriggerCoil(CoilType type, CoilState state)
@@ -631,26 +630,24 @@ class ModbusManager
 	}
 
 	// Helper method to validate and process power data
-	bool validateAndProcessPowerData(ModbusMessage& response, JobCard* jobCard)
+	bool validateAndProcessPowerData(ModbusMessage& response, OutBox* outbox)
 	{
-		if(!validateExtractPowerData(response, jobCard))
+		if(!validateExtractPowerData(response, outbox))
 		{
 			return false;
 		}
 
 		// Update power measure based on processed data
-		if(jobCard == &inputPowerDeviceCard)
+		if(outbox->type == MeasureType::INPUT_POWER)
 		{
-			inputPowerMeasure = jobCard->pm;
 		}
-		else if(jobCard == &outputPowerDeviceCard)
+		else if(outbox->type == MeasureType::OUTPUT_POWER)
 		{
-			outputPowerMeasure = jobCard->pm;
 		}
 
 		return true;
 	}
-	bool validateExtractPowerData(ModbusMessage& response, JobCard* jobCard)
+	bool validateExtractPowerData(ModbusMessage& response, OutBox* outbox)
 	{
 		if(response.size() < 20)
 		{
@@ -660,7 +657,7 @@ class ModbusManager
 		const uint16_t* message = reinterpret_cast<const uint16_t*>(response.data() + 3);
 		size_t messageLength = (response.size() - 3) / 2;
 
-		return parseJobCardData(message, messageLength, jobCard);
+		return parseOutBox(message, messageLength, outbox);
 	}
 	uint16_t toHostEndian16(uint16_t value)
 	{
@@ -712,10 +709,9 @@ class ModbusManager
 
 		// static_assert(UnsupportedTypeForReadData<T>::value, "Unsupported type for readData");
 	}
-
-	bool parseJobCardData(const uint16_t* data, size_t length, JobCard* jobCard)
+	bool parseOutBox(const uint16_t* data, size_t length, OutBox* outbox)
 	{
-		if(length < 28)
+		if(length < 15)
 		{
 			Serial.println("Insufficient data for parsing.");
 			return false;
@@ -723,50 +719,16 @@ class ModbusManager
 
 		size_t index = 0;
 
-		// Parse NamePlate information
-		jobCard->info.model = readData<PZEMModel>(data, index);
-		jobCard->info.id = readData<uint8_t>(data, index);
-		jobCard->info.slaveAddress = readData<uint8_t>(data, index);
-		jobCard->info.lineNo = readData<uint8_t>(data, index);
-		jobCard->info.phase = readData<Phase>(data, index);
+		outbox->device_id = readData<uint16_t>(data, index);
+		outbox->type = readData<MeasureType>(data, index);
+		outbox->voltage = readData<float>(data, index);
+		outbox->current = readData<float>(data, index);
+		outbox->power = readData<float>(data, index);
+		outbox->energy = readData<float>(data, index);
+		outbox->powerfactor = readData<float>(data, index);
+		outbox->frequency = readData<float>(data, index);
+		outbox->isValid = readData<boolean>(data, index);
 
-		// Parse meter name (ASCII-encoded in 16-bit registers)
-		std::array<char, 9> meterName = {0};
-		for(size_t i = 0; i < 9 && index < length; ++i)
-		{
-			uint16_t word = readData<uint16_t>(data, index);
-			char highByte = static_cast<char>(word >> 8);
-			char lowByte = static_cast<char>(word & 0xFF);
-			if(i < meterName.size())
-			{
-				meterName[i++] = highByte;
-			}
-			if(i < meterName.size())
-			{
-				meterName[i++] = lowByte;
-			}
-		}
-		jobCard->info.meterName = meterName;
-
-		// Parse power measurements
-		auto& pm = jobCard->pm;
-		pm.voltage = readData<float>(data, index);
-		pm.current = readData<float>(data, index);
-		pm.power = readData<float>(data, index);
-		pm.energy = readData<float>(data, index);
-		pm.frequency = readData<float>(data, index);
-		pm.pf = readData<float>(data, index);
-
-		// Parse timestamps
-		jobCard->poll_us = readData<int64_t>(data, index);
-		jobCard->lastUpdate_us = readData<int64_t>(data, index);
-		jobCard->dataAge_ms = readData<int64_t>(data, index);
-
-		// Parse remaining fields
-		jobCard->dataStale = readData<uint16_t>(data, index) != 0;
-		jobCard->deviceState = readData<PZEMState>(data, index);
-
-		pm.isValid = true;
 		return true;
 	}
 
@@ -889,94 +851,59 @@ class ModbusManager
 
 #endif // PZEM_MODBUS_HPP
 
-// // Print the updated JobCard values
-// Serial.printf("Updated %s Power Device  of model %s and id %d : Voltage=%.2f V, "
-// 			  "Current=%.3f A, Power=%.2f W, "
-// 			  "Energy=%.2f kWh, Frequency=%.2f Hz, Power Factor=%.3f, Alarms=%.0f\n",
-// 			  (target.type == TargetType::INPUT_POWER ? "Input" : "Output"),
-// 			  Node_Utility::ToString::model(jobCard->info.model), jobCard->info.id,
-// 			  jobCard->pm.voltage, jobCard->pm.current, jobCard->pm.power,
-// 			  jobCard->pm.energy, jobCard->pm.frequency, jobCard->pm.pf,
-// 			  jobCard->pm.alarms);
-
 // bool parseJobCardData(const uint16_t* data, size_t length, JobCard* jobCard)
 // {
-// 	size_t index = 0;
-
-// 	// Ensure minimum length
 // 	if(length < 28)
 // 	{
 // 		Serial.println("Insufficient data for parsing.");
 // 		return false;
 // 	}
 
-// 	// Endian conversion helpers
-// 	auto toHostEndian16 = [](uint16_t value) -> uint16_t {
-// 		return (value >> 8) | (value << 8);
-// 	};
-
-// 	auto toHostEndian32 = [](uint32_t value) -> uint32_t {
-// 		return ((value & 0xFF000000) >> 24) | ((value & 0x00FF0000) >> 8) |
-// 			   ((value & 0x0000FF00) << 8) | ((value & 0x000000FF) << 24);
-// 	};
-
-// 	auto parseFloat16 = [&](size_t i) -> float {
-// 		uint32_t intBits = (toHostEndian16(data[i]) << 16) | toHostEndian16(data[i + 1]);
-// 		return *reinterpret_cast<float*>(&intBits);
-// 	};
+// 	size_t index = 0;
 
 // 	// Parse NamePlate information
-// 	jobCard->info.model = static_cast<PZEMModel>(toHostEndian16(data[index++]));
-// 	jobCard->info.id = static_cast<uint8_t>(toHostEndian16(data[index++])); // Parse ID
-// 	jobCard->info.slaveAddress = static_cast<uint8_t>(toHostEndian16(data[index++]));
-// 	jobCard->info.lineNo = static_cast<uint8_t>(toHostEndian16(data[index++]));
-// 	jobCard->info.phase = static_cast<Phase>(toHostEndian16(data[index++]));
+// 	jobCard->info.model = readData<PZEMModel>(data, index);
+// 	jobCard->info.id = readData<uint8_t>(data, index);
+// 	jobCard->info.slaveAddress = readData<uint8_t>(data, index);
+// 	jobCard->info.lineNo = readData<uint8_t>(data, index);
+// 	jobCard->info.phase = readData<Phase>(data, index);
 
 // 	// Parse meter name (ASCII-encoded in 16-bit registers)
-// 	std::string meterName;
-// 	for(size_t i = 0; i < 9 && index < length; i += 2)
+// 	std::array<char, 9> meterName = {0};
+// 	for(size_t i = 0; i < 9 && index < length; ++i)
 // 	{
-// 		char char1 = static_cast<char>(toHostEndian16(data[index]) >> 8); // High byte
-// 		char char2 = static_cast<char>(toHostEndian16(data[index]) & 0xFF); // Low byte
-// 		if(char1 != '\0')
-// 			meterName += char1;
-// 		if(char2 != '\0')
-// 			meterName += char2;
-// 		index++;
+// 		uint16_t word = readData<uint16_t>(data, index);
+// 		char highByte = static_cast<char>(word >> 8);
+// 		char lowByte = static_cast<char>(word & 0xFF);
+// 		if(i < meterName.size())
+// 		{
+// 			meterName[i++] = highByte;
+// 		}
+// 		if(i < meterName.size())
+// 		{
+// 			meterName[i++] = lowByte;
+// 		}
 // 	}
+// 	jobCard->info.meterName = meterName;
 
 // 	// Parse power measurements
-// 	jobCard->pm.voltage = parseFloat16(index);
-// 	index += 2;
-// 	jobCard->pm.current = parseFloat16(index);
-// 	index += 2;
-// 	jobCard->pm.power = parseFloat16(index);
-// 	index += 2;
-// 	jobCard->pm.energy = parseFloat16(index);
-// 	index += 2;
-// 	jobCard->pm.frequency = parseFloat16(index);
-// 	index += 2;
-// 	jobCard->pm.pf = parseFloat16(index);
-// 	index += 2;
+// 	auto& pm = jobCard->pm;
+// 	pm.voltage = readData<float>(data, index);
+// 	pm.current = readData<float>(data, index);
+// 	pm.power = readData<float>(data, index);
+// 	pm.energy = readData<float>(data, index);
+// 	pm.frequency = readData<float>(data, index);
+// 	pm.pf = readData<float>(data, index);
 
-// 	// Parse 64-bit timestamps
-// 	auto parseInt64 = [&](size_t i) -> int64_t {
-// 		uint32_t high = (toHostEndian16(data[i]) << 16) | toHostEndian16(data[i + 1]);
-// 		uint32_t low = (toHostEndian16(data[i + 2]) << 16) | toHostEndian16(data[i + 3]);
-// 		return (static_cast<int64_t>(high) << 32) | low;
-// 	};
-
-// 	jobCard->poll_us = parseInt64(index);
-// 	index += 4;
-// 	jobCard->lastUpdate_us = parseInt64(index);
-// 	index += 4;
-// 	jobCard->dataAge_ms = parseInt64(index);
-// 	index += 4;
+// 	// Parse timestamps
+// 	jobCard->poll_us = readData<int64_t>(data, index);
+// 	jobCard->lastUpdate_us = readData<int64_t>(data, index);
+// 	jobCard->dataAge_ms = readData<int64_t>(data, index);
 
 // 	// Parse remaining fields
-// 	jobCard->dataStale = toHostEndian16(data[index++]) != 0;
-// 	jobCard->deviceState = static_cast<PZEMState>(toHostEndian16(data[index++]));
+// 	jobCard->dataStale = readData<uint16_t>(data, index) != 0;
+// 	jobCard->deviceState = readData<PZEMState>(data, index);
 
-// 	jobCard->pm.isValid = true;
+// 	pm.isValid = true;
 // 	return true;
 // }

@@ -224,9 +224,9 @@ void setup()
 	// Issue a request
 
 	Node_Utility::ModbusManager::Target target1 = {
-		TargetType::INPUT_POWER, IPAddress(192, 168, 0, 160), 1, READ_HOLD_REGISTER, 761, 0, 40};
+		TargetType::INPUT_POWER, IPAddress(192, 168, 0, 172), 1, READ_HOLD_REGISTER, 761, 0, 21};
 	Node_Utility::ModbusManager::Target target2 = {
-		TargetType::OUTPUT_POWER, IPAddress(192, 168, 0, 160), 2, READ_HOLD_REGISTER, 123, 0, 40};
+		TargetType::OUTPUT_POWER, IPAddress(192, 168, 0, 172), 2, READ_HOLD_REGISTER, 123, 0, 21};
 
 	MBManager.autopoll(true, target1, target2);
 

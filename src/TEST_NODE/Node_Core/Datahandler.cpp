@@ -403,8 +403,8 @@ JsonDocument DataHandler::prepData(wsOutGoingDataType type)
 		doc["inputVoltage"] = MBManager.getInputPower().voltage;
 		doc["outputVoltage"] = MBManager.getoutputPower().voltage;
 		;
-		doc["inputPowerFactor"] = MBManager.getInputPower().pf;
-		doc["outputPowerFactor"] = MBManager.getoutputPower().pf;
+		doc["inputPowerFactor"] = MBManager.getInputPower().powerfactor;
+		doc["outputPowerFactor"] = MBManager.getoutputPower().powerfactor;
 		doc["inputWattage"] = MBManager.getInputPower().power;
 		doc["outputWattage"] = MBManager.getoutputPower().power;
 	}
